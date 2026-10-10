@@ -176,6 +176,12 @@ describe('canTrain', () => {
     await expect(adapter.canTrain()).resolves.toBe(false);
   });
 
+  test('returns true when force flag is set even if active', async () => {
+    chrome.idle.queryState.mockImplementationOnce((t, cb) => cb('active'));
+    const { adapter } = makeAdapter();
+    await expect(adapter.canTrain(true)).resolves.toBe(true);
+  });
+
   test('returns false when idle but battery not charging and below 80%', async () => {
     chrome.idle.queryState.mockImplementationOnce((t, cb) => cb('idle'));
     global.navigator.getBattery = jest.fn(() => Promise.resolve({ charging: false, level: 0.5 }));

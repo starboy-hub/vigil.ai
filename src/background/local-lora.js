@@ -341,7 +341,8 @@
      * Returns true if the device is idle AND on AC power (or battery API absent).
      * @returns {Promise<boolean>}
      */
-    async canTrain() {
+    async canTrain(force = false) {
+      if (force) return true;
       // Check idle state via chrome.idle (threshold: 60 s)
       const idleCheck = await new Promise((resolve) => {
         if (typeof chrome !== 'undefined' && chrome.idle && chrome.idle.queryState) {

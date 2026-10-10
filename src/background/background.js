@@ -1308,7 +1308,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ ok: false, error: 'lora_unavailable' });
         return false;
       }
-      loraAdapter.canTrain().then((ok) => {
+      loraAdapter.canTrain(!!request.force).then((ok) => {
         if (!ok) {
           sendResponse({ ok: false, reason: 'not_idle_or_not_charging' });
           return;

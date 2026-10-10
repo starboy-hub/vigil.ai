@@ -750,8 +750,8 @@ const loraTrainBtn = document.getElementById('loraTrainBtn');
 if (loraTrainBtn) {
   loraTrainBtn.addEventListener('click', () => {
     const msg = document.getElementById('loraStatusMsg');
-    if (msg) msg.textContent = 'Checking idle/charging state…';
-    chrome.runtime.sendMessage({ type: 'LORA_TRIGGER_TRAIN' }, (res) => {
+    if (msg) msg.textContent = 'Training LoRA adapter…';
+    chrome.runtime.sendMessage({ type: 'LORA_TRIGGER_TRAIN', force: true }, (res) => {
       if (!res) {
         if (msg) msg.textContent = 'No response from background.';
         return;
