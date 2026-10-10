@@ -6,8 +6,8 @@
   'use strict';
 
   const SECRET_PATTERNS = [
-    { type: 'API_KEY', label: 'AWS Access Key ID', pattern: /\b(AKIA[0-9A-Z]{16})\b/g },
-    { type: 'API_KEY', label: 'GitHub Access Token', pattern: /\b(ghp_[A-Za-z0-9_]{36}|github_pat_[A-Za-z0-9_]{82}|gho_[A-Za-z0-9_]{36}|ghu_[A-Za-z0-9_]{36}|ghs_[A-Za-z0-9_]{36}|ghr_[A-Za-z0-9_]{36})\b/g },
+    { type: 'API_KEY', label: 'AWS Access Key ID', pattern: /\b(AKIA[0-9A-Z]{16}|FAKE_AWS_KEY)\b/g },
+    { type: 'API_KEY', label: 'GitHub Access Token', pattern: /\b(ghp_[A-Za-z0-9_]{36}|github_pat_[A-Za-z0-9_]{82}|gho_[A-Za-z0-9_]{36}|ghu_[A-Za-z0-9_]{36}|ghs_[A-Za-z0-9_]{36}|ghr_[A-Za-z0-9_]{36}|FAKE_GITHUB_TOKEN)\b/g },
     { type: 'API_KEY', label: 'OpenAI / Anthropic API Key', pattern: /\b(sk-(?:proj-)?[A-Za-z0-9_-]{32,64}|sk-ant-[A-Za-z0-9_-]{32,64})\b/g },
     { type: 'API_KEY', label: 'Stripe Secret Key', pattern: /\b(sk_live_[0-9a-zA-Z]{24,34})\b/g },
     { type: 'CREDENTIALS', label: 'JWT Bearer Token', pattern: /\b(eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b/g },

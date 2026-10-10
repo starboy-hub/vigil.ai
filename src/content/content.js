@@ -34,7 +34,7 @@ let sentinelAnalyzed = new Set(), sentinelNoted = false, sentinelLLMCalls = 0;
 const VIGIL_ZW_RUN_RE = new RegExp('[\\u200B\\u200C\\u200D\\uFEFF]{16,}');
 let injectionSeen = new Set(), injectionNoted = false;
 let settings = { aiEnabled: true, regexEnabled: true, useFakeData: true, sensitivity: 'medium', customPatterns: '', trustedSites: [], monitorClipboard: true, notificationSize: 'standard', sentinelEnabled: true, injectionFirewall: true, honeytokens: true, vaultRestore: true };
-let isWhitelisted = false, isPaused = false, pauseTimer = null, protectionHistory = [], totalProtected = 0, allTimeProtected = 0, ignoredTexts = new Map(), pausedThreads = new Map(), customAllowedEntities = new Set(), allowedPromptHashes = new Set(), currentTheme = 'light';
+let isWhitelisted = false, isPaused = false, pauseTimer = null, protectionHistory = [], allTimeProtected = 0, ignoredTexts = new Map(), pausedThreads = new Map(), customAllowedEntities = new Set(), allowedPromptHashes = new Set(), currentTheme = 'light';
 
 // ---- Shadow DOM support (verified external audit): Web-Component inputs
 // and text are invisible to a plain document TreeWalker. Collect every open
@@ -204,10 +204,10 @@ chrome.storage.onChanged.addListener((changes, ns) => {
 
 class HistoryStore {
   constructor() { this.MAX_ITEMS = 500; this.STORAGE_KEY = VIGIL.KEYS.HISTORY; this.SUMMARY_KEY = VIGIL.KEYS.HISTORY_SUMMARY; }
-  async load() { return new Promise((resolve) => { chrome.storage.local.get([this.STORAGE_KEY, this.SUMMARY_KEY], (result) => { protectionHistory = result[this.STORAGE_KEY] || []; const summary = result[this.SUMMARY_KEY] || { allTime: 0 }; allTimeProtected = summary.allTime || 0; totalProtected = protectionHistory.filter(h => new Date(h.timestamp).toDateString() === new Date().toDateString()).length; resolve(); }); }); }
+  async load() { return new Promise((resolve) => { chrome.storage.local.get([this.STORAGE_KEY, this.SUMMARY_KEY], (result) => { protectionHistory = result[this.STORAGE_KEY] || []; const summary = result[this.SUMMARY_KEY] || { allTime: 0 }; allTimeProtected = summary.allTime || 0; this.totalProtected = protectionHistory.filter(h => new Date(h.timestamp).toDateString() === new Date().toDateString()).length; resolve(); }); }); }
   async save() { if (protectionHistory.length > this.MAX_ITEMS) protectionHistory = protectionHistory.slice(-this.MAX_ITEMS); const summary = { allTime: allTimeProtected, lastUpdated: new Date().toISOString() }; return new Promise((resolve) => { chrome.storage.local.set({ [this.STORAGE_KEY]: protectionHistory, [this.SUMMARY_KEY]: summary }, resolve); }); }
-  add(item) { item.timestamp = item.timestamp || new Date().toISOString(); protectionHistory.push(item); allTimeProtected++; totalProtected = protectionHistory.filter(h => new Date(h.timestamp).toDateString() === new Date().toDateString()).length; this.save(); }
-  async clear() { protectionHistory = []; allTimeProtected = 0; totalProtected = 0; await this.save(); }
+  add(item) { item.timestamp = item.timestamp || new Date().toISOString(); protectionHistory.push(item); allTimeProtected++; this.totalProtected = protectionHistory.filter(h => new Date(h.timestamp).toDateString() === new Date().toDateString()).length; this.save(); }
+  async clear() { protectionHistory = []; allTimeProtected = 0; this.totalProtected = 0; await this.save(); }
   exportJSON() { const data = JSON.stringify({ exported: new Date().toISOString(), total: protectionHistory.length, items: protectionHistory.map(h => ({ ...h, original: VIGIL.maskSensitive(h.original) })) }, null, 2); const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `vigil-history-${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); }
   exportCSV() { if (protectionHistory.length === 0) return; let csv = 'Timestamp,Type,Original(masked),Fake,Site\n'; protectionHistory.forEach(h => { csv += `"${h.timestamp}","${h.type}","${VIGIL.maskSensitive(h.original).replace(/"/g,'""')}","${(h.fake||'').replace(/"/g,'""')}","${h.site||''}"\n`; }); const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `vigil-history-${new Date().toISOString().split('T')[0]}.csv`; a.click(); URL.revokeObjectURL(url); }
 }
@@ -1645,7 +1645,7 @@ class VIGILPopup {
 
     if (isPausedNow) {
       pillBg = 'rgba(71, 85, 105, 0.88)';
-      pillContent = `<span style="font-size:12px;">⏸️</span> <span style="font-weight:600;font-size:11.5px;letter-spacing:0.2px;">Vigil Paused</span>`;
+      pillContent = '<span style="font-size:12px;">⏸️</span> <span style="font-weight:600;font-size:11.5px;letter-spacing:0.2px;">Vigil Paused</span>';
     } else if (hasAlert) {
       pillBg = 'rgba(24, 24, 27, 0.94)';
       pillBorder = 'rgba(245, 158, 11, 0.45)';
@@ -1703,7 +1703,6 @@ class VIGILPopup {
     const cardBg = 'rgba(255, 255, 255, 0.04)';
     const cardBorder = 'rgba(255, 255, 255, 0.08)';
     const repBg = 'rgba(0, 0, 0, 0.25)';
-    const repLabel = '#9ca3af';
     const repArrow = '#6b7280';
     const btnBg = 'rgba(255, 255, 255, 0.06)';
     const btnBorder = 'rgba(255, 255, 255, 0.12)';
@@ -2287,7 +2286,7 @@ function resumeHeldSubmission(promptText, pending) {
 
 function showConsensusModal(promptText, verdict, details, pending) {
   document.querySelectorAll('[data-vigil="consensus-modal"]').forEach(el => el.remove());
-  const modalBg = '#18181b', modalText = '#f4f4f5', modalBorder = '#3f3f46', secondaryText = '#a1a1aa';
+  const secondaryText = '#a1a1aa';
   const modal = document.createElement('div');
   modal.setAttribute('data-vigil', 'consensus-modal');
   modal.dataset.verdict = verdict;

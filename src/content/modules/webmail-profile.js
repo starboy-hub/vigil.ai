@@ -404,7 +404,7 @@
       return `The message uses corporate branding ("${senderName}"), but was dispatched from an unverified public mailbox (${senderDomain}).`;
     }
     if (signals.some(s => s.id === 'pressure_coercive')) {
-      return `The message employs coercive psychological urgency or account suspension threats to compel you to verify private credentials or send funds.`;
+      return 'The message employs coercive psychological urgency or account suspension threats to compel you to verify private credentials or send funds.';
     }
     return `Security anomalies detected: Suspicious origin headers and urgent pressure patterns detected for ${senderName}.`;
   }

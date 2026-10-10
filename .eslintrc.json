@@ -19,6 +19,7 @@
     "VIGIL_WEBMAIL": "readonly",
     "VIGIL_REALITY": "readonly",
     "VIGIL_SIGNING": "readonly",
+    "VIGIL_THREAT": "readonly",
     "VIGIL_THREATS": "readonly",
     "VIGIL_SEMANTIC": "readonly",
     "VIGIL_SECRETS": "readonly",

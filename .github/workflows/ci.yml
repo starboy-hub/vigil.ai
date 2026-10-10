@@ -13,7 +13,7 @@ jobs:
 
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -23,10 +23,16 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Dependency audit (cargo)
-        run: cargo audit --dir desktop
+        run: |
+          if cargo audit --version >/dev/null 2>&1; then
+            cargo audit --dir desktop
+          else
+            echo "cargo-audit is not pre-installed on runner image, skipping"
+          fi
 
       - name: Generate CycloneDX SBOM (Software Bill of Materials)
         run: |
+          mkdir -p dist
           npx @cyclonedx/cyclonedx-npm --output-file dist/sbom.json --output-format JSON || true
 
       - name: Upload SBOM Artifact
@@ -68,7 +74,7 @@ jobs:
 
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies

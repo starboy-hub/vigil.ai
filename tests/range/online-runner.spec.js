@@ -15,12 +15,7 @@ const { test, chromium, expect } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
 const { startServer, stopServer, PORT } = require('./server.js');
-const {
-  generateCleanTransactional,
-  PHISHING_VECTORS,
-  ADVERSARIAL_PROMPT_INJECTIONS,
-  PII_AND_SECRET_SAMPLES
-} = require('./corpus-generator.js');
+
 
 const EXT = path.join(__dirname, '..', '..', 'dist');
 const TELEMETRY_DIR = path.join(__dirname, '..', 'eval-results');
@@ -175,7 +170,7 @@ test.describe('VIGIL AI Online Cyber Range Verification Suite', () => {
     await page.waitForTimeout(500);
 
     // Submission guard should hold submission or display protection indicator
-    const historyText = await page.locator('#history').innerText();
+    await page.locator('#history').innerText();
     const latency = Date.now() - t0;
 
     recordMetric('submission_guard_send_click', 'submission_guard', 'PASS', 'TRUE_POSITIVE', latency, { secret: 'AWS_KEY' });
