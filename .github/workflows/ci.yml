@@ -33,7 +33,7 @@ jobs:
       - name: Generate CycloneDX SBOM (Software Bill of Materials)
         run: |
           mkdir -p dist
-          npx @cyclonedx/cyclonedx-npm --output-file dist/sbom.json --output-format JSON || true
+          npx --yes @cyclonedx/cyclonedx-npm --output-file dist/sbom.json --output-format JSON || true
 
       - name: Upload SBOM Artifact
         if: always()
@@ -41,6 +41,7 @@ jobs:
         with:
           name: software-bill-of-materials
           path: dist/sbom.json
+          if-no-files-found: ignore
 
       - name: Lint
         run: npm run lint
@@ -63,6 +64,7 @@ jobs:
         with:
           name: security-score
           path: SECURITY_SCORE.md
+          if-no-files-found: ignore
 
       - name: Verify dist is complete
         run: node scripts/verify-dist.js
@@ -84,7 +86,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Build extension
-        run: npm run build
+        run: npm run build:all
 
       - name: Run E2E (headed Chromium under xvfb — extensions need headed mode)
         run: xvfb-run --auto-servernum npx playwright test

@@ -42,3 +42,4 @@
 ### SDR-005: Elimination of `.innerHTML` in Extension UI
 * **Context:** String interpolation in `.innerHTML` within content script DOM overlays creates residual DOM-based XSS surface.
 * **Decision:** Mandate pure DOM creation (`createElement`, `textContent`, `setAttribute`) across all alert cards, banners, and toasts.
+

@@ -1,100 +1,100 @@
 [
   {
-    "timestamp": "2026-10-10T17:19:00.989Z",
+    "timestamp": "2026-10-10T20:57:37.326Z",
     "featureId": "webmail_list_suppression",
     "category": "webmail",
     "verdict": "PASS",
     "classification": "TRUE_NEGATIVE",
-    "latencyMs": 2461,
+    "latencyMs": 1991,
     "details": {
       "toastCount": 0,
       "rowCount": 4
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:03.341Z",
+    "timestamp": "2026-10-10T20:57:39.414Z",
     "featureId": "webmail_clean_reading_pane",
     "category": "webmail",
     "verdict": "PASS",
     "classification": "TRUE_NEGATIVE",
-    "latencyMs": 2173,
+    "latencyMs": 2017,
     "details": {
       "sender": "notifications@github.com"
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:06.041Z",
+    "timestamp": "2026-10-10T20:57:41.363Z",
     "featureId": "webmail_phishing_detection",
     "category": "webmail",
     "verdict": "PASS",
     "classification": "TRUE_POSITIVE",
-    "latencyMs": 2377,
+    "latencyMs": 1880,
     "details": {
       "actionLink": "evil-credential-stealer.xyz"
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:09.052Z",
+    "timestamp": "2026-10-10T20:57:42.877Z",
     "featureId": "submission_guard_send_click",
     "category": "submission_guard",
     "verdict": "PASS",
     "classification": "TRUE_POSITIVE",
-    "latencyMs": 2889,
+    "latencyMs": 1428,
     "details": {
       "secret": "AWS_KEY"
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:11.662Z",
+    "timestamp": "2026-10-10T20:57:44.619Z",
     "featureId": "submission_guard_enter_key",
     "category": "submission_guard",
     "verdict": "PASS",
     "classification": "TRUE_POSITIVE",
-    "latencyMs": 2480,
+    "latencyMs": 1672,
     "details": {
       "pii": "CREDIT_CARD"
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:13.902Z",
+    "timestamp": "2026-10-10T20:57:45.887Z",
     "featureId": "adversarial_normalizer_zero_width",
     "category": "adversarial_normalizer",
     "verdict": "PASS",
     "classification": "TRUE_POSITIVE",
-    "latencyMs": 1677,
+    "latencyMs": 1116,
     "details": {
       "payload": "zero_width"
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:16.460Z",
+    "timestamp": "2026-10-10T20:57:47.872Z",
     "featureId": "vision_canvas_simd_fft",
     "category": "vision_firewall",
     "verdict": "PASS",
     "classification": "TRUE_NEGATIVE",
-    "latencyMs": 2158,
+    "latencyMs": 1934,
     "details": {
       "fps": 60
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:18.262Z",
+    "timestamp": "2026-10-10T20:57:49.155Z",
     "featureId": "shopping_checkout_protection",
     "category": "shopping",
     "verdict": "PASS",
     "classification": "TRUE_NEGATIVE",
-    "latencyMs": 1723,
+    "latencyMs": 1216,
     "details": {
       "form": "payment-form"
     }
   },
   {
-    "timestamp": "2026-10-10T17:19:19.934Z",
+    "timestamp": "2026-10-10T20:57:50.134Z",
     "featureId": "popup_ui_controls_presets",
     "category": "ui_controls",
     "verdict": "PASS",
     "classification": "TRUE_NEGATIVE",
-    "latencyMs": 1533,
+    "latencyMs": 916,
     "details": {
       "version": "1.0.0"
     }

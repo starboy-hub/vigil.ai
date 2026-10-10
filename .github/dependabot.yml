@@ -3,8 +3,27 @@ updates:
   - package-ecosystem: npm
     directory: '/'
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@huggingface/transformers'
+      - dependency-name: 'onnxruntime-web'
+
   - package-ecosystem: github-actions
     directory: '/'
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: 'actions/checkout'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'actions/upload-artifact'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'actions/download-artifact'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'actions/attest-build-provenance'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'softprops/action-gh-release'
+        update-types: ['version-update:semver-major']

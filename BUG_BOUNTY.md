@@ -59,3 +59,4 @@ Rewards are calibrated using the **Common Vulnerability Scoring System (CVSS v3.
 We consider security research conducted under this policy to be:
 * **Authorized** under applicable anti-hacking laws (including the CFAA).
 * **Exempt from legal action** by Vigil AI maintainers provided researchers do not destroy user data, violate privacy, or disclose vulnerabilities publicly before a patch is released.
+
