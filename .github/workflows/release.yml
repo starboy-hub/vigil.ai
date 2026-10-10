@@ -50,7 +50,7 @@ jobs:
           subject-path: releases/**/*.zip
 
       - name: Upload Extension Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vigil-extension-packages
           path: releases/
@@ -100,7 +100,7 @@ jobs:
           subject-path: desktop/target/${{ matrix.target }}/release/${{ matrix.binary_name }}
 
       - name: Upload Native Binary Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vigil-companion-${{ matrix.target }}
           path: desktop/target/${{ matrix.target }}/release/${{ matrix.binary_name }}
