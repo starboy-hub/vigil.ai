@@ -3,7 +3,19 @@
 (function() {
   'use strict';
 
-console.log('[VIGIL] Content script loaded');
+  // Sensitive Context Gatekeeper (Blueprint #13: Enterprise Injection Policy)
+  if (typeof window !== 'undefined' && window.location) {
+    const policy = (typeof globalThis !== 'undefined' && globalThis.VIGIL_INJECTION_POLICY) ||
+                   (typeof VIGIL_INJECTION_POLICY !== 'undefined' ? VIGIL_INJECTION_POLICY : null);
+    if (policy && typeof policy.shouldInjectContentScript === 'function') {
+      if (!policy.shouldInjectContentScript(window.location.href)) {
+        console.log('[VIGIL] Execution halted: sensitive auth, credential, or payment surface detected at', window.location.hostname);
+        return;
+      }
+    }
+  }
+
+  console.log('[VIGIL] Content script loaded');
 
 const TRANSLATIONS = {
   en: { sensitiveDetected: 'Sensitive Data Detected', proceed: 'Are you sure you want to proceed?', cancel: 'Cancel', sendAnyway: 'Send Anyway', protectTip: 'Tip: Click Protect in the VIGIL popup to replace sensitive data first', imageUpload: 'Image Upload Detected', aiCanRead: 'AI can read text and faces in images. Does this file contain IDs or sensitive info?', privacyRisk: 'Privacy Risk: Once uploaded, you cannot control who accesses this file.', cancelUpload: 'Cancel Upload', uploadAnyway: 'Upload Anyway', sensitiveFilename: 'Sensitive Filename', containsKeywords: 'contains sensitive keywords.', welcome: 'Welcome to VIGIL!', welcomeText: 'I\'ll protect your sensitive data as you type.', quickProtect: 'Tip: Press ⌘+Enter to quick-protect', gotIt: 'Got it!' },
@@ -569,7 +581,14 @@ function renderNote(note) {
 
   const title = document.createElement('div');
   title.style.cssText = 'font-weight:700;margin-bottom:4px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:8px;';
-  title.innerHTML = `<span>${escapeHtml(note.title)}</span><span style="color:#9ca3af;font-size:14px;cursor:pointer;padding:0 4px;" aria-label="Dismiss">×</span>`;
+  const titleSpan = document.createElement('span');
+  titleSpan.textContent = note.title;
+  const dismissSpan = document.createElement('span');
+  dismissSpan.style.cssText = 'color:#9ca3af;font-size:14px;cursor:pointer;padding:0 4px;';
+  dismissSpan.setAttribute('aria-label', 'Dismiss');
+  dismissSpan.textContent = '×';
+  title.appendChild(titleSpan);
+  title.appendChild(dismissSpan);
 
   const detail = document.createElement('div');
   detail.style.cssText = 'color:#d1d5db;font-size:11.5px;line-height:1.4;';
@@ -1028,7 +1047,13 @@ function showLeakageBadge(element, result) {
   badge.setAttribute('data-vigil', 'leakage-badge');
   const simPercent = (result.similarity * 100).toFixed(0);
   badge.style.cssText = 'display:flex;align-items:center;gap:6px;background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:6px;font-family:-apple-system,sans-serif;z-index:10;';
-  badge.innerHTML = `<span>⚖️ Copyleft Contamination Alert: Matches <strong>${escapeHtml(result.license)}</strong> (${simPercent}% similarity). Verify license conditions before copying.</span>`;
+  const badgeSpan = document.createElement('span');
+  badgeSpan.textContent = '⚖️ Copyleft Contamination Alert: Matches ';
+  const licenseStrong = document.createElement('strong');
+  licenseStrong.textContent = result.license;
+  badgeSpan.appendChild(licenseStrong);
+  badgeSpan.appendChild(document.createTextNode(` (${simPercent}% similarity). Verify license conditions before copying.`));
+  badge.appendChild(badgeSpan);
   if (element.parentElement) {
     element.parentElement.insertBefore(badge, element);
   }
@@ -1283,7 +1308,36 @@ function showSanitizedToast(originalText) {
   const card = document.createElement('div');
   card.setAttribute('data-vigil', 'sanitized-toast');
   card.style.cssText = 'position:fixed!important;bottom:20px!important;right:20px!important;z-index:2147483647!important;background:#1a202c!important;color:white!important;padding:16px!important;border-radius:12px!important;box-shadow:0 10px 30px rgba(0,0,0,0.5)!important;max-width:400px!important;font-family:-apple-system,sans-serif!important;border:1px solid #4a5568!important;';
-  card.innerHTML = `<div style="font-weight:700;font-size:13px;color:#667eea;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><span>✨ VIGIL Sanitized Selection</span><button id="vigil-close-toast" style="background:none;border:none;color:#a0aec0;cursor:pointer;font-size:14px;">✕</button></div><div style="font-size:11px;color:#cbd5e0;margin-bottom:8px;">${redactions.length} sensitive item(s) sanitized</div><textarea readonly style="width:100%;height:80px;background:#2d3748;color:#e2e8f0;border:1px solid #4a5568;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;resize:none;">${sanitized.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea><button id="vigil-copy-toast" style="width:100%;margin-top:8px;padding:8px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">📋 Copy Sanitized Text</button>`;
+
+  const cardHeader = document.createElement('div');
+  cardHeader.style.cssText = 'font-weight:700;font-size:13px;color:#667eea;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;';
+  const cardTitle = document.createElement('span');
+  cardTitle.textContent = '✨ VIGIL Sanitized Selection';
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'vigil-close-toast';
+  closeBtn.style.cssText = 'background:none;border:none;color:#a0aec0;cursor:pointer;font-size:14px;';
+  closeBtn.textContent = '✕';
+  cardHeader.appendChild(cardTitle);
+  cardHeader.appendChild(closeBtn);
+
+  const cardSub = document.createElement('div');
+  cardSub.style.cssText = 'font-size:11px;color:#cbd5e0;margin-bottom:8px;';
+  cardSub.textContent = `${redactions.length} sensitive item(s) sanitized`;
+
+  const cardTa = document.createElement('textarea');
+  cardTa.readOnly = true;
+  cardTa.style.cssText = 'width:100%;height:80px;background:#2d3748;color:#e2e8f0;border:1px solid #4a5568;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;resize:none;';
+  cardTa.value = sanitized;
+
+  const copyBtn = document.createElement('button');
+  copyBtn.id = 'vigil-copy-toast';
+  copyBtn.style.cssText = 'width:100%;margin-top:8px;padding:8px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;';
+  copyBtn.textContent = '📋 Copy Sanitized Text';
+
+  card.appendChild(cardHeader);
+  card.appendChild(cardSub);
+  card.appendChild(cardTa);
+  card.appendChild(copyBtn);
   document.body.appendChild(card);
 
   document.getElementById('vigil-close-toast').addEventListener('click', () => card.remove());
@@ -1912,7 +1966,9 @@ class VIGILPopup {
       const host = location.hostname;
       const toast = document.createElement('div'); toast.setAttribute('data-vigil', 'undo-toast');
       toast.style.cssText = 'position:fixed!important;bottom:20px!important;left:50%!important;transform:translateX(-50%)!important;background:#1f2937!important;color:#f9fafb!important;padding:10px 16px!important;border-radius:10px!important;z-index:2147483647!important;font-family:-apple-system,sans-serif!important;font-size:12.5px!important;display:flex!important;gap:12px!important;align-items:center!important;box-shadow:0 8px 24px rgba(0,0,0,0.35)!important;';
-      toast.innerHTML = '<span>Ignored for 5 minutes on this site</span>';
+      const toastSpan = document.createElement('span');
+      toastSpan.textContent = 'Ignored for 5 minutes on this site';
+      toast.appendChild(toastSpan);
       const undoBtn = document.createElement('button'); undoBtn.textContent = 'Undo'; undoBtn.style.cssText = 'background:none;border:none;color:#8ab4ff;font-weight:700;cursor:pointer;font-size:12.5px;padding:0;';
       undoBtn.onclick = (e) => { e.stopPropagation(); const hostMap = ignoredTexts.get(host); if (hostMap) ignoredNow.forEach(txt => hostMap.delete(txt)); toast.remove(); };
       toast.appendChild(undoBtn); document.body.appendChild(toast);
@@ -1936,7 +1992,7 @@ class VIGILPopup {
           // Show confirmation toast
           const toast = document.createElement('div');
           toast.style.cssText = 'position:fixed!important;bottom:100px!important;right:20px!important;background:#28a745!important;color:white!important;padding:12px 20px!important;border-radius:8px!important;font-size:13px!important;font-weight:600!important;z-index:2147483647!important;font-family:-apple-system,sans-serif!important;box-shadow:0 4px 12px rgba(0,0,0,0.3)!important;animation:vigil-fadeIn 0.3s ease-out!important;';
-          toast.innerHTML = '✅ ' + host + ' added to trusted sites';
+          toast.textContent = '✅ ' + host + ' added to trusted sites';
           document.body.appendChild(toast);
           setTimeout(() => toast.remove(), 3000);
         }

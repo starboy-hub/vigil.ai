@@ -259,6 +259,11 @@
           <div style="margin-top:4px;"><b>Audit Verification:</b> <span id="zkStatusBadge" class="status-chip" style="background:#10b981;">VERIFIED</span></div>
         </div>
       </div>
+
+      <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
+        <div class="row-info"><div class="row-label">🛡️ Local Storage Access Audit Log</div><div class="row-desc">Export the tamper-evident telemetry ring buffer tracking extension storage reads and writes (sensitive payloads are redacted)</div></div>
+        <button id="exportStorageAuditBtn" class="save-btn" style="margin-top:8px;">📦 Export Storage Audit Log</button>
+      </div>
     </div>
   </details>
 
@@ -345,6 +350,7 @@
 </main>
 
 <script src="vigil-shared.js"></script>
+<script src="storage-audit.js"></script>
 <script src="zk-compliance.js"></script>
 <script src="siem-exporter.js"></script>
 <script src="options.js"></script>

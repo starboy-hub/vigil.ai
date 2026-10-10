@@ -842,3 +842,19 @@ if (loraTrainBtn) {
 }
 
 refreshLoraUI();
+
+const exportStorageAuditBtn = document.getElementById('exportStorageAuditBtn');
+if (exportStorageAuditBtn) {
+  exportStorageAuditBtn.addEventListener('click', () => {
+    const audit = (typeof VIGIL_STORAGE_AUDIT !== 'undefined') ? VIGIL_STORAGE_AUDIT : null;
+    const jsonStr = audit ? audit.exportAuditLogJSON() : JSON.stringify([], null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vigil-storage-audit-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+

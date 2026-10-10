@@ -160,6 +160,7 @@ function buildChromium(out = CHROME_OUT) {
 
   const files = [
     { src: 'src/shared/vigil-shared.js', dest: 'vigil-shared.js' },
+    { src: 'src/shared/storage-audit.js', dest: 'storage-audit.js' },
     { src: 'src/shared/siem-exporter.js', dest: 'siem-exporter.js' },
     { src: 'src/shared/zk-compliance.js', dest: 'zk-compliance.js' },
     { src: 'src/shared/phash.js', dest: 'phash.js' },
@@ -184,6 +185,7 @@ function buildChromium(out = CHROME_OUT) {
     { src: 'src/background/offscreen-error.js', dest: 'offscreen-error.js' },
     { src: 'src/background/offscreen.html', dest: 'offscreen.html' },
     { src: 'src/background/offscreen.js', dest: 'offscreen.js' },
+    { src: 'src/content/modules/injection-policy.js', dest: 'injection-policy.js' },
     { src: 'src/content/modules/adversarial-normalizer.js', dest: 'adversarial-normalizer.js' },
     { src: 'src/content/modules/fake-data.js', dest: 'fake-data.js' },
     { src: 'src/content/modules/redos-engine.js', dest: 'redos-engine.js' },
@@ -234,6 +236,7 @@ function buildFirefox(out = FIREFOX_OUT) {
 
   const files = [
     { src: 'src/shared/vigil-shared.js', dest: 'vigil-shared.js' },
+    { src: 'src/shared/storage-audit.js', dest: 'storage-audit.js' },
     { src: 'src/shared/siem-exporter.js', dest: 'siem-exporter.js' },
     { src: 'src/shared/zk-compliance.js', dest: 'zk-compliance.js' },
     { src: 'src/shared/phash.js', dest: 'phash.js' },
@@ -255,6 +258,7 @@ function buildFirefox(out = FIREFOX_OUT) {
     { src: 'src/background/local-lora.js', dest: 'local-lora.js' },
     { src: 'src/background/adaptive-router.js', dest: 'adaptive-router.js' },
     { src: 'src/background/background.js', dest: 'background.js' },
+    { src: 'src/content/modules/injection-policy.js', dest: 'injection-policy.js' },
     { src: 'src/content/modules/adversarial-normalizer.js', dest: 'adversarial-normalizer.js' },
     { src: 'src/content/modules/fake-data.js', dest: 'fake-data.js' },
     { src: 'src/content/modules/redos-engine.js', dest: 'redos-engine.js' },

@@ -16,6 +16,8 @@
     "VIGIL_VAULT": "readonly",
     "VIGIL_SENTINEL": "readonly",
     "VIGIL_INJECTION": "readonly",
+    "VIGIL_INJECTION_POLICY": "readonly",
+    "VIGIL_STORAGE_AUDIT": "readonly",
     "VIGIL_WEBMAIL": "readonly",
     "VIGIL_REALITY": "readonly",
     "VIGIL_SIGNING": "readonly",

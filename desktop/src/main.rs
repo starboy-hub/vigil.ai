@@ -299,6 +299,35 @@ fn handle_handshake(id: Value, params: &Value) -> JsonRpcResponse {
     {
         let mut sessions = ACTIVE_SESSIONS.lock().unwrap();
         sessions.retain(|_, s| s.expires_at > now_secs);
+
+        // Single-origin lock: reject multi-extension pivot attempts
+        for (_, existing_sess) in sessions.iter() {
+            if existing_sess.extension_id != ext_id {
+                return error_response(
+                    &id,
+                    -32403,
+                    format!(
+                        "ORIGIN_PIVOT_BLOCKED: Active session from '{}' exists. Multi-origin pivots are not permitted",
+                        existing_sess.extension_id
+                    ),
+                );
+            }
+        }
+    }
+
+    let client_pub = params["client_pub_key"].as_str().map(|s| s.to_string());
+
+    // Downgrade Prevention: Production extension MUST use an encrypted ECDH channel
+    const REQUIRE_ENCRYPTION_EXTENSIONS: &[&str] = &[
+        "emkokehejldjlfljlhhcimnfefcjcmon",
+    ];
+    if REQUIRE_ENCRYPTION_EXTENSIONS.contains(&ext_id) && client_pub.is_none() {
+        eprintln!("[VIGIL_SECURITY] HANDSHAKE_DOWNGRADE_REJECTED: {} attempted unencrypted channel", ext_id);
+        return error_response(
+            &id,
+            -32600,
+            "ENCRYPTION_REQUIRED: Production extension must establish an encrypted ECDH channel (missing client_pub_key)".to_string(),
+        );
     }
 
     // Random 192-bit session token — never a derivable timestamp
@@ -309,7 +338,6 @@ fn handle_handshake(id: Value, params: &Value) -> JsonRpcResponse {
     // ECDH shared X coordinate — exactly what WebCrypto deriveKey yields).
     let host_secret = P256SecretKey::random(&mut OsRng);
     let host_pub_bytes = host_secret.public_key().to_encoded_point(false).as_bytes().to_vec();
-    let client_pub = params["client_pub_key"].as_str().map(|s| s.to_string());
 
     let shared_key = client_pub.as_ref().and_then(|hex_or_b64| {
         // The JS bridge sends its raw SEC1 public key base64-encoded.
@@ -377,6 +405,17 @@ fn handle_encrypted_frame(id: Value, auth_token: &str, params: &Value, session: 
                     format!(
                         "REPLAY_ATTACK_DETECTED: Received frame sequence {} <= last seen {}",
                         seq, sess.last_seq
+                    ),
+                );
+            }
+            const MAX_SEQ_SKIP: u64 = 10_000;
+            if seq.saturating_sub(sess.last_seq) > MAX_SEQ_SKIP {
+                return error_response(
+                    &id,
+                    -32404,
+                    format!(
+                        "SEQUENCE_ANOMALY: Sequence jump from {} to {} exceeds permitted threshold",
+                        sess.last_seq, seq
                     ),
                 );
             }
@@ -873,4 +912,48 @@ mod tests {
         let resp = handle_rpc_request(frame_req);
         assert!(resp.error.unwrap()["message"].as_str().unwrap().contains("CHANNEL_NOT_ESTABLISHED"));
     }
+
+    #[test]
+    fn test_downgrade_rejected_for_prod_extension() {
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            id: json!(1),
+            method: "vigil.auth.handshake".into(),
+            params: Some(json!({ "extension_id": "emkokehejldjlfljlhhcimnfefcjcmon" })),
+        };
+        let resp = handle_rpc_request(req);
+        assert!(resp.error.is_some(), "handshake without client pub key must fail for prod extension");
+        assert!(resp.error.unwrap()["message"].as_str().unwrap().contains("ENCRYPTION_REQUIRED"));
+    }
+
+    #[test]
+    fn test_sequence_jump_anomaly_rejected() {
+        let client_secret = P256SecretKey::random(&mut OsRng);
+        let (token, cipher) = handshake_with_client(&client_secret);
+
+        let inner = json!({"jsonrpc": "2.0", "id": 1, "method": "vigil.ping", "params": {}});
+        let mut nonce = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce);
+        let ct = cipher
+            .encrypt(Nonce::from_slice(&nonce), serde_json::to_vec(&inner).unwrap().as_slice())
+            .unwrap();
+
+        let frame = |seq: u64| JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            id: json!(seq),
+            method: "vigil.encrypted_frame".into(),
+            params: Some(json!({
+                "auth_token": token, "seq": seq,
+                "iv": b64_encode(&nonce), "ciphertext": b64_encode(&ct)
+            })),
+        };
+
+        // Seq 1 is fine
+        assert!(handle_rpc_request(frame(1)).result.is_some());
+        // Seq 50,000 exceeds MAX_SEQ_SKIP (10,000)
+        let jump = handle_rpc_request(frame(50_000));
+        assert!(jump.error.is_some());
+        assert!(jump.error.unwrap()["message"].as_str().unwrap().contains("SEQUENCE_ANOMALY"));
+    }
 }
+

@@ -59,4 +59,8 @@ if (fs.existsSync('dist/offscreen.js')) {
     console.log('info: ONNX model binary omitted from repo checkout (distributed via GitHub Releases); semantic fallback active');
   }
 }
+
+// Verify extension key pin
+require('./verify-extension-key.js');
+
 console.log('dist complete, version', m.version);

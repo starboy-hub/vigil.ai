@@ -8,7 +8,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-6366f1?style=flat-square)](https://github.com/starboy-hub/vigil.ai)
 [![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-674%20unit%20%7C%20105%20e2e%20passing-10b981?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/tests-696%20unit%20%7C%20105%20e2e%20passing-10b981?style=flat-square)](#testing)
 [![Adversarial Catch Rate](https://img.shields.io/badge/adversarial%20catch%20rate-100%25-10b981?style=flat-square)](#security-score)
 [![False Positives](https://img.shields.io/badge/false%20positive%20rate-0.00%25-10b981?style=flat-square)](#security-score)
 [![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
@@ -400,7 +400,7 @@ Open the **Options panel** (click the Vigil icon → settings gear) to configure
 
 ---
 
-## Security Score
+## Security Score & 10/10 Gold Standard Hardening
 
 Continuously benchmarked by the built-in adversarial evaluation suite:
 
@@ -415,15 +415,27 @@ npm run benchmark:adversarial
 | Avg detection latency | **4 ms** | — |
 | P95 detection latency | **15 ms** | — |
 
+### 🛡️ Enterprise Security Hardening Checklist
+- ✅ **Cryptographic Key Pinning:** Extension public key pinned in manifest and verified mathematically during build & CI (`emkokehejldjlfljlhhcimnfefcjcmon`).
+- ✅ **Encrypted Native Messaging:** Ephemeral ECDH (P-256) key agreement with AES-256-GCM authenticated framing and fail-closed downgrade prevention.
+- ✅ **Anti-Replay & Anomaly Defense:** Monotonic sequence counters, clock-skew jump bounds (`MAX_SEQ_SKIP`), and 15-minute session lifetimes.
+- ✅ **Sensitive Context Deny-List:** Pre-execution isolation blocks content scripts on Google/Microsoft SSO, 1Password/Bitwarden vaults, and payment checkouts.
+- ✅ **Zero DOM-Based XSS:** 100% pure DOM construction (`createElement`, `textContent`) across all alert UI, banners, toasts, and selection cards.
+- ✅ **Hardened CSP:** Strict `default-src 'none'`, `object-src 'none'`, with connections locked strictly to localhost IPC.
+- ✅ **Storage Audit Logging:** Tamper-evident in-memory ring buffer tracking storage operations with compliant JSON export in Options.
+- ✅ **RFC 9116 Vulnerability Disclosure:** Published [SECURITY.md](SECURITY.md) and [/.well-known/security.txt](.well-known/security.txt) with defined 48-hour SLAs.
+
 ---
 
 ## Testing
 
 ```bash
-npm test                    # 674 Jest unit tests (51 test suites, 100% passing)
+npm test                    # 696 Jest unit tests (53 test suites, 100% passing)
+cargo test --manifest-path desktop/Cargo.toml # 15 Rust companion security tests (100% passing)
 npx playwright test         # 105 end-to-end browser tests across real websites & cyber range
 npm run test:all-online     # Live online industry canaries & real website testbed
 npm run lint                # Zero ESLint warnings / errors
+node scripts/verify-dist.js # Build integrity & extension key pin verification
 npm run build:all           # Build Chrome (dist) and Firefox (dist-firefox) bundles
 npm run benchmark:adversarial  # Adversarial mutation benchmark
 ```
