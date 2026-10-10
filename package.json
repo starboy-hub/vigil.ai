@@ -1,0 +1,60 @@
+{
+  "name": "vigil-ai",
+  "version": "1.0.0",
+  "description": "Vigil AI - local-first guardian against AI-era threats: data-leak shielding, scam detection, injection firewall, media provenance. 100% local.",
+  "main": "build.js",
+  "scripts": {
+    "build": "node build.js",
+    "build:firefox": "node build.js --firefox",
+    "build:all": "node build.js && node build.js --firefox",
+    "install:all": "node companion/installer/install-all.js",
+    "pack:mac": "companion/installer/build-mac-installer.sh",
+    "pack:linux": "companion/installer/build-linux-installer.sh",
+    "lint": "eslint \"src/**/*.js\" \"tests/**/*.js\"",
+    "test": "jest --coverage",
+    "test:e2e": "npm run build && playwright test",
+    "test:range": "npm run build && npx playwright test e2e/online-range.spec.js",
+    "test:eval": "npm run build && node tools/automated-online-evaluator.js",
+    "test:canaries": "npm run build && npx playwright test e2e/industry-canaries.spec.js",
+    "test:all-online": "npm run test:range && npm run test:canaries && npm run eval:optimize",
+    "playground": "node playground/server.js",
+    "eval:optimize": "node tools/optimizer.js",
+    "benchmark": "node evaluation/benchmark.js --compare",
+    "benchmark:latency": "node evaluation/latency-benchmark.js",
+    "pack": "node scripts/pack.js",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --reporters=default --reporters=html",
+    "eval:semantic": "node evaluation/capture-scores.js && node evaluation/semantic-eval.js",
+    "benchmark:adversarial": "node scripts/adversarial-benchmark.js"
+  },
+  "keywords": [
+    "chrome-extension",
+    "privacy",
+    "pii",
+    "ai-security",
+    "data-protection"
+  ],
+  "author": "Vigil AI Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/starboy-hub/vigil.ai.git"
+  },
+  "homepage": "https://github.com/starboy-hub/vigil.ai#readme",
+  "bugs": {
+    "url": "https://github.com/starboy-hub/vigil.ai/issues"
+  },
+  "private": true,
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "1.44.1",
+    "@types/jest": "30.0.0",
+    "eslint": "8.57.1",
+    "jest": "30.5.2",
+    "jest-environment-jsdom": "30.5.2"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.0",
+    "onnxruntime-web": "1.19.2"
+  }
+}

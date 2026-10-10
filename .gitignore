@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-firefox/
+coverage/
+releases/
+
+# Compiled native binaries & App bundles (current + pre-rename artifact names)
+companion/native-app/VIGILDesktop
+companion/native-app/VIGIL Desktop.app
+companion/native-app/VIGIL Desktop.app/
+companion/native-app/VigilDesktop
+companion/native-app/Vigil Desktop.app
+companion/native-app/Vigil Desktop.app/
+desktop/target/
+target/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+
+# Semantic eval local artifacts
+evaluation/.chrome-profile/
+evaluation/semantic-cache.json
+.semantic-cache/
+
+# the joined model file is rebuilt from parts by build.js
+src/offscreen-model/onnx/model_quantized.onnx
+test-results/
+
+src/offscreen-model/onnx/
+
+# ONNX model binaries (>100MB — distribute via GitHub Releases)
+src/offscreen-model/onnx/
+src/offscreen-model/tokenizer.json

@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency audit (npm)
+        run: npm audit --audit-level=high
+
+      - name: Dependency audit (cargo)
+        run: cargo audit --dir desktop
+
+      - name: Generate CycloneDX SBOM (Software Bill of Materials)
+        run: |
+          npx @cyclonedx/cyclonedx-npm --output-file dist/sbom.json --output-format JSON || true
+
+      - name: Upload SBOM Artifact
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: software-bill-of-materials
+          path: dist/sbom.json
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build WebExtension Distribution
+        run: npm run build:all
+
+      - name: Test
+        run: npm test
+
+      - name: Latency Benchmark
+        run: npm run benchmark:latency
+
+      - name: Adversarial Benchmark (Blueprint #9 — catch rate must be >= 95%)
+        run: node scripts/adversarial-benchmark.js
+
+      - name: Upload security score
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: security-score
+          path: SECURITY_SCORE.md
+
+      - name: Verify dist is complete
+        run: node scripts/verify-dist.js
+
+  e2e:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium (with system deps)
+        run: npx playwright install --with-deps chromium
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Run E2E (headed Chromium under xvfb — extensions need headed mode)
+        run: xvfb-run --auto-servernum npx playwright test

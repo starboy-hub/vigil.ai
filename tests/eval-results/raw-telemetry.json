@@ -1,0 +1,275 @@
+[
+  {
+    "timestamp": "2026-10-10T11:30:17.899Z",
+    "featureId": "st1-direct-override",
+    "category": "PROMPT_INJECTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 9.06,
+    "details": {
+      "score": 95,
+      "level": "dangerous"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.907Z",
+    "featureId": "st1-zero-width-smuggling",
+    "category": "PROMPT_INJECTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 2.95,
+    "details": {
+      "score": 105,
+      "hasZeroWidth": true
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.907Z",
+    "featureId": "st1-cyrillic-homoglyphs",
+    "category": "PROMPT_INJECTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.43,
+    "details": {
+      "score": 145,
+      "hasHomoglyph": true
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.908Z",
+    "featureId": "st1-clean-control",
+    "category": "PROMPT_INJECTION",
+    "verdict": "PASS",
+    "classification": "TRUE_NEGATIVE",
+    "latencyMs": 0.27,
+    "details": {
+      "score": 0
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.921Z",
+    "featureId": "st1-semantic-drift-alarm",
+    "category": "BEHAVIORAL_GROOMING",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 13.22,
+    "details": {
+      "driftScore": 0.3439,
+      "topThreatCluster": "CREDENTIAL_EXFILTRATION"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.937Z",
+    "featureId": "st2-phishing-reading-pane",
+    "category": "WEBMAIL_PHISHING",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 15.06,
+    "details": {
+      "senderSignals": [],
+      "bodySignals": [
+        {
+          "id": "credential_request",
+          "label": "Requests credentials or codes",
+          "weight": 40
+        },
+        {
+          "id": "urgency",
+          "label": "Artificial urgency",
+          "weight": 15
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.942Z",
+    "featureId": "st2-provider-warning-banner",
+    "category": "WEBMAIL_PHISHING",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 4.31,
+    "details": {
+      "level": "dangerous",
+      "signals": [
+        "urgency",
+        "provider_spoof_warning"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.943Z",
+    "featureId": "st2-clean-uber-receipt",
+    "category": "WEBMAIL_CONTROL",
+    "verdict": "PASS",
+    "classification": "TRUE_NEGATIVE",
+    "latencyMs": 0.59,
+    "details": {
+      "senderSignals": 0,
+      "bodyLevel": "none"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.943Z",
+    "featureId": "st2-clean-notion-otp",
+    "category": "WEBMAIL_CONTROL",
+    "verdict": "PASS",
+    "classification": "TRUE_NEGATIVE",
+    "latencyMs": 0.74,
+    "details": {
+      "senderSignals": 0,
+      "bodyLevel": "none"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.946Z",
+    "featureId": "st3-checkout-form-card",
+    "category": "CARD_GUARD",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 2.84,
+    "details": {
+      "value": "4532 0150 1234 5678"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.948Z",
+    "featureId": "st3-hyphenated-card",
+    "category": "CARD_GUARD",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 1.02,
+    "details": {
+      "value": "4532-0150-1234-5678"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.948Z",
+    "featureId": "st3-order-id-invalidation",
+    "category": "CARD_CONTROL",
+    "verdict": "PASS",
+    "classification": "TRUE_NEGATIVE",
+    "latencyMs": 0.04,
+    "details": {
+      "alerts": 0
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.949Z",
+    "featureId": "st4-aws-secret-key",
+    "category": "SECRET_REDACTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.91,
+    "details": {
+      "alerts": [
+        "API_KEY"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.949Z",
+    "featureId": "st4-stripe-key",
+    "category": "SECRET_REDACTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.44,
+    "details": {
+      "alerts": [
+        "API_KEY"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.951Z",
+    "featureId": "st4-openai-key",
+    "category": "SECRET_REDACTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.23,
+    "details": {
+      "alerts": [
+        "API_KEY"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.951Z",
+    "featureId": "st4-ssn-redaction",
+    "category": "PII_REDACTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.32,
+    "details": {
+      "redactions": [
+        "SSN"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.964Z",
+    "featureId": "st4-medical-temporal-isolation",
+    "category": "PII_REDACTION",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 11.41,
+    "details": {
+      "captured": "clinical depression",
+      "fakedSentence": "I was diagnosed with seasonal allergies last month"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.964Z",
+    "featureId": "st5-clean-canvas-spectrum",
+    "category": "VISION_SIMD",
+    "verdict": "PASS",
+    "classification": "TRUE_NEGATIVE",
+    "latencyMs": 0.17,
+    "details": {
+      "stegoFound": false
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.964Z",
+    "featureId": "st5-stego-alpha-watermark",
+    "category": "VISION_SIMD",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.2,
+    "details": {
+      "stegoFound": true
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.965Z",
+    "featureId": "st6-canary-bundle-generation",
+    "category": "HONEYTOKEN",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.18,
+    "details": {
+      "code": "VIGIL-CANARY-R5E89Q"
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.965Z",
+    "featureId": "st6-assistant-canary-leak",
+    "category": "HONEYTOKEN",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 0.02,
+    "details": {
+      "matched": true
+    }
+  },
+  {
+    "timestamp": "2026-10-10T11:30:17.985Z",
+    "featureId": "vault-crypto-oracle",
+    "category": "VAULT_ORACLE",
+    "verdict": "PASS",
+    "classification": "TRUE_POSITIVE",
+    "latencyMs": 20.44,
+    "details": {
+      "match": true
+    }
+  }
+]

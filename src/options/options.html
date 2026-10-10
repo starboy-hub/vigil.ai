@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Vigil AI Settings</title>
+<link rel="stylesheet" href="options.css">
+</head><body>
+<svg hidden xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 14l4-6M4 18a9 9 0 1 1 16 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 11l9-9M17 3l4 4M15 5l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4a3.5 3.5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6V2zM14 2v5h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 8h11l-3-3M17 16H6l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 0 0 18 14 14 0 0 0 0-18z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 1V4M15 1V4M9 20V23M15 20V23M1 9H4M1 15H4M20 9H23M20 15H23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 1 1-8.5 8.5l-8.4 8.4a2 2 0 0 1-2.8-2.8l8.4-8.4a6 6 0 0 1 8.5-8.5l-3.8 3.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-family" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 9 9c0 5-4 9-9 9s-9-4-9-9a9 9 0 0 1 9-9z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 17c.5-2.5 2.2-4 4.5-4s4 1.5 4.5 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V7a4 4 0 1 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-mask" viewBox="0 0 24 24"><path d="M2 10s4-6 10-6 10 6 10 6-4 6-10 6S2 10 2 10z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="logo-wrap">
+      <svg class="lattice-svg" viewBox="0 0 32 32">
+        <defs>
+          <linearGradient id="quantumGradOpt" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#10b981" />
+            <stop offset="50%" stop-color="#06b6d4" />
+            <stop offset="100%" stop-color="#3b82f6" />
+          </linearGradient>
+          <radialGradient id="quantumGlowOpt" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#10b981" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="16" cy="16" r="14" fill="url(#quantumGlowOpt)" />
+        <circle cx="16" cy="16" r="13" stroke="url(#quantumGradOpt)" stroke-width="1.2" stroke-dasharray="3 2" class="spin-ring"/>
+        <path d="M16 4 L26 10 L26 22 L16 28 L6 22 L6 10 Z" stroke="url(#quantumGradOpt)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+        <path d="M16 8 L22 12 V18 C22 22 16 24.5 16 24.5 C16 24.5 10 22 10 18 V12 L16 8 Z" fill="url(#quantumGradOpt)"/>
+        <circle cx="16" cy="15" r="2" fill="#ffffff" />
+      </svg>
+    </div>
+    <div>
+      <h1>Vigil AI Settings</h1>
+      <span class="topbar-sub">100% local · nothing ever leaves this device</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="version-chip" id="versionText">v—</span>
+    <div class="theme-toggle-wrap" title="Toggle Dark / Light Theme">
+      <svg width="14" height="14" style="vertical-align:-2px;color:rgba(255,255,255,0.9);"><use href="#i-moon"/></svg>
+      <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.95);margin-right:2px;">Dark Mode</span>
+      <div id="toggleTheme" class="toggle"></div>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <section class="card">
+    <div class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-gauge"/></svg></span>
+      <div><h2>Detection</h2><p>What Vigil AI looks for as you type and browse</p></div>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-bolt"/></svg> Regex detection</div><div class="row-desc">Standard PII formats — cards, SSNs, emails, phones</div></div>
+      <div id="toggleRegex" class="toggle"></div>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-target"/></svg> Sensitivity</div><div class="row-desc">High adds name heuristics on top of context</div></div>
+      <select id="selectSensitivity">
+        <option value="low">Low — regex only</option>
+        <option value="medium">Medium — + context</option>
+        <option value="high">High — all layers</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-globe"/></svg> Language</div><div class="row-desc">Interface + detection language</div></div>
+      <select id="selectLanguage">
+        <option value="auto">Auto</option>
+        <option value="en">English</option><option value="es">Español</option>
+        <option value="fr">Français</option><option value="de">Deutsch</option>
+        <option value="pt">Português</option><option value="it">Italiano</option>
+        <option value="ru">Русский</option><option value="zh">中文</option>
+        <option value="ar">العربية</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-chip"/></svg> Local AI (Ollama)</div><div class="row-desc">Second opinion from a model running on this machine</div></div>
+      <span id="ollamaStatus" class="status-chip">…</span>
+    </div>
+    <details class="sub">
+      <summary><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-wrench"/></svg> Custom patterns (advanced)</summary>
+      <div class="row row-column">
+        <div class="row-info"><div class="row-desc">One per line · format: TYPE:/regex/flags</div></div>
+        <textarea id="customPatternsInput" placeholder="EMPLOYEE_ID:/EMP-\d{5}/g"></textarea>
+        <button id="saveCustomPatternsBtn" class="save-btn">Save patterns</button>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-shield"/></svg></span>
+      <div><h2>Guardian</h2><p>How aggressively Vigil AI protects you</p></div>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-family"/></svg> Family Guardian Mode</div><div class="row-desc">All layers on, warns on even mild pressure patterns</div></div>
+      <div id="toggleFamilyMode" class="toggle"></div>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-unlock"/></svg> Un-mask in responses</div><div class="row-desc">Show real values when an AI reply contains their pseudonym</div></div>
+      <div id="toggleVaultRestore" class="toggle"></div>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-chip"/></svg> In-browser AI model</div><div class="row-desc">Bundled fine-tuned scam & injection classifier (100% offline, bundled in extension). No network download or Ollama required.</div></div>
+      <div id="toggleWebGPU" class="toggle"></div>
+    </div>
+    <div class="row">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-mask"/></svg> Use fake data</div><div class="row-desc">Replace PII with realistic fakes instead of [REDACTED]</div></div>
+      <div id="toggleFakeData" class="toggle"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-key"/></svg></span>
+      <div><h2>Identity Vault</h2><p>Your real values — encrypted (AES-256-GCM), detected and consistently pseudonymized everywhere</p></div>
+    </div>
+    <div class="row row-column">
+      <div class="row-info"><div class="row-label">Add your details</div><div class="row-desc">Taught values are caught at any sensitivity, even typed plainly</div></div>
+      <input id="vaultNameInput" class="text-input" placeholder="Your full name (e.g. Sarah Mitchell)">
+      <input id="vaultEmailInput" class="text-input" placeholder="Your email">
+      <input id="vaultPhoneInput" class="text-input" placeholder="Your phone (any format)">
+      <textarea id="vaultCustomInput" style="height:60px" placeholder="Anything else, one per line — address, employer, national ID…"></textarea>
+      <button id="saveVaultBtn" class="save-btn"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-lock"/></svg> Save to Vault</button>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button id="rotateVaultKeyBtn" class="save-btn" style="background:#d97706;font-size:12px">🔄 Rotate Master Key</button>
+        <button id="exportVaultBackupBtn" class="save-btn" style="background:#475569;font-size:12px">💾 Export Encrypted Backup</button>
+        <button id="importVaultBackupBtn" class="save-btn" style="background:#475569;font-size:12px">📥 Import Backup</button>
+        <input type="file" id="importVaultFileInput" style="display:none" accept=".json">
+      </div>
+      <div id="vaultStatusMessage" style="font-size:12px;margin-top:6px;display:none"></div>
+      <div id="vaultList" class="list"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-bank"/></svg></span>
+      <div><h2>Trust Graph</h2><p>Your real organizations and contacts — pressure messages naming them escalate as impersonation</p></div>
+    </div>
+    <div class="row row-column">
+      <div class="row-info"><div class="row-label">Trusted organizations &amp; contacts</div><div class="row-desc">One per line · your bank, employer, family addresses</div></div>
+      <textarea id="trustedEntitiesInput" style="height:60px" placeholder="Global Bank&#10;Acme Corp&#10;john@family.com"></textarea>
+      <button id="saveTrustedEntitiesBtn" class="save-btn">Save trust list</button>
+      <div id="trustedList" class="list"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-users"/></svg></span>
+      <div><h2>Trusted Sites</h2><p>VIGIL stays quiet on these domains</p></div>
+    </div>
+    <div class="row row-column">
+      <textarea id="trustedSitesInput" placeholder="example.com"></textarea>
+      <button id="saveTrustedSitesBtn" class="save-btn">Save trusted sites</button>
+    </div>
+  </section>
+
+  <details class="card">
+    <summary class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-doc"/></svg></span>
+      <div><h2>Sign &amp; Verify</h2><p>Prove text is yours and unmodified — signed with your device key, verifiable by anyone with VIGIL</p></div>
+    </summary>
+    <div class="row row-column">
+      <div class="row-info"><div class="row-label">Sign a message</div><div class="row-desc">Paste the result anywhere; you hold the key</div></div>
+      <textarea id="signInput" style="height:60px" placeholder="Type the message to sign…"></textarea>
+      <button id="signBtn" class="save-btn">✍️ Sign message</button>
+      <textarea id="signOutput" style="height:90px" placeholder="Signed block appears here — copy it anywhere."></textarea>
+      <div class="row-info" style="margin-top:14px"><div class="row-label">Verify a signed block</div><div class="row-desc">Failed verification means tampered or forged</div></div>
+      <textarea id="verifyInput" style="height:90px" placeholder="Paste an VIGIL signed block to verify…"></textarea>
+      <button id="verifyBtn" class="save-btn">🔍 Verify</button>
+      <div id="verifyResult" class="verify-result"></div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-swap"/></svg></span>
+      <div><h2>Swarm Defense</h2><p>Share scam signatures between VIGIL installs — hashes only, never message text</p></div>
+    </summary>
+    <div class="row row-column">
+      <div class="row-info"><div class="row-label">Threat packs</div><div class="row-desc">Export your pack and import it on a loved one's browser — hand-carry immunity</div></div>
+      <div class="pack-row">
+        <button id="exportPackBtn" class="save-btn">⬇️ Export pack</button>
+        <button id="importPackBtn" class="save-btn">⬆️ Import pack</button>
+        <input type="file" id="importPackFile" accept=".json,application/json" style="display:none">
+        <span id="swarmStatus" class="status-chip"></span>
+      </div>
+      <div class="row row-column">
+        <div class="row-info"><div class="row-label">Swarm relay (self-hosted)</div><div class="row-desc">Point installs at the same relay to share signatures automatically. Run: node relay/relay.js</div></div>
+        <input id="relayUrlInput" class="text-input" placeholder="http://127.0.0.1:8787">
+        <button id="syncRelayBtn" class="save-btn">🐝 Sync now</button>
+        <div id="syncResult" class="verify-result"></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-doc"/></svg></span>
+      <div><h2>Enterprise B2B Telemetry &amp; SIEM Export</h2><p>Export audit logs to SOC/SIEM platforms (Splunk, Datadog, Sentinel) — 0% raw PII</p></div>
+    </summary>
+    <div class="row row-column">
+      <div class="row-info"><div class="row-label">Telemetry Format</div><div class="row-desc">CEF (ArcSight), OCSF (AWS/Splunk), or Enterprise JSON</div></div>
+      <select id="siemFormatSelect" class="select-input" style="width:200px;margin-bottom:8px;">
+        <option value="JSON">Enterprise JSON Stream</option>
+        <option value="CEF">CEF (Common Event Format)</option>
+        <option value="OCSF">OCSF (Open Cybersecurity Schema)</option>
+      </select>
+      <button id="exportSiemBtn" class="save-btn">📊 Export B2B Telemetry Log</button>
+      
+      <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
+        <div class="row-info"><div class="row-label">🔐 DLP Compliance Attestation (SOC2 / GDPR)</div><div class="row-desc">Generate a keyed Merkle attestation proving N PII leaks were blocked — counts and categories are disclosed, contents are not; the package is bound to this device's attestation key</div></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button id="generateZkProofBtn" class="save-btn">📜 Generate ZK DLP Proof</button>
+          <button id="exportZkReportBtn" class="save-btn" style="display:none;">⬇️ Export Auditor Report</button>
+        </div>
+        <div id="zkProofResultArea" style="display:none;margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(255,255,255,0.05);font-size:11px;">
+          <div><b>Merkle Root:</b> <span id="zkMerkleRootText" style="font-family:monospace;color:#10b981;"></span></div>
+          <div style="margin-top:4px;"><b>Protected Incidents:</b> <span id="zkEventCountText"></span></div>
+          <div style="margin-top:4px;"><b>Audit Verification:</b> <span id="zkStatusBadge" class="status-chip" style="background:#10b981;">VERIFIED</span></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-target"/></svg></span>
+      <div><h2>Adversarial Red-Team ("Pentest My Prompt")</h2><p>Synthesize 6 adversarial attack vectors against your prompt to discover evasion vulnerabilities</p></div>
+    </summary>
+    <div class="row row-column">
+      <div class="row-info"><div class="row-label">System Prompt / Instruction Template</div><div class="row-desc">Paste any prompt to run local autonomous adversarial mutations (Homoglyphs, Zero-Width, Base64, Roleplay)</div></div>
+      <textarea id="pentestPromptInput" style="height:70px" placeholder="Enter system prompt or instruction to pentest..."></textarea>
+      <button id="runPentestBtn" class="save-btn">🧪 Pentest Prompt</button>
+      <div id="pentestResultArea" style="display:none;margin-top:12px;width:100%;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12px;font-weight:700;">Vulnerability Score: <span id="pentestScoreText">0%</span></span>
+          <span id="pentestRiskBadge" class="status-chip">LOW RISK</span>
+        </div>
+        <div id="pentestAdviceText" style="font-size:11px;color:var(--text-2);margin-bottom:10px;line-height:1.5;"></div>
+        <div id="pentestVariantsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-swap"/></svg></span>
+      <div><h2>Prompt Git (Conversation Version Control)</h2><p>Track prompts as commits in a cryptographic DAG with branching and semantic diffing</p></div>
+    </summary>
+    <div class="row row-column">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div><b>Branch:</b> <span id="promptGitBranchText" style="color:#10b981;font-weight:700;">main</span></div>
+        <div style="display:flex;gap:6px;">
+          <input id="promptGitNewBranchInput" class="text-input" style="width:140px;height:28px;padding:2px 6px;" placeholder="New branch name…">
+          <button id="promptGitBranchBtn" class="save-btn" style="padding:4px 10px;">Create Branch</button>
+        </div>
+      </div>
+      <textarea id="promptGitCommitInput" style="height:60px" placeholder="Draft prompt to commit…"></textarea>
+      <input id="promptGitMessageInput" class="text-input" style="margin-top:6px;height:30px;" placeholder="Commit message (e.g. Added safety constraints)">
+      <button id="promptGitCommitBtn" class="save-btn" style="margin-top:6px;">💾 Commit Prompt</button>
+      
+      <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;">
+        <div class="row-info"><div class="row-label">Commit Log (DAG History)</div></div>
+        <div id="promptGitLogList" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;font-size:11px;"></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-chip"/></svg></span>
+      <div><h2>🧠 Local LoRA Adapter &amp; Autonomous Learning</h2><p>Rank-4 on-device fine-tuning via idle-time SGD — no data ever leaves the browser</p></div>
+    </summary>
+    <div class="row row-column">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;">Samples</div>
+          <div id="loraSampleCount" style="font-size:18px;font-weight:700;color:#10b981;">0</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;">Loss</div>
+          <div id="loraLossValue" style="font-size:18px;font-weight:700;color:#f59e0b;">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;">Epochs</div>
+          <div id="loraEpochCount" style="font-size:18px;font-weight:700;color:#06b6d4;">0</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;font-size:12px;">
+        <span>Rank: <b id="loraRank">4</b></span>
+        <span>α: <b id="loraAlpha">1.0</b></span>
+        <span>Scale: <b id="loraScale">0.25</b></span>
+        <span id="loraLastTrained" style="color:var(--text-2);margin-left:auto;"></span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button id="loraRefreshBtn" class="save-btn" style="flex:1;background:rgba(255,255,255,0.07);">↻ Refresh Status</button>
+        <button id="loraTrainBtn" class="save-btn" style="flex:1;">⚡ Train Now</button>
+      </div>
+      <div id="loraStatusMsg" style="margin-top:8px;font-size:11px;color:var(--text-2);min-height:16px;"></div>
+    </div>
+  </details>
+
+  <footer class="footer">Vigil AI • 100% Local • <span id="footerVersion"></span></footer>
+
+</main>
+
+<script src="vigil-shared.js"></script>
+<script src="zk-compliance.js"></script>
+<script src="siem-exporter.js"></script>
+<script src="options.js"></script>
+</body></html>

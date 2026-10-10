@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs6QH0nalYmZ3fSFJPBestC1G/j7pw75zkqe8U4RMhX66tOcXNawWlprfoN7Gxd6C0NppsgE9wLbjMabh1x5mgmv7klB0sDpuvMchbX664YPtMpwbGXmgiOUIWTxQnXXT7z+JmcKLoYDwxtwCOI26+cA+O0dIsBfuOSuDw0IKkG4drdkqt3Vv3jjsHwKdZbD5R5npjBYZd/Z8jrX6U4TLgLVkUE6IlDjOh+c/b7uq+JH0MwKW02VE/+LJjzU6PUJCseujUUPaG10axDvmdffMblP3w9jk27y5G9qqmHoZv+dVTY0hBTDE5rGZ1BaqI6e9SwfazZ7ysu1ywwjZOAzbxQIDAQAB",
+  "name": "Vigil AI: Universal AI Privacy Shield",
+  "version": "1.0.0",
+  "description": "Open-source endpoint DLP & zero-trust sentinel. Intercepts and redacts PII before it reaches AI platforms. 100% local.",
+  "permissions": ["activeTab", "storage", "contextMenus", "offscreen", "sidePanel", "nativeMessaging", "alarms", "idle"],
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["vigil-shared.js", "adversarial-normalizer.js", "vigil-vault.js", "fake-data.js", "redos-engine.js", "detection-engine.js", "secret-engine.js", "wasm-simd-fft.js", "vision-canary.js", "vision-firewall.js", "swarm-mesh.js", "webgpu-engine.js", "sentinel-engine.js", "injection-engine.js", "webmail-profile.js", "semantic-engine.js", "leakage-detector.js", "content.js"], "run_at": "document_end",
+   "all_frames": true }],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "options_page": "options.html",
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "content_security_policy": { "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'" }
+}

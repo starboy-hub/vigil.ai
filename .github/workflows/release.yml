@@ -1,0 +1,155 @@
+name: Vigil AI Multi-Platform Release CI/CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  # Blueprint #16 (SLSA): build provenance attestation requires id-token
+  id-token: write
+  attestations: write
+
+jobs:
+  build-extension:
+    name: Build WebExtension Release Zips
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint Code
+        run: npm run lint
+
+      - name: Build WebExtension Distribution
+        run: npm run build:all
+
+      - name: Execute Tests
+        run: npm test
+
+      - name: Generate CycloneDX SBOM (Software Bill of Materials)
+        run: npx @cyclonedx/cyclonedx-npm --output-file releases/sbom.json --output-format JSON || true
+
+      - name: Package Extension Archives
+        run: npm run pack
+
+      - name: Attest Build Provenance (SLSA — extension packages)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: releases/**/*.zip
+
+      - name: Upload Extension Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigil-extension-packages
+          path: releases/
+
+  build-companion:
+    name: Build Native Companion (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: vigil-desktop-companion
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary_name: vigil-desktop-companion
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: vigil-desktop-companion.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: vigil-desktop-companion
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux Audio Dependencies (ALSA)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build Rust Companion Daemon Binary
+        run: |
+          cd desktop
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Attest Build Provenance (SLSA — companion binary)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: desktop/target/${{ matrix.target }}/release/${{ matrix.binary_name }}
+
+      - name: Upload Native Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigil-companion-${{ matrix.target }}
+          path: desktop/target/${{ matrix.target }}/release/${{ matrix.binary_name }}
+
+  publish-release:
+    name: Create GitHub Release & Upload Artifacts
+    needs: [build-extension, build-companion]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Extension Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: vigil-extension-packages
+          path: release-assets/
+
+      - name: Download macOS ARM64 Companion
+        uses: actions/download-artifact@v4
+        with:
+          name: vigil-companion-aarch64-apple-darwin
+          path: release-assets/companion-macOS-arm64/
+
+      - name: Download macOS x64 Companion
+        uses: actions/download-artifact@v4
+        with:
+          name: vigil-companion-x86_64-apple-darwin
+          path: release-assets/companion-macOS-x64/
+
+      - name: Download Windows x64 Companion
+        uses: actions/download-artifact@v4
+        with:
+          name: vigil-companion-x86_64-pc-windows-msvc
+          path: release-assets/companion-windows-x64/
+
+      - name: Download Linux x64 Companion
+        uses: actions/download-artifact@v4
+        with:
+          name: vigil-companion-x86_64-unknown-linux-gnu
+          path: release-assets/companion-linux-x64/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/**/*
+          name: Vigil AI Guardian ${{ github.ref_name }} — Enterprise Release
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

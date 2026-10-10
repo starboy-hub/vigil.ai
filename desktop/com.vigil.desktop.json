@@ -1,0 +1,11 @@
+{
+  "name": "com.vigil.desktop",
+  "description": "Vigil / VIGIL Native Desktop Security Companion Daemon",
+  "path": "/Applications/VIGIL.app/Contents/MacOS/vigil-native-host",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://emkokehejldjlfljlhhcimnfefcjcmon/",
+    "chrome-extension://vigil-guardian-id/",
+    "chrome-extension://vigil-guardian-id/"
+  ]
+}

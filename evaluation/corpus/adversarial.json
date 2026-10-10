@@ -1,0 +1,32 @@
+{
+  "description": "Adversarial split — scams engineered to EVADE current Sentinel signals (no keyword overlap: indirect payment, invented procedures, emotional family framing, casual authority) and hard-negative legitimate messages that share structural features with scams (money words, urgency-adjacent phrasing, real deliver tracking). This split measures GENERALIZATION, not category coverage. Scores here are expected to be lower than the core corpus — that is the honest finding.",
+  "messages": [
+    { "label": "scam", "category": "adv-indirect-payment", "text": "Can you help me cover the studio this month? I'll make it up to you the moment the paperwork clears." },
+    { "label": "scam", "category": "adv-invented-procedure", "text": "The migration desk needs your sign-in sheet before Friday so the sync completes on their side." },
+    { "label": "scam", "category": "adv-familiarity-authority", "text": "It's Daniels from the head office — the auditors arrived this morning and they want everything filed before Monday." },
+    { "label": "scam", "category": "adv-emotional-family", "text": "Sweetheart, the card got eaten by the machine at the station and I'm stuck with the hotel till Monday." },
+    { "label": "scam", "category": "adv-value-doubles", "text": "The platform doubles every deposit before the snapshot on the 9th — put yours in tonight and it clears with the rest." },
+    { "label": "scam", "category": "adv-award-framing", "text": "The studio picked your portfolio for their seasonal award — the 5,000 arrives once the handling step completes." },
+    { "label": "scam", "category": "adv-uniform-fee", "text": "The placement agency needs 60 for the uniform before orientation on Monday — orientation slots close Tuesday." },
+    { "label": "scam", "category": "adv-shelter", "text": "The shelter takes any support tonight — the families sleep outside otherwise, every bit helps before the cold." },
+    { "label": "scam", "category": "adv-municipal", "text": "The municipal records office flagged your residency paperwork — bring your identity folder to the annex before the 9th." },
+    { "label": "scam", "category": "adv-portal-code", "text": "Open the access portal with your usual code so the sync completes on their side." },
+    { "label": "scam", "category": "adv-indirect-crypto", "text": "Move the balance to the ledger address before the snapshot on the 9th, the old chain stops holding after that." },
+    { "label": "scam", "category": "adv-support-casual", "text": "Hi, support here — the billing loop closed on your profile and we need the card numbers again to reopen it today." },
+    { "label": "scam", "category": "adv-relocation", "text": "The movers won't release the furniture until the balance part is handled — it's 180, they only take vouchers." },
+    { "label": "scam", "category": "adv-inheritance-casual", "text": "My uncle's estate finally cleared and the executor wants a joint account listed to release the share — yours works fine." },
+
+    { "label": "legit", "category": "adv-hard-negative", "text": "The head office auditors arrived this morning — genuine yearly review, no action needed from anyone." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "Sweetheart I'm stuck in traffic on the bridge, order the pasta without me and I'll Venmo you tonight." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "Dad's surgery is scheduled for Tuesday morning — the hospital will call with the prep details." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "I'm at the airport, flight delayed three hours. Boarding soon." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "The courier delivered the furniture today — assembly is on Saturday." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "Netflix charged the annual plan; the receipt is in your email." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "Mom asked me to confirm Sunday lunch at ours — bring the kids." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "New sign-in detected from your laptop — this was you, so no action needed." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "Our team will never ask for your password — we replaced that flow last year." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "Hurry to the pharmacy before it closes — your prescription is waiting." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "The plumber's invoice came to 240 and the repair is booked for Thursday." },
+    { "label": "legit", "category": "adv-hard-negative", "text": "The city emailed about the recycling schedule changing in March — nothing to do, collection just moves to Wednesday." }
+  ]
+}
