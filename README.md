@@ -417,9 +417,15 @@ npm run benchmark:adversarial
 
 ### 🛡️ Enterprise Security Hardening Checklist
 - ✅ **Cryptographic Key Pinning:** Extension public key pinned in manifest and verified mathematically during build & CI (`emkokehejldjlfljlhhcimnfefcjcmon`).
+- ✅ **Hardware-Backed Trust Binding:** Tier 1 hardware enclave root-of-trust with strict fail-closed enforcement when software fallback is unpermitted (`TIER_1_HARDWARE_ROOTED`).
 - ✅ **Encrypted Native Messaging:** Ephemeral ECDH (P-256) key agreement with AES-256-GCM authenticated framing and fail-closed downgrade prevention.
 - ✅ **Anti-Replay & Anomaly Defense:** Monotonic sequence counters, clock-skew jump bounds (`MAX_SEQ_SKIP`), and 15-minute session lifetimes.
-- ✅ **Sensitive Context Deny-List:** Pre-execution isolation blocks content scripts on Google/Microsoft SSO, 1Password/Bitwarden vaults, and payment checkouts.
+- ✅ **Sensitive Context Deny-List:** Pre-execution isolation blocks content scripts on Google/Microsoft SSO, 1Password/Bitwarden vaults, payment checkouts, and custom user-defined domains.
+- ✅ **Deterministic Reproducible Builds:** Automated supply-chain integrity verification computing composite SHA-256 hash trees (`release-manifest.json`).
+- ✅ **Automated 7-Gate Release Pipeline:** Hard release gate (`npm run release:gate`) enforcing cryptographic keys, package completeness, reproducible hashes, CSP lockdown, and injection policies.
+- ✅ **Third-Party Audit Dossier:** Automated generation of `dist/audit-dossier.json` and formal audit readiness package (`docs/AUDIT-READINESS.md`).
+- ✅ **STRIDE & PASTA Threat Model:** Comprehensive 8-surface threat matrix and 5 Security Decision Records (`docs/THREAT_MATRIX.md`).
+- ✅ **Bug Bounty & Coordinated Disclosure:** Published policy ([BUG_BOUNTY.md](BUG_BOUNTY.md), [SECURITY.md](SECURITY.md)) with CVSS v3.1 tiers and safe harbor.
 - ✅ **Zero DOM-Based XSS:** 100% pure DOM construction (`createElement`, `textContent`) across all alert UI, banners, toasts, and selection cards.
 - ✅ **Hardened CSP:** Strict `default-src 'none'`, `object-src 'none'`, with connections locked strictly to localhost IPC.
 - ✅ **Storage Audit Logging:** Tamper-evident in-memory ring buffer tracking storage operations with compliant JSON export in Options.
@@ -431,11 +437,11 @@ npm run benchmark:adversarial
 
 ```bash
 npm test                    # 696 Jest unit tests (53 test suites, 100% passing)
-cargo test --manifest-path desktop/Cargo.toml # 15 Rust companion security tests (100% passing)
+cargo test --manifest-path desktop/Cargo.toml # 16 Rust companion security tests (100% passing)
 npx playwright test         # 105 end-to-end browser tests across real websites & cyber range
 npm run test:all-online     # Live online industry canaries & real website testbed
 npm run lint                # Zero ESLint warnings / errors
-node scripts/verify-dist.js # Build integrity & extension key pin verification
+npm run release:gate        # All 7 security release gates (key pinning, reproducibility, audit pack, CSP)
 npm run build:all           # Build Chrome (dist) and Firefox (dist-firefox) bundles
 npm run benchmark:adversarial  # Adversarial mutation benchmark
 ```

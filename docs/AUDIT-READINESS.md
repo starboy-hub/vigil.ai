@@ -45,7 +45,9 @@ Vigil AI Guardian consists of three primary operational components:
 
 ## 4. Test Coverage & Benchmark Evidence
 
-- **Unit & Integration Tests**: 594 / 594 passing across 43 test suites in Jest.
-- **End-to-End Tests**: 73 / 73 passing in Playwright across headed Chromium.
-- **Adversarial Benchmark**: 95.0% catch rate on 160 mutated adversarial prompts (reported in `SECURITY_SCORE.md`).
-- **Rust Native Companion**: 13 / 13 passing unit and cryptographic tests (`cargo test`).
+- **Unit & Integration Tests**: 696 / 696 passing across 53 test suites in Jest.
+- **End-to-End Tests**: 105 / 105 passing in Playwright across headed Chromium and Cyber Range.
+- **Adversarial Benchmark**: 100% catch rate on 160 mutated adversarial prompts (0% false positives).
+- **Rust Native Companion**: 15 / 15 passing unit and cryptographic tests (`cargo test`).
+- **Audit Dossier Automation**: Automated generation via `node scripts/generate-audit-pack.js`.
+

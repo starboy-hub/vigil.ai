@@ -194,6 +194,19 @@
     </div>
   </section>
 
+  <section class="card">
+    <div class="card-head">
+      <span class="card-icon"><svg width="20" height="20"><use href="#i-lock"/></svg></span>
+      <div><h2>Sensitive Context Deny-List</h2><p>Pre-execution isolation: VIGIL unloads on these sensitive internal domains (e.g. internal auth, payroll, vaults)</p></div>
+    </div>
+    <div class="row row-column">
+      <div class="row-info"><div class="row-label">Custom Blocked Domains</div><div class="row-desc">One domain per line · Built-in blocks already protect Google, Microsoft, Okta, Auth0, 1Password, Bitwarden, and Stripe</div></div>
+      <textarea id="customDenyListInput" placeholder="internal-auth.corp&#10;payroll.mycompany.intranet"></textarea>
+      <button id="saveCustomDenyListBtn" class="save-btn">Save Deny-List</button>
+      <div id="customDenyListStatus" style="font-size:12px;margin-top:6px;display:none;color:#10b981;"></div>
+    </div>
+  </section>
+
   <details class="card">
     <summary class="card-head">
       <span class="card-icon"><svg width="20" height="20"><use href="#i-doc"/></svg></span>

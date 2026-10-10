@@ -8,7 +8,12 @@
     const policy = (typeof globalThis !== 'undefined' && globalThis.VIGIL_INJECTION_POLICY) ||
                    (typeof VIGIL_INJECTION_POLICY !== 'undefined' ? VIGIL_INJECTION_POLICY : null);
     if (policy && typeof policy.shouldInjectContentScript === 'function') {
-      if (!policy.shouldInjectContentScript(window.location.href)) {
+      let customDeny = [];
+      try {
+        const stored = localStorage.getItem('vigil_custom_deny_list');
+        if (stored) customDeny = JSON.parse(stored);
+      } catch (_) {}
+      if (!policy.shouldInjectContentScript(window.location.href, customDeny)) {
         console.log('[VIGIL] Execution halted: sensitive auth, credential, or payment surface detected at', window.location.hostname);
         return;
       }

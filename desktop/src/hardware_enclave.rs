@@ -34,6 +34,7 @@ pub struct HardwareSecurityStatus {
     pub secure_enclave_available: bool,
     pub hardware_module: String,
     pub enclave_status: String,
+    pub trust_tier: String,
 }
 
 pub struct HardwareEnclaveManager {
@@ -55,6 +56,11 @@ impl HardwareEnclaveManager {
         HardwareEnclaveManager { platform, binding }
     }
 
+    /// Whether this runtime instance is bound directly to hardware TPM/Secure Enclave silicon.
+    pub fn is_hardware_backed(&self) -> bool {
+        false
+    }
+
     /// Creates a manager whose sealing key is pre-seeded process-locally,
     /// bypassing the OS keychain entirely. Used in tests and headless/CI
     /// environments where keychain calls are unavailable or slow; sealed
@@ -66,18 +72,22 @@ impl HardwareEnclaveManager {
         HardwareEnclaveManager::new()
     }
 
-    /// Honest capability report. This build binds keys to the OS keychain via
-    /// the `keyring` crate; it does NOT talk to a TPM or Apple Secure Enclave
-    /// (no tss-esapi / Security framework in the dependency set). Claiming
-    /// otherwise would overstate the threat model.
+    /// Honest capability report with explicit Trust Tier classification.
+    /// Distinguishes between silicon-level hardware roots and OS-keychain software fallbacks.
     pub fn get_security_status(&self) -> HardwareSecurityStatus {
+        let hw = self.is_hardware_backed();
         HardwareSecurityStatus {
             platform: self.platform.to_string(),
-            hardware_backed: false,
+            hardware_backed: hw,
             tpm_available: false,
             secure_enclave_available: false,
             hardware_module: self.binding.to_string(),
             enclave_status: "OS_KEYCHAIN_BOUND".to_string(),
+            trust_tier: if hw {
+                "TIER_1_HARDWARE_ROOTED".to_string()
+            } else {
+                "TIER_2_REDUCED_TRUST_KEYCHAIN".to_string()
+            },
         }
     }
 
@@ -149,6 +159,16 @@ impl HardwareEnclaveManager {
         })
     }
 
+    /// Policy-aware master key sealing. If `require_hardware` is true and the system
+    /// is running without verified silicon-level TPM 2.0 / Apple Secure Enclave hardware binding,
+    /// this function fails closed.
+    pub fn seal_master_key_with_policy(&self, raw_key: Option<&[u8]>, require_hardware: bool) -> Result<SealedKeyRecord, String> {
+        if require_hardware && !self.is_hardware_backed() {
+            return Err("HARDWARE_ROOT_UNAVAILABLE: requested strict hardware binding (TPM 2.0 / Apple Secure Enclave), but system is in reduced-trust fallback mode".to_string());
+        }
+        self.seal_master_key(raw_key)
+    }
+
     /// Unseals a master key previously sealed by `seal_master_key`.
     /// Returns the raw key as hex.
     pub fn unseal_master_key(&self, record: &SealedKeyRecord) -> Result<String, String> {
@@ -209,6 +229,17 @@ mod tests {
         assert!(!status.hardware_backed);
         assert_eq!(status.enclave_status, "OS_KEYCHAIN_BOUND");
         assert!(status.hardware_module.starts_with("OS_KEYCHAIN"));
+        assert_eq!(status.trust_tier, "TIER_2_REDUCED_TRUST_KEYCHAIN");
+    }
+
+    #[test]
+    fn test_strict_hardware_fail_closed_in_fallback_mode() {
+        let _g = TEST_LOCK.lock().unwrap();
+        let enclave = HardwareEnclaveManager::with_ephemeral_key();
+        let test_key = [55u8; 32];
+        let res = enclave.seal_master_key_with_policy(Some(&test_key), true);
+        assert!(res.is_err(), "must fail closed when hardware is required but in fallback mode");
+        assert!(res.unwrap_err().contains("HARDWARE_ROOT_UNAVAILABLE"));
     }
 
     #[test]

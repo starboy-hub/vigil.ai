@@ -79,6 +79,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const customDenyInput = document.getElementById('customDenyListInput');
+  const saveCustomDenyBtn = document.getElementById('saveCustomDenyListBtn');
+  if (customDenyInput && saveCustomDenyBtn) {
+    chrome.storage.sync.get(['settings'], (result) => {
+      const s = result.settings || {};
+      if (Array.isArray(s.customDenyList)) {
+        customDenyInput.value = s.customDenyList.join('\n');
+      }
+    });
+
+    saveCustomDenyBtn.addEventListener('click', () => {
+      const domains = customDenyInput.value.split(/[\n,]+/).map(d => d.trim().toLowerCase()).filter(d => d.length > 0);
+      chrome.storage.sync.get(['settings'], (result) => {
+        const s = result.settings || {};
+        s.customDenyList = domains;
+        chrome.storage.sync.set({ settings: s }, () => {
+          chrome.storage.local.set({ vigil_custom_deny_list: domains });
+          saveCustomDenyBtn.textContent = 'Saved! ✅';
+          setTimeout(() => { saveCustomDenyBtn.textContent = 'Save Deny-List'; }, 2000);
+        });
+      });
+    });
+  }
+
   // ==========================================
   // IDENTITY VAULT
   // ==========================================

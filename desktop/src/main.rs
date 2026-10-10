@@ -617,11 +617,12 @@ fn dispatch_privileged(req: &JsonRpcRequest, _session: &SessionInfo) -> JsonRpcR
         }
         "vigil.hardwareSealKey" => {
             let key_hex = params["key_hex"].as_str();
+            let require_hw = params["require_hardware"].as_bool().unwrap_or(false);
             let raw_key = key_hex.and_then(|h| {
                 if h.len() % 2 != 0 { return None; }
                 (0..h.len()).step_by(2).map(|i| u8::from_str_radix(&h[i..i+2], 16).ok()).collect::<Option<Vec<u8>>>()
             });
-            match ENCLAVE_ENGINE.seal_master_key(raw_key.as_deref()) {
+            match ENCLAVE_ENGINE.seal_master_key_with_policy(raw_key.as_deref(), require_hw) {
                 Ok(record) => Ok(serde_json::to_value(record).unwrap_or(Value::Null)),
                 Err(e) => Err(json!({ "code": -32005, "message": format!("Key sealing failed: {}", e) })),
             }
