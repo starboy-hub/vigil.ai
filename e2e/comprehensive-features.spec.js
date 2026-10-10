@@ -29,7 +29,14 @@ test.describe('comprehensive popup features & buttons', () => {
   test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
       headless: false,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
+      args: [
+        `--disable-extensions-except=${EXT}`,
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });
@@ -118,7 +125,14 @@ test.describe('comprehensive options features & buttons', () => {
   test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
       headless: false,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
+      args: [
+        `--disable-extensions-except=${EXT}`,
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });

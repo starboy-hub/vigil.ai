@@ -40,7 +40,14 @@ test.describe('popup controls', () => {
   test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
       headless: false,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
+      args: [
+        `--disable-extensions-except=${EXT}`,
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });
@@ -180,7 +187,14 @@ test.describe('options controls', () => {
   test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
       headless: false,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
+      args: [
+        `--disable-extensions-except=${EXT}`,
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });
@@ -308,7 +322,14 @@ test.describe('engineering checks (service worker)', () => {
   test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
       headless: false,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
+      args: [
+        `--disable-extensions-except=${EXT}`,
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20000 });
@@ -366,7 +387,14 @@ test.describe('popup presets and site grade', () => {
   test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
       headless: false,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
+      args: [
+        `--disable-extensions-except=${EXT}`,
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });

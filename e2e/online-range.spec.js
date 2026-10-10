@@ -54,7 +54,11 @@ test.describe('VIGIL AI Online Cyber Range Verification Suite', () => {
       headless: false,
       args: [
         `--disable-extensions-except=${EXT}`,
-        `--load-extension=${EXT}`
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
       ]
     });
 

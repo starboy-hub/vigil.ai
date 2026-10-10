@@ -11,7 +11,14 @@ test.describe('Vigil Native Messaging Hardening & Mutual Authentication E2E', ()
   test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
       headless: false,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`]
+      args: [
+        `--disable-extensions-except=${EXT}`,
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
     page = await context.newPage();
     await page.goto('about:blank');

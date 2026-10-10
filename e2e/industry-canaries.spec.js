@@ -24,7 +24,11 @@ test.describe('VIGIL AI Live Industry Canaries & Public Playground', () => {
       headless: false,
       args: [
         `--disable-extensions-except=${EXT}`,
-        `--load-extension=${EXT}`
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
       ]
     });
 

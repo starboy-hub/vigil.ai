@@ -20,7 +20,11 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
       headless: false,
       args: [
         `--disable-extensions-except=${EXT}`,
-        `--load-extension=${EXT}`
+        `--load-extension=${EXT}`,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
       ]
     });
 
