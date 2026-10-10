@@ -124,11 +124,11 @@
       if (match) {
         const [, type, pattern, flags] = match;
         if (!isReDoSSafe(pattern)) {
-          console.warn('🛡️ VIGIL: Rejected high-risk ReDoS custom pattern:', line);
+          console.warn('[VIGIL] Rejected high-risk ReDoS custom pattern:', line);
           return;
         }
         try { parsed.push({ type, pattern: new RegExp(pattern, flags) }); }
-        catch (e) { console.warn('🛡️ VIGIL: Invalid custom pattern:', line); }
+        catch (e) { console.warn('[VIGIL] Invalid custom pattern:', line); }
       }
     });
     return parsed;

@@ -54,7 +54,7 @@
           try {
             await vaultInstance.add(entry.kind, entry.value);
           } catch (e) {
-            console.warn('🛡️ VIGIL Enterprise: Error adding managed vault item:', e.message);
+            console.warn('[VIGIL] Enterprise: Error adding managed vault item:', e.message);
           }
         }
       }

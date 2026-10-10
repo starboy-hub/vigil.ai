@@ -29,7 +29,7 @@
           return true;
         }
       } catch (e) {
-        console.warn('🛡️ VIGIL: WebGPU acceleration unavailable, using WASM SIMD:', e.message);
+        console.warn('[VIGIL] WebGPU acceleration unavailable, using WASM SIMD:', e.message);
       }
       this.supported = false;
       return false;

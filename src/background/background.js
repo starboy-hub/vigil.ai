@@ -188,11 +188,11 @@ if (typeof chrome !== 'undefined' && chrome.alarms && chrome.alarms.create) {
       chrome.storage.local.set({ vigil_last_integrity_report: report }, () => {});
       if (report && report.isValid === false) {
         try { chrome.action.setBadgeText({ text: '!' }); } catch (e) {}
-        console.warn('🛡️ VIGIL: file integrity scan detected tampering:', report.tamperedCount, 'file(s)');
+        console.warn('[VIGIL] File integrity scan detected tampering:', report.tamperedCount, 'file(s)');
       } else if (report && report.isValid) {
         try { chrome.action.setBadgeText({ text: '' }); } catch (e) {}
       }
-    }).catch((e) => console.warn('🛡️ VIGIL: integrity scan failed:', e && e.message));
+    }).catch((e) => console.warn('[VIGIL] Integrity scan failed:', e && e.message));
   });
 }
 
@@ -397,7 +397,7 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'vigil-sanitize-selection',
-      title: '🛡️ VIGIL: Sanitize Selected Code/Text',
+      title: '🔒 VIGIL: Sanitize Selected Code/Text',
       contexts: ['selection']
     });
     chrome.contextMenus.create({
@@ -1508,16 +1508,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.type === 'OFFSCREEN_LOADED') {
       chrome.storage.local.set({ offscreen_loaded: Date.now() });
-      console.log('🛡️ offscreen document loaded');
+      console.log('[VIGIL] Offscreen document loaded');
       return false;
     }
     if (request.type === 'OFFSCREEN_ERROR') {
       chrome.storage.local.set({ offscreen_last_error: request.message });
-      console.error('🛡️ offscreen error:', request.message);
+      console.error('[VIGIL] Offscreen error:', request.message);
       return false;
     }
     if (request.type === 'WEBGPU_PROGRESS') {
-      console.log('🛡️ webgpu:', request.status, request.file);
+      console.log('[VIGIL] WebGPU:', request.status, request.file);
       return false;
     }
 
@@ -1531,7 +1531,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
           await ensureOffscreen();
           chrome.runtime.sendMessage({ type: 'WEBGPU_CLASSIFY', text: 'warmup' }, () => {});
-        } catch (e) { console.error('🛡️ VIGIL: model warmup failed:', e.message); chrome.storage.local.set({ offscreen_create_error: e.message }); }
+        } catch (e) { console.error('[VIGIL] Model warmup failed:', e.message); chrome.storage.local.set({ offscreen_create_error: e.message }); }
       })();
       sendResponse({ ok: true });
       return false;
@@ -1726,7 +1726,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ error: 'unknown_request_type' });
     return false;
   } catch (error) {
-    console.error('🛡️ VIGIL Background Error:', error);
+    console.error('[VIGIL] Background Error:', error);
     sendResponse({ error: error.message });
     return false;
   }

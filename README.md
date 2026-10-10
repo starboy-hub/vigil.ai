@@ -34,7 +34,7 @@ Every time you use ChatGPT, Claude, Copilot, or any AI assistant, sensitive data
 
 ## Features
 
-### 🛡️ Outbound PII & Credential Shield
+### 🔐 Outbound PII & Credential Shield
 
 Vigil scans every text input before it reaches an AI platform and intercepts sensitive data in real time.
 
@@ -480,7 +480,7 @@ MIT — see [LICENSE](LICENSE).
 
 <div align="center">
 
-Built with 🛡️ by the Vigil AI open-source community.
+Built with ❤️ by the Vigil AI open-source community.
 
 *No cloud. No telemetry. No compromise.*
 

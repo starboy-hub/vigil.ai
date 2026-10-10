@@ -496,7 +496,7 @@ if (runParaphraseBtn) {
       if (res && res.text) {
         if (outputText) outputText.textContent = res.text;
         if (tierBadge) {
-          tierBadge.textContent = res.tier === 'ollama' ? '🟢 Local Ollama Neural Paraphrase' : '🛡️ On-Device Fallback Redaction';
+          tierBadge.textContent = res.tier === 'ollama' ? '🟢 Local Ollama Neural Paraphrase' : '⚡ On-Device Fallback Redaction';
           tierBadge.style.background = res.tier === 'ollama' ? '#10b981' : '#3b82f6';
         }
       }
@@ -632,7 +632,7 @@ if (runPentestBtn) {
             badge.style.background = '#fee2e2';
             badge.style.color = '#991b1b';
           } else {
-            badge.textContent = '🛡️ BLOCKED';
+            badge.textContent = '🔒 BLOCKED';
             badge.style.background = '#dcfce7';
             badge.style.color = '#166534';
           }

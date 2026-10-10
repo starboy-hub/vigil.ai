@@ -113,7 +113,7 @@
 
     // Check pattern safety first
     if (!isSafeRegex(regex.source)) {
-      console.warn('🛡️ VIGIL ReDoS Guard: Aborted execution of unsafe regex pattern:', regex.source);
+      console.warn('[VIGIL ReDoS Guard] Aborted execution of unsafe regex pattern:', regex.source);
       return null;
     }
 
@@ -123,11 +123,11 @@
       const elapsed = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - start;
 
       if (elapsed > timeoutMs) {
-        console.warn(`🛡️ VIGIL ReDoS Guard: Execution exceeded safe threshold (${elapsed.toFixed(1)}ms > ${timeoutMs}ms) for /${regex.source}/`);
+        console.warn(`[VIGIL ReDoS Guard] Execution exceeded safe threshold (${elapsed.toFixed(1)}ms > ${timeoutMs}ms) for /${regex.source}/`);
       }
       return res;
     } catch (e) {
-      console.error('🛡️ VIGIL Regex execution error:', e.message);
+      console.error('[VIGIL] Regex execution error:', e.message);
       return null;
     }
   }
@@ -139,7 +139,7 @@
     if (!regex || !text || typeof text !== 'string') return [];
 
     if (!isSafeRegex(regex.source)) {
-      console.warn('🛡️ VIGIL ReDoS Guard: Aborted execAll on unsafe pattern:', regex.source);
+      console.warn('[VIGIL ReDoS Guard] Aborted execAll on unsafe pattern:', regex.source);
       return [];
     }
 
@@ -157,7 +157,7 @@
 
       const elapsed = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - start;
       if (elapsed > timeoutMs) {
-        console.warn(`🛡️ VIGIL ReDoS Guard: execAll reached timeout limit of ${timeoutMs}ms; truncated results.`);
+        console.warn(`[VIGIL ReDoS Guard] execAll reached timeout limit of ${timeoutMs}ms; truncated results.`);
         break;
       }
     }

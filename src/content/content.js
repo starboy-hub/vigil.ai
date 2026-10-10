@@ -3,7 +3,7 @@
 (function() {
   'use strict';
 
-console.log('🛡️ VIGIL: Content script loaded');
+console.log('[VIGIL] Content script loaded');
 
 const TRANSLATIONS = {
   en: { sensitiveDetected: 'Sensitive Data Detected', proceed: 'Are you sure you want to proceed?', cancel: 'Cancel', sendAnyway: 'Send Anyway', protectTip: 'Tip: Click Protect in the VIGIL popup to replace sensitive data first', imageUpload: 'Image Upload Detected', aiCanRead: 'AI can read text and faces in images. Does this file contain IDs or sensitive info?', privacyRisk: 'Privacy Risk: Once uploaded, you cannot control who accesses this file.', cancelUpload: 'Cancel Upload', uploadAnyway: 'Upload Anyway', sensitiveFilename: 'Sensitive Filename', containsKeywords: 'contains sensitive keywords.', welcome: 'Welcome to VIGIL!', welcomeText: 'I\'ll protect your sensitive data as you type.', quickProtect: 'Tip: Press ⌘+Enter to quick-protect', gotIt: 'Got it!' },
@@ -274,13 +274,13 @@ async function refreshVault() {
       vaultCorpus = [];
       vaultMatchers = [];
       trustMatchers = [];
-      if (res && res.error) console.warn('🛡️ VIGIL: vault blind index unavailable:', res.error);
+      if (res && res.error) console.warn('[VIGIL] Vault blind index unavailable:', res.error);
     }
     const mapRes = await chrome.runtime.sendMessage({ type: 'PSEUDO_GET_MAP', site: location.hostname });
     vaultPseudos = (mapRes && mapRes.map) || {};
     const sessRes = await new Promise((res) => chrome.runtime.sendMessage({ type: 'GET_SESSION_GUARD' }, (r) => res(r || null)));
     sessionGuard = sessRes && sessRes.session ? sessRes.session : null;
-  } catch (e) { console.warn('🛡️ VIGIL: vault unavailable:', e.message); }
+  } catch (e) { console.warn('[VIGIL] Vault unavailable:', e.message); }
 }
 
 function pickVaultFake(kind, entryId, value) {
@@ -1201,7 +1201,7 @@ function injectionPass() {
       const level = injectionNoted ? 'low' : final.level;
       showNote({
         level, category: 'injection',
-        title: (final.level === 'dangerous' ? '🛑 Injection Firewall: hidden AI instructions' : '🛡️ Injection Firewall: AI-directed text') + (hidden ? ' (invisible on page)' : ''),
+        title: (final.level === 'dangerous' ? '🛑 Injection Firewall: hidden AI instructions' : '⚠️ Injection Firewall: AI-directed text') + (hidden ? ' (invisible on page)' : ''),
         detail: (VIGIL_INJECTION.topSignals(final, 2).join(' + ') + ' — ' + final.advice),
         force: !injectionNoted
       });
@@ -1283,7 +1283,7 @@ function showSanitizedToast(originalText) {
   const card = document.createElement('div');
   card.setAttribute('data-vigil', 'sanitized-toast');
   card.style.cssText = 'position:fixed!important;bottom:20px!important;right:20px!important;z-index:2147483647!important;background:#1a202c!important;color:white!important;padding:16px!important;border-radius:12px!important;box-shadow:0 10px 30px rgba(0,0,0,0.5)!important;max-width:400px!important;font-family:-apple-system,sans-serif!important;border:1px solid #4a5568!important;';
-  card.innerHTML = `<div style="font-weight:700;font-size:13px;color:#667eea;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><span>🛡️ VIGIL Sanitized Selection</span><button id="vigil-close-toast" style="background:none;border:none;color:#a0aec0;cursor:pointer;font-size:14px;">✕</button></div><div style="font-size:11px;color:#cbd5e0;margin-bottom:8px;">${redactions.length} sensitive item(s) sanitized</div><textarea readonly style="width:100%;height:80px;background:#2d3748;color:#e2e8f0;border:1px solid #4a5568;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;resize:none;">${sanitized.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea><button id="vigil-copy-toast" style="width:100%;margin-top:8px;padding:8px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">📋 Copy Sanitized Text</button>`;
+  card.innerHTML = `<div style="font-weight:700;font-size:13px;color:#667eea;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><span>✨ VIGIL Sanitized Selection</span><button id="vigil-close-toast" style="background:none;border:none;color:#a0aec0;cursor:pointer;font-size:14px;">✕</button></div><div style="font-size:11px;color:#cbd5e0;margin-bottom:8px;">${redactions.length} sensitive item(s) sanitized</div><textarea readonly style="width:100%;height:80px;background:#2d3748;color:#e2e8f0;border:1px solid #4a5568;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;resize:none;">${sanitized.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea><button id="vigil-copy-toast" style="width:100%;margin-top:8px;padding:8px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">📋 Copy Sanitized Text</button>`;
   document.body.appendChild(card);
 
   document.getElementById('vigil-close-toast').addEventListener('click', () => card.remove());
@@ -1474,7 +1474,7 @@ async function scanText(text, element) {
     }
     
   } catch (err) {
-    console.warn('🛡️ VIGIL: Scan internal error:', err.message);
+    console.warn('[VIGIL] Scan internal error:', err.message);
   }
 
   // Blueprint #1: remember whether this text produced a local threat signal
@@ -1531,7 +1531,7 @@ function highlightSensitive(element, redactions) {
 function highlightProtected(element, _replacements) {
   if (!element) return; removeInlineIndicator(element);
   element.style.transition = 'all 0.3s ease'; const pColor = tc('#28a745', '#66bb6a'); element.style.color = pColor; element.style.borderLeft = '4px solid ' + pColor;
-  showInlineIndicator(element, '🛡️ Protected', pColor);
+  showInlineIndicator(element, '🔒 Protected', pColor);
 }
 function clearHighlights(element) { if (!element) return; removeInlineIndicator(element); if (element.getAttribute('contenteditable') === 'true') { element.querySelectorAll('.vigil-sensitive, .vigil-protected').forEach(span => { span.replaceWith(document.createTextNode(span.textContent)); }); } else { element.style.borderLeft = ''; element.style.color = ''; } }
 function showInlineIndicator(element, text, color) { const rect = element.getBoundingClientRect(); const indicator = document.createElement('div'); indicator.className = 'vigil-inline-indicator'; indicator.textContent = text; indicator.style.cssText = `position:absolute!important;top:${rect.top - 28}px!important;left:${rect.left}px!important;background:${color}!important;color:white!important;padding:4px 10px!important;border-radius:4px!important;font-size:11px!important;font-weight:600!important;z-index:2147483645!important;font-family:-apple-system,sans-serif!important;box-shadow:0 2px 8px ${currentTheme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)'}!important;pointer-events:none!important;`; document.body.appendChild(indicator); }
@@ -1936,7 +1936,7 @@ class VIGILPopup {
           // Show confirmation toast
           const toast = document.createElement('div');
           toast.style.cssText = 'position:fixed!important;bottom:100px!important;right:20px!important;background:#28a745!important;color:white!important;padding:12px 20px!important;border-radius:8px!important;font-size:13px!important;font-weight:600!important;z-index:2147483647!important;font-family:-apple-system,sans-serif!important;box-shadow:0 4px 12px rgba(0,0,0,0.3)!important;animation:vigil-fadeIn 0.3s ease-out!important;';
-          toast.innerHTML = '🛡️✓ ' + host + ' added to trusted sites';
+          toast.innerHTML = '✅ ' + host + ' added to trusted sites';
           document.body.appendChild(toast);
           setTimeout(() => toast.remove(), 3000);
         }
@@ -2187,7 +2187,7 @@ async function performScan(target) {
       }
     }
   } catch (err) {
-    console.warn('🛡️ VIGIL: Scan error:', err.message);
+    console.warn('[VIGIL] Scan error:', err.message);
   }
 }
 
@@ -2576,7 +2576,7 @@ function setupSubmissionGuard() {
       return;
     }
   }, true);
-  console.log('🛡️ VIGIL: ✅ Universal submission guard active');
+  console.log('[VIGIL] Universal submission guard active');
 }
 
 function hasUnprotectedPII(target) {
@@ -2943,12 +2943,12 @@ function setupAttachmentGuard() {
   const originalFetch = window.fetch; window.fetch = function(input, init) { if (init && init.body) { if (init.body instanceof FormData) { init.body.forEach((value, _key) => { if (value instanceof File) checkFileForUpload(value, 'fetch FormData', value.name); }); } else if (init.body instanceof File || init.body instanceof Blob) { checkFileForUpload(init.body, 'fetch body', init.body.name); } else if (typeof init.body === 'string') { warnOnStringBody(init.body, 'fetch'); } } return originalFetch.apply(this, arguments); };
   document.addEventListener('change', (e) => { const target = e.target; if (target.tagName === 'INPUT' && target.type === 'file' && target.files) { Array.from(target.files).forEach(file => checkFileForUpload(file, 'file input')); } }, true);
   document.addEventListener('drop', (e) => { if (e.dataTransfer?.files) { Array.from(e.dataTransfer.files).forEach(file => checkFileForUpload(file, 'drag drop')); } }, true);
-  console.log('🛡️ VIGIL: ✅ Multi-layer attachment guard & Quarantine Buffer active');
+  console.log('[VIGIL] Multi-layer attachment guard & Quarantine Buffer active');
 }
 function checkFileForUpload(file, source, overrideName) {
   if (!attachmentGuardEnabled) return; if (!file || !(file instanceof File || file instanceof Blob)) return;
   const fileName = overrideName || file.name || 'unknown'; const fileSize = (file.size / 1024 / 1024).toFixed(2); const fileType = file.type || 'unknown';
-  console.log(`🛡️ VIGIL: File upload via ${source}: ${fileName} | ${fileSize}MB | ${fileType}`);
+  console.log(`[VIGIL] File upload via ${source}: ${fileName} | ${fileSize}MB | ${fileType}`);
   const fileNameLower = fileName.toLowerCase(); const hasSensitiveName = SENSITIVE_FILE_KEYWORDS.some(keyword => fileNameLower.includes(keyword));
   const isImage = fileType.startsWith('image/') || ['.jpg','.jpeg','.png','.tiff','.tif','.bmp','.webp','.gif'].some(ext => fileNameLower.endsWith(ext));
   if (hasSensitiveName) { showAttachmentWarning('️ ' + t('sensitiveFilename'), `The file "<strong>${fileName}</strong>" ${t('containsKeywords')}`, fileName, fileSize, fileType); }
@@ -2986,14 +2986,14 @@ function showAttachmentWarning(title, message, fileName, fileSize, fileType) {
 }
 
 async function init() {
-  console.log('🛡️ VIGIL: Complete Build starting...');
+  console.log('[VIGIL] Starting protection pipeline...');
   await historyStore.load(); await loadSettings(); await loadTheme(); await refreshVault(); plantAgentCanary();
   if (settings.webgpuAI) { try { chrome.runtime.sendMessage({ type: 'WEBGPU_WARMUP' }, () => {}); } catch (e) {} } // warm the bundled model at page open, not on first consult
   chrome.storage.sync.get(['manualLanguage'], (result) => {
     const manualLang = result.manualLanguage || 'auto';
     if (manualLang !== 'auto' && TRANSLATIONS[manualLang]) { currentLang = manualLang; }
     else { const browserLang = navigator.language.split('-')[0].toLowerCase(); if (TRANSLATIONS[browserLang]) currentLang = browserLang; if (navigator.language.toLowerCase().startsWith('zh')) currentLang = 'zh'; }
-    console.log('🛡️ VIGIL: Language =', currentLang, '| Theme =', currentTheme);
+    console.log('[VIGIL] Language =', currentLang, '| Theme =', currentTheme);
     if (popup) popup.render();
   });
   popup = new VIGILPopup();
@@ -3051,7 +3051,7 @@ async function init() {
   document.addEventListener('mousemove', (e) => popup.onDrag(e)); document.addEventListener('mouseup', () => popup.endDrag());
   setupKeyboardShortcuts(); setupSubmissionGuard(); setupAttachmentGuard(); setupPasteGuardian(); setupSpaNavigationListener();
   if (isWhitelisted) { popup.minimize(); return; }
-  const hasOllama = await checkOllama(); console.log('🛡️ VIGIL: Ollama =', hasOllama, '| model =', ollamaModel || 'none');
+  const hasOllama = await checkOllama(); console.log('[VIGIL] Ollama =', hasOllama, '| model =', ollamaModel || 'none');
   if (settings.monitorClipboard) monitorClipboard();
   showOnboarding();
 }

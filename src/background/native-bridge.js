@@ -104,9 +104,9 @@
         this.port.onDisconnect.addListener(() => {
           const err = chrome.runtime.lastError;
           if (err && this.sessionEstablished) {
-            console.warn('🛡️ VIGIL Native Daemon disconnected:', err.message);
+            console.warn('[VIGIL] Native Daemon disconnected:', err.message);
           } else if (err) {
-            console.debug('🛡️ VIGIL Native Companion standby (daemon not running):', err.message);
+            console.debug('[VIGIL] Native Companion standby (daemon not running):', err.message);
           }
           this.isConnected = false;
           this.port = null;
@@ -127,7 +127,7 @@
         this.notifyStateChange(true);
         return true;
       } catch (e) {
-        console.warn('🛡️ VIGIL: Native Messaging connection failed:', e.message);
+        console.warn('[VIGIL] Native Messaging connection failed:', e.message);
         this.isConnected = false;
         this.sessionToken = null;
         this.handshakePromise = null;
@@ -277,7 +277,7 @@
       if (!isAuthMethod && !skipSession && !this.sessionEstablished && !this.handshakePromise) {
         this.handshakePromise = this.performCryptoHandshake().catch((err) => {
           this.handshakePromise = null;
-          console.warn('🛡️ VIGIL: crypto handshake failed, retrying unkeyed:', err && err.message);
+          console.warn('[VIGIL] Crypto handshake failed, retrying unkeyed:', err && err.message);
           return this.performHandshake();
         });
       }
@@ -327,7 +327,7 @@
       if (!this.sessionEstablished && !this.handshakePromise) {
         this.handshakePromise = this.performCryptoHandshake().catch((err) => {
           this.handshakePromise = null;
-          console.warn('🛡️ VIGIL: crypto handshake failed, retrying unkeyed:', err && err.message);
+          console.warn('[VIGIL] Crypto handshake failed, retrying unkeyed:', err && err.message);
           return this.performHandshake();
         });
       }

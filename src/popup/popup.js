@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       chrome.runtime.sendMessage({ type: 'CHECK_OLLAMA' }, (res) => {
         if (res && res.available && $('apexBadge')) {
           $('apexBadge').hidden = false;
-          $('apexBadge').textContent = `🛡️ Apex Guardian Active · ${res.model || 'Local AI'}`;
+          $('apexBadge').textContent = `⚡ Apex Guardian Active · ${res.model || 'Local AI'}`;
         }
       });
     }
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const protectBtn = document.createElement('button');
             protectBtn.className = 'alert-action-btn protect';
-            protectBtn.textContent = '🛡️ Protect';
+            protectBtn.textContent = '🔒 Protect';
             protectBtn.title = 'Sanitize sensitive data in input';
             protectBtn.addEventListener('click', () => {
               chrome.tabs.sendMessage(tab.id, { type: 'PROTECT_PAGE_ALERT', id: a.id }, () => loadAlerts());
