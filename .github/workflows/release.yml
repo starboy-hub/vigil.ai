@@ -114,31 +114,31 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download Extension Packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vigil-extension-packages
           path: release-assets/
 
       - name: Download macOS ARM64 Companion
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vigil-companion-aarch64-apple-darwin
           path: release-assets/companion-macOS-arm64/
 
       - name: Download macOS x64 Companion
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vigil-companion-x86_64-apple-darwin
           path: release-assets/companion-macOS-x64/
 
       - name: Download Windows x64 Companion
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vigil-companion-x86_64-pc-windows-msvc
           path: release-assets/companion-windows-x64/
 
       - name: Download Linux x64 Companion
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vigil-companion-x86_64-unknown-linux-gnu
           path: release-assets/companion-linux-x64/
