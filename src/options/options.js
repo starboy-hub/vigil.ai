@@ -436,6 +436,35 @@ if (ollamaStatus || wizardOllamaStatus) {
 }
 
 // ==========================================
+// SMART PROMPT PARAPHRASER (LOCAL AI)
+// ==========================================
+const runParaphraseBtn = document.getElementById('runParaphraseBtn');
+if (runParaphraseBtn) {
+  runParaphraseBtn.addEventListener('click', () => {
+    const input = document.getElementById('paraphrasePromptInput');
+    const text = input ? input.value.trim() : '';
+    if (!text) return;
+    const resultArea = document.getElementById('paraphraseResultArea');
+    const outputText = document.getElementById('paraphraseOutputText');
+    const tierBadge = document.getElementById('paraphraseTierBadge');
+    runParaphraseBtn.disabled = true;
+    runParaphraseBtn.textContent = '⏳ Paraphrasing…';
+    chrome.runtime.sendMessage({ type: 'GENERATE_SAFE_PARAPHRASE', text }, (res) => {
+      runParaphraseBtn.disabled = false;
+      runParaphraseBtn.textContent = '✨ Paraphrase Prompt';
+      if (resultArea) resultArea.style.display = 'block';
+      if (res && res.text) {
+        if (outputText) outputText.textContent = res.text;
+        if (tierBadge) {
+          tierBadge.textContent = res.tier === 'ollama' ? '🟢 Local Ollama Neural Paraphrase' : '🛡️ On-Device Fallback Redaction';
+          tierBadge.style.background = res.tier === 'ollama' ? '#10b981' : '#3b82f6';
+        }
+      }
+    });
+  });
+}
+
+// ==========================================
 // VERSION (from the manifest — never stale)
 // ==========================================
 try {

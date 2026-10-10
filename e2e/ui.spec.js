@@ -270,6 +270,7 @@ test.describe('options controls', () => {
   test('sign & verify: sign produces a block, verify passes, tampering fails', async () => {
     await page.fill('#signInput', 'Transfer approved for project A');
     await page.click('#signBtn');
+    await expect(page.locator('#signOutput')).toHaveValue(/-----BEGIN VIGIL SIGNED MESSAGE-----/, { timeout: 10000 });
     const block = await page.inputValue('#signOutput');
     expect(block).toContain('-----BEGIN VIGIL SIGNED MESSAGE-----');
     // verify untampered
@@ -312,16 +313,21 @@ test.describe('engineering checks (service worker)', () => {
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20000 });
     sw = worker;
+    const p = await context.newPage();
+    await p.goto(`chrome-extension://${new URL(sw.url()).host}/popup.html`);
+    await p.waitForTimeout(500);
+    await p.close();
   });
 
   test.afterAll(async () => { await context.close(); });
 
   test('reality engine flags AI-marked bytes and clears clean ones', async () => {
     const r = await sw.evaluate(() => {
+      const reality = typeof VIGIL_REALITY !== 'undefined' ? VIGIL_REALITY : (self.VIGIL_REALITY || globalThis.VIGIL_REALITY);
       const enc = (s) => Array.from(s).map((c) => c.charCodeAt(0));
       const png = [0x89, 0x50, 0x4E, 0x47];
-      const ai = VIGIL_REALITY.analyzeImageBytes(new Uint8Array([...png, ...enc('c2pa trainedAlgorithmicMedia DALL-E')]));
-      const clean = VIGIL_REALITY.analyzeImageBytes(new Uint8Array([...png, ...enc('a normal photo without any metadata at all')]));
+      const ai = reality.analyzeImageBytes(new Uint8Array([...png, ...enc('c2pa trainedAlgorithmicMedia DALL-E')]));
+      const clean = reality.analyzeImageBytes(new Uint8Array([...png, ...enc('a normal photo without any metadata at all')]));
       return { ai: ai.verdict, clean: clean.verdict };
     });
     expect(r.ai).toBe('ai-generated');

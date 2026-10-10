@@ -232,6 +232,145 @@ test.describe('comprehensive options features & buttons', () => {
     await expect(page.locator('#loraStatusMsg')).not.toBeEmpty({ timeout: 10000 });
   });
 
+  test('options: Detection toggles (regex, sensitivity, language, custom patterns) persist in storage', async () => {
+    // 1. Toggle Regex
+    const initialRegex = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings?.regexEnabled ?? true))));
+    await page.click('#toggleRegex');
+    const toggledRegex = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings?.regexEnabled))));
+    expect(toggledRegex).toBe(!initialRegex);
+    await page.click('#toggleRegex'); // toggle back
+
+    // 2. Sensitivity Select
+    await page.selectOption('#selectSensitivity', 'high');
+    const sens = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings?.sensitivity))));
+    expect(sens).toBe('high');
+
+    // 3. Language Select
+    await page.selectOption('#selectLanguage', 'en');
+    const lang = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('manualLanguage', (r) => res(r.manualLanguage))));
+    expect(lang).toBe('en');
+
+    // 4. Custom Patterns
+    await page.fill('#customPatternsInput', 'EMPLOYEE_ID:/EMP-\\d{5}/g');
+    await page.click('#saveCustomPatternsBtn');
+    await page.waitForTimeout(300);
+    const patterns = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings?.customPatterns))));
+    expect(patterns).toContain('EMPLOYEE_ID');
+  });
+
+  test('options: Local AI Smart Prompt Paraphraser sanitizes sensitive prompt on-device', async () => {
+    const sensitivePrompt = 'Check why my AWS access key AKIAIOSFODNN7EXAMPLE and email john.doe@internal-bank.com fail authentication';
+    await page.fill('#paraphrasePromptInput', sensitivePrompt);
+    await page.click('#runParaphraseBtn');
+
+    await expect(page.locator('#paraphraseResultArea')).toBeVisible({ timeout: 20000 });
+    const output = await page.locator('#paraphraseOutputText').textContent();
+    expect(output).toBeTruthy();
+    expect(output.length).toBeGreaterThan(10);
+    // Sensitive AWS key must be sanitized in output
+    expect(output).not.toContain('AKIAIOSFODNN7EXAMPLE');
+    const badge = await page.locator('#paraphraseTierBadge').textContent();
+    expect(badge).toMatch(/(Ollama|Fallback|Paraphrase)/i);
+  });
+
+  test('options: Guardian toggles (family mode, unmask, fake data) persist in storage', async () => {
+    // 1. Family Guardian Mode
+    await page.click('#toggleFamilyMode');
+    let s = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings))));
+    expect(s.familyMode).toBe(true);
+    await page.click('#toggleFamilyMode');
+
+    // 2. Unmask in responses (vaultRestore)
+    const initialRestore = s.vaultRestore ?? true;
+    await page.click('#toggleVaultRestore');
+    s = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings))));
+    expect(s.vaultRestore).toBe(!initialRestore);
+    await page.click('#toggleVaultRestore');
+
+    // 3. Use fake data
+    const initialFake = s.useFakeData ?? true;
+    await page.click('#toggleFakeData');
+    s = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings))));
+    expect(s.useFakeData).toBe(!initialFake);
+    await page.click('#toggleFakeData');
+  });
+
+  test('options: Identity Vault adds credentials, displays in list, and handles key rotation', async () => {
+    // 1. Add credentials to vault
+    await page.fill('#vaultNameInput', 'Sarah Mitchell');
+    await page.fill('#vaultEmailInput', 'sarah@example.com');
+    await page.fill('#vaultPhoneInput', '555-0199');
+    await page.click('#saveVaultBtn');
+
+    await expect(page.locator('#vaultList .vault-item')).toHaveCount(3, { timeout: 10000 });
+    const vaultText = await page.locator('#vaultList').textContent();
+    expect(vaultText).toContain('name');
+    expect(vaultText).toContain('email');
+
+    // 2. Rotate master key with dialog accept
+    page.once('dialog', async (dialog) => {
+      await dialog.accept();
+    });
+    await page.click('#rotateVaultKeyBtn');
+    await expect(page.locator('#vaultStatusMessage')).toBeVisible({ timeout: 10000 });
+    const statusMsg = await page.locator('#vaultStatusMessage').textContent();
+    expect(statusMsg).toContain('rotated');
+
+    // 3. Export encrypted backup
+    page.once('dialog', async (dialog) => {
+      await dialog.accept('SecretBackupKey123!');
+    });
+    const [downloadBackup] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('#exportVaultBackupBtn')
+    ]);
+    expect(downloadBackup.suggestedFilename()).toMatch(/^vigil-vault-backup-.*\.json$/);
+  });
+
+  test('options: Trust Graph and Trusted Sites persist organizations and domains', async () => {
+    // 1. Trust Graph
+    await page.fill('#trustedEntitiesInput', 'Global Bank\nAcme Corp\njohn@family.com');
+    await page.click('#saveTrustedEntitiesBtn');
+    await expect(page.locator('#trustedList .vault-item')).toHaveCount(3, { timeout: 10000 });
+
+    // 2. Trusted Sites
+    await page.fill('#trustedSitesInput', 'example.com\ninternal-portal.test');
+    await page.click('#saveTrustedSitesBtn');
+    await page.waitForTimeout(300);
+    const sites = await page.evaluate(() => new Promise((res) => chrome.storage.sync.get('settings', (r) => res(r.settings?.trustedSites))));
+    expect(sites).toContain('example.com');
+    expect(sites).toContain('internal-portal.test');
+  });
+
+  test('options: Sign & Verify signs plaintext message and verifies cryptographic proof block', async () => {
+    const message = 'Provenance verification payload test message';
+    await page.fill('#signInput', message);
+    await page.click('#signBtn');
+
+    // Wait for signed output
+    await page.waitForFunction(() => {
+      const el = document.getElementById('signOutput');
+      return el && el.value.includes('BEGIN VIGIL SIGNED MESSAGE');
+    }, { timeout: 10000 });
+
+    const signedBlock = await page.inputValue('#signOutput');
+    expect(signedBlock).toContain('-----BEGIN VIGIL SIGNED MESSAGE-----');
+    expect(signedBlock).toContain('-----BEGIN VIGIL SIGNATURE-----');
+
+    // Verify the signed block
+    await page.fill('#verifyInput', signedBlock);
+    await page.click('#verifyBtn');
+    await expect(page.locator('#verifyResult')).toContainText('Verified', { timeout: 10000 });
+  });
+
+  test('options: Swarm Defense exports threat signature pack', async () => {
+    const [downloadPack] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('#exportPackBtn')
+    ]);
+    expect(downloadPack.suggestedFilename()).toMatch(/^vigil-threat-pack-.*\.json$/);
+  });
+
   test('realtime: Contextual Precision Engine (CPE) & Vault Key Rotation in browser runtime', async () => {
     // 1. Verify CPE in the live background service worker
     const [sw] = context.serviceWorkers();

@@ -1581,8 +1581,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
           } catch (_) {}
         }
-        // Tier 2: client-side pseudonymization fallback — ask content to redact
-        sendResponse({ ok: false, reason: 'ollama_unavailable', tier: 'fallback' });
+        // Tier 2: on-device pseudonymization fallback
+        let fallbackText = text;
+        try {
+          const alerts = [];
+          if (typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.scanForPII) {
+            alerts.push(...(VIGIL_ENGINE.scanForPII(text) || []));
+          }
+          if (typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets) {
+            const sec = VIGIL_SECRETS.scanSecrets(text);
+            if (sec && sec.redactions) alerts.push(...sec.redactions);
+          }
+          if (typeof VIGIL_FAKE !== 'undefined' && alerts.length > 0) {
+            fallbackText = VIGIL_FAKE.redactText(text, alerts, true).text;
+          }
+        } catch (_) {}
+        sendResponse({ ok: true, text: fallbackText, tier: 'fallback' });
       })();
       return true;
     }

@@ -30,11 +30,11 @@
 <body>
   <div class="container">
     <h1>VIGIL AI &bull; Online Empirical Evaluation & Optimization</h1>
-    <div class="subtitle">Generated: Sat, 10 Oct 2026 11:30:17 GMT &bull; Cyber Range Benchmark &bull; Zero Personal Data</div>
+    <div class="subtitle">Generated: Sat, 10 Oct 2026 14:38:59 GMT &bull; Cyber Range Benchmark &bull; Zero Personal Data</div>
 
     <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-value green">22/22</div>
+        <div class="kpi-value green">9/9</div>
         <div class="kpi-label">Tests Passed (100%)</div>
       </div>
       <div class="kpi-card">
@@ -42,11 +42,11 @@
         <div class="kpi-label">False Positive Rate (Target &lt; 0.05%)</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value blue">4 ms</div>
+        <div class="kpi-value blue">1398 ms</div>
         <div class="kpi-label">Average Latency</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value blue">15.06 ms</div>
+        <div class="kpi-value blue">1879 ms</div>
         <div class="kpi-label">P95 Latency</div>
       </div>
     </div>
@@ -79,9 +79,9 @@
     <div class="section">
       <h2>🔍 What Went Bad (Transform to the Best)</h2>
       
-        <div class="item-card ">
-          <div class="item-title">Zero Critical Deficiencies Detected</div>
-          <div class="item-detail">All live cyber range tests met or exceeded enterprise target KPIs. Ready for continuous micro-optimization.</div>
+        <div class="item-card bad">
+          <div class="item-title">Latency Tail Regression (P99 = 1879ms)</div>
+          <div class="item-detail">Tail latency exceeded 500ms on complex DOM branches. Recommend debouncing mutation observers.</div>
         </div>
       
     </div>
@@ -107,7 +107,7 @@
     </div>
 
     <div class="section">
-      <h2>📋 Detailed Telemetry Log (22 Executions)</h2>
+      <h2>📋 Detailed Telemetry Log (9 Executions)</h2>
       <table>
         <thead>
           <tr>
@@ -122,200 +122,83 @@
         <tbody>
           
             <tr>
-              <td>11:30:17.899</td>
-              <td><code>st1-direct-override</code></td>
-              <td>PROMPT_INJECTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>9.06 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.907</td>
-              <td><code>st1-zero-width-smuggling</code></td>
-              <td>PROMPT_INJECTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>2.95 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.907</td>
-              <td><code>st1-cyrillic-homoglyphs</code></td>
-              <td>PROMPT_INJECTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.43 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.908</td>
-              <td><code>st1-clean-control</code></td>
-              <td>PROMPT_INJECTION</td>
+              <td>14:38:31.200</td>
+              <td><code>webmail_list_suppression</code></td>
+              <td>webmail</td>
               <td>TRUE_NEGATIVE</td>
-              <td>0.27 ms</td>
+              <td>1773 ms</td>
               <td><span class="badge-pass">PASS</span></td>
             </tr>
           
             <tr>
-              <td>11:30:17.921</td>
-              <td><code>st1-semantic-drift-alarm</code></td>
-              <td>BEHAVIORAL_GROOMING</td>
-              <td>TRUE_POSITIVE</td>
-              <td>13.22 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.937</td>
-              <td><code>st2-phishing-reading-pane</code></td>
-              <td>WEBMAIL_PHISHING</td>
-              <td>TRUE_POSITIVE</td>
-              <td>15.06 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.942</td>
-              <td><code>st2-provider-warning-banner</code></td>
-              <td>WEBMAIL_PHISHING</td>
-              <td>TRUE_POSITIVE</td>
-              <td>4.31 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.943</td>
-              <td><code>st2-clean-uber-receipt</code></td>
-              <td>WEBMAIL_CONTROL</td>
+              <td>14:38:33.142</td>
+              <td><code>webmail_clean_reading_pane</code></td>
+              <td>webmail</td>
               <td>TRUE_NEGATIVE</td>
-              <td>0.59 ms</td>
+              <td>1879 ms</td>
               <td><span class="badge-pass">PASS</span></td>
             </tr>
           
             <tr>
-              <td>11:30:17.943</td>
-              <td><code>st2-clean-notion-otp</code></td>
-              <td>WEBMAIL_CONTROL</td>
+              <td>14:38:35.004</td>
+              <td><code>webmail_phishing_detection</code></td>
+              <td>webmail</td>
+              <td>TRUE_POSITIVE</td>
+              <td>1818 ms</td>
+              <td><span class="badge-pass">PASS</span></td>
+            </tr>
+          
+            <tr>
+              <td>14:38:36.359</td>
+              <td><code>submission_guard_send_click</code></td>
+              <td>submission_guard</td>
+              <td>TRUE_POSITIVE</td>
+              <td>1296 ms</td>
+              <td><span class="badge-pass">PASS</span></td>
+            </tr>
+          
+            <tr>
+              <td>14:38:37.641</td>
+              <td><code>submission_guard_enter_key</code></td>
+              <td>submission_guard</td>
+              <td>TRUE_POSITIVE</td>
+              <td>1231 ms</td>
+              <td><span class="badge-pass">PASS</span></td>
+            </tr>
+          
+            <tr>
+              <td>14:38:38.781</td>
+              <td><code>adversarial_normalizer_zero_width</code></td>
+              <td>adversarial_normalizer</td>
+              <td>TRUE_POSITIVE</td>
+              <td>1050 ms</td>
+              <td><span class="badge-pass">PASS</span></td>
+            </tr>
+          
+            <tr>
+              <td>14:38:40.609</td>
+              <td><code>vision_canvas_simd_fft</code></td>
+              <td>vision_firewall</td>
               <td>TRUE_NEGATIVE</td>
-              <td>0.74 ms</td>
+              <td>1772 ms</td>
               <td><span class="badge-pass">PASS</span></td>
             </tr>
           
             <tr>
-              <td>11:30:17.946</td>
-              <td><code>st3-checkout-form-card</code></td>
-              <td>CARD_GUARD</td>
-              <td>TRUE_POSITIVE</td>
-              <td>2.84 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.948</td>
-              <td><code>st3-hyphenated-card</code></td>
-              <td>CARD_GUARD</td>
-              <td>TRUE_POSITIVE</td>
-              <td>1.02 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.948</td>
-              <td><code>st3-order-id-invalidation</code></td>
-              <td>CARD_CONTROL</td>
+              <td>14:38:41.669</td>
+              <td><code>shopping_checkout_protection</code></td>
+              <td>shopping</td>
               <td>TRUE_NEGATIVE</td>
-              <td>0.04 ms</td>
+              <td>1011 ms</td>
               <td><span class="badge-pass">PASS</span></td>
             </tr>
           
             <tr>
-              <td>11:30:17.949</td>
-              <td><code>st4-aws-secret-key</code></td>
-              <td>SECRET_REDACTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.91 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.949</td>
-              <td><code>st4-stripe-key</code></td>
-              <td>SECRET_REDACTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.44 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.951</td>
-              <td><code>st4-openai-key</code></td>
-              <td>SECRET_REDACTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.23 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.951</td>
-              <td><code>st4-ssn-redaction</code></td>
-              <td>PII_REDACTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.32 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.964</td>
-              <td><code>st4-medical-temporal-isolation</code></td>
-              <td>PII_REDACTION</td>
-              <td>TRUE_POSITIVE</td>
-              <td>11.41 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.964</td>
-              <td><code>st5-clean-canvas-spectrum</code></td>
-              <td>VISION_SIMD</td>
+              <td>14:38:42.473</td>
+              <td><code>popup_ui_controls_presets</code></td>
+              <td>ui_controls</td>
               <td>TRUE_NEGATIVE</td>
-              <td>0.17 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.964</td>
-              <td><code>st5-stego-alpha-watermark</code></td>
-              <td>VISION_SIMD</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.2 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.965</td>
-              <td><code>st6-canary-bundle-generation</code></td>
-              <td>HONEYTOKEN</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.18 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.965</td>
-              <td><code>st6-assistant-canary-leak</code></td>
-              <td>HONEYTOKEN</td>
-              <td>TRUE_POSITIVE</td>
-              <td>0.02 ms</td>
-              <td><span class="badge-pass">PASS</span></td>
-            </tr>
-          
-            <tr>
-              <td>11:30:17.985</td>
-              <td><code>vault-crypto-oracle</code></td>
-              <td>VAULT_ORACLE</td>
-              <td>TRUE_POSITIVE</td>
-              <td>20.44 ms</td>
+              <td>755 ms</td>
               <td><span class="badge-pass">PASS</span></td>
             </tr>
           

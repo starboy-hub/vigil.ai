@@ -78,5 +78,7 @@
 
   const VIGIL_REALITY = { analyzeImageBytes, SIGNALS, DISCLAIMER };
   root.VIGIL_REALITY = VIGIL_REALITY;
+  if (typeof self !== 'undefined') self.VIGIL_REALITY = VIGIL_REALITY;
+  if (typeof globalThis !== 'undefined') globalThis.VIGIL_REALITY = VIGIL_REALITY;
   if (typeof module !== 'undefined' && module.exports) module.exports = VIGIL_REALITY;
 })(typeof self !== 'undefined' ? self : globalThis);
