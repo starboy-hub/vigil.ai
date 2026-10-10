@@ -334,4 +334,23 @@ describe('context-aware scoring (v9.6.0, verified audit)', () => {
     const [a] = engine.applyContextMultiplier([{ type: 'Email', severity: 'low' }], { closest: (sel) => sel === 'a[href^="mailto:"]' ? {} : null });
     expect(a.type).toBe('Email');
   });
+
+  describe('estimateDeanonymizationRisk (K-Anonymity Guard)', () => {
+    test('identifies high re-identification risk when 3+ quasi-identifiers combine', () => {
+      const text = 'I work at DeepTech in Zurich, graduated in 2018, and struggle with insomnia';
+      const alerts = [{ type: 'MEDICAL' }];
+      const res = engine.estimateDeanonymizationRisk(text, alerts);
+      expect(res.risk).toBe('high');
+      expect(res.count).toBeGreaterThanOrEqual(3);
+      expect(res.warning).toContain('High Re-Identification Risk');
+    });
+
+    test('reports low risk for ordinary benign text', () => {
+      const text = 'Let us review the presentation slides together';
+      const res = engine.estimateDeanonymizationRisk(text, []);
+      expect(res.risk).toBe('low');
+      expect(res.count).toBe(0);
+      expect(res.warning).toBeNull();
+    });
+  });
 });

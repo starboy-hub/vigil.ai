@@ -17,7 +17,7 @@ const FIREFOX_OUT = 'dist-firefox';
 function firefoxManifest(manifest) {
   const m = JSON.parse(JSON.stringify(manifest));
   m.background = {
-    scripts: ['vigil-shared.js', 'vigil-vault.js', 'reality-engine.js', 'signing-engine.js', 'threat-store.js', 'shopping-detector.js', 'semantic-drift.js', 'consensus-firewall.js', 'token-budget.js', 'file-integrity.js', 'compute-boundary.js', 'forensics-replay.js', 'redteam-agent.js', 'zk-compliance.js', 'prompt-git.js', 'local-lora.js', 'semantic-engine.js', 'native-bridge.js', 'background.js']
+    scripts: ['vigil-shared.js', 'vigil-vault.js', 'reality-engine.js', 'signing-engine.js', 'threat-store.js', 'shopping-detector.js', 'semantic-drift.js', 'consensus-firewall.js', 'token-budget.js', 'file-integrity.js', 'compute-boundary.js', 'forensics-replay.js', 'redteam-agent.js', 'zk-compliance.js', 'prompt-git.js', 'local-lora.js', 'semantic-engine.js', 'semantic-abstractor.js', 'native-bridge.js', 'background.js']
   };
   m.browser_specific_settings = { gecko: { id: 'vigil@starboy-hub.github.io', strict_min_version: '115.0' } };
   // No chrome.offscreen in Firefox: the in-browser AI model + its permission
@@ -179,6 +179,7 @@ function buildChromium(out = CHROME_OUT) {
     { src: 'src/background/redteam-agent.js', dest: 'redteam-agent.js' },
     { src: 'src/background/prompt-git.js', dest: 'prompt-git.js' },
     { src: 'src/background/local-lora.js', dest: 'local-lora.js' },
+    { src: 'src/background/adaptive-router.js', dest: 'adaptive-router.js' },
     { src: 'src/background/background.js', dest: 'background.js' },
     { src: 'src/background/offscreen-error.js', dest: 'offscreen-error.js' },
     { src: 'src/background/offscreen.html', dest: 'offscreen.html' },
@@ -198,6 +199,10 @@ function buildChromium(out = CHROME_OUT) {
     { src: 'src/content/modules/injection-engine.js', dest: 'injection-engine.js' },
     { src: 'src/content/modules/webmail-profile.js', dest: 'webmail-profile.js' },
     { src: 'src/content/modules/semantic-engine.js', dest: 'semantic-engine.js' },
+    { src: 'src/content/modules/semantic-abstractor.js', dest: 'semantic-abstractor.js' },
+    { src: 'src/content/modules/rehydration-engine.js', dest: 'rehydration-engine.js' },
+    { src: 'src/content/modules/k-anonymity-auditor.js', dest: 'k-anonymity-auditor.js' },
+    { src: 'src/content/modules/honeytoken-canary-generator.js', dest: 'honeytoken-canary-generator.js' },
     { src: 'src/content/modules/leakage-detector.js', dest: 'leakage-detector.js' },
     { src: 'src/content/content.js', dest: 'content.js' },
     { src: 'src/popup/popup.html', dest: 'popup.html' },
@@ -248,6 +253,7 @@ function buildFirefox(out = FIREFOX_OUT) {
     { src: 'src/background/redteam-agent.js', dest: 'redteam-agent.js' },
     { src: 'src/background/prompt-git.js', dest: 'prompt-git.js' },
     { src: 'src/background/local-lora.js', dest: 'local-lora.js' },
+    { src: 'src/background/adaptive-router.js', dest: 'adaptive-router.js' },
     { src: 'src/background/background.js', dest: 'background.js' },
     { src: 'src/content/modules/adversarial-normalizer.js', dest: 'adversarial-normalizer.js' },
     { src: 'src/content/modules/fake-data.js', dest: 'fake-data.js' },
@@ -264,6 +270,10 @@ function buildFirefox(out = FIREFOX_OUT) {
     { src: 'src/content/modules/injection-engine.js', dest: 'injection-engine.js' },
     { src: 'src/content/modules/webmail-profile.js', dest: 'webmail-profile.js' },
     { src: 'src/content/modules/semantic-engine.js', dest: 'semantic-engine.js' },
+    { src: 'src/content/modules/semantic-abstractor.js', dest: 'semantic-abstractor.js' },
+    { src: 'src/content/modules/rehydration-engine.js', dest: 'rehydration-engine.js' },
+    { src: 'src/content/modules/k-anonymity-auditor.js', dest: 'k-anonymity-auditor.js' },
+    { src: 'src/content/modules/honeytoken-canary-generator.js', dest: 'honeytoken-canary-generator.js' },
     { src: 'src/content/modules/leakage-detector.js', dest: 'leakage-detector.js' },
     { src: 'src/content/content.js', dest: 'content.js' },
     { src: 'src/popup/popup.html', dest: 'popup.html' },

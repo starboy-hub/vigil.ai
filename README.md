@@ -8,7 +8,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-6366f1?style=flat-square)](https://github.com/starboy-hub/vigil.ai)
 [![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-634%20passing-10b981?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/tests-674%20unit%20%7C%20105%20e2e%20passing-10b981?style=flat-square)](#testing)
 [![Adversarial Catch Rate](https://img.shields.io/badge/adversarial%20catch%20rate-100%25-10b981?style=flat-square)](#security-score)
 [![False Positives](https://img.shields.io/badge/false%20positive%20rate-0.00%25-10b981?style=flat-square)](#security-score)
 [![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
@@ -171,6 +171,23 @@ Opt-in, privacy-preserving threat signature sharing across an organization. SHA-
 ## Local AI Engine
 
 Vigil's local AI layer continuously improves on your device — no cloud training, no data sharing.
+
+### ⚡ Local AI Powerhouse (2026 Sovereign Architecture)
+
+When Local AI is active (via local Ollama, on-device SLMs, or in-browser WebGPU), Vigil transforms from an endpoint filter into an active **Sovereign Local AI Defense Brain** capable of countering adversarial manipulation and surveillance from cloud AI platforms:
+
+1. **Dynamic Semantic Scenario Abstraction & Homomorphic Prompt Translator** (`semantic-abstractor.js`):
+   - Rather than destructive `[REDACTED]` tokens that break LLM comprehension, isomorphic surrogate mapping translates clinical, financial, legal, and infrastructural prompts into structurally equivalent hypothetical scenarios with type-consistent surrogates (`Khan` + `fever` → `Alex Mercer` + `Chronic Inflammatory Condition`). Cloud models retain 100% reasoning utility while zero real proprietary context is exposed.
+2. **Autonomous Dynamic Bidirectional Rehydration Engine** (`rehydration-engine.js`):
+   - Maintains session-scoped surrogate-to-real entity mappings in a secure ephemeral substitution tree. As cloud LLM responses stream back into the DOM (ChatGPT, Claude, Gemini, etc.), the engine mutates DOM text nodes in real time to restore authentic private entities to the user's view. The cloud provider only ever sees synthetic surrogates; the user sees their authentic data.
+3. **K-Anonymity & Quasi-Identifier Entropy Auditing Engine** (`k-anonymity-auditor.js`):
+   - Implements Sweeney & Rocher demographic uniqueness modeling directly on-device. Flags dangerous combinations of individually benign quasi-identifiers (graduation year + company size + specialized niche + city) that shrink the k-anonymity equivalence class to $k \approx 1$ (uniquely re-identifiable). Generates automatic generalization recommendations before prompt transmission.
+4. **Multi-Turn Cognitive Grooming & Semantic Drift Velocity Sentinel** (`semantic-drift.js`):
+   - Vectorizes multi-turn conversations into 128-d feature space and calculates velocity trajectory vectors across turns. Detects gradual behavioral grooming where an adversary or compromised assistant progressively lures the user from benign architectural topics into unlogged credential dumping.
+5. **Active Counter-Surveillance & Dynamic Honeytoken Canary Generator** (`honeytoken-canary-generator.js`):
+   - Dynamically synthesizes high-entropy, zero-value decoy canaries (cloud credentials, API keys, database connection strings) tailored to active workflows. Plants decoys and arms deception tripwires against rogue browser extensions, web scrapers, and malicious agent tool-use.
+6. **Adaptive Test-Time Compute Router** (`adaptive-router.js`):
+   - Intelligently routes inference between ultra-fast System 1 SLMs (1B-3B, e.g. `llama3.2:1b`, `qwen2.5:1.5b` for sub-800ms prompt paraphrasing and anonymization) and deep System 2 reasoning models (7B-8B+, e.g. `deepseek-r1:8b`, `qwen2.5:7b` with chain-of-thought reflection for adversarial prompt red-teaming).
 
 ### 🧠 Three-Tier Detection Stack
 
@@ -403,10 +420,11 @@ npm run benchmark:adversarial
 ## Testing
 
 ```bash
-npm test                    # 634 Jest unit tests
-npm run test:eval           # 22 online cyber range evaluations
-npx playwright test         # 35 end-to-end browser tests
-npm run test:all-online     # Full online + canary suite
+npm test                    # 674 Jest unit tests (51 test suites, 100% passing)
+npx playwright test         # 105 end-to-end browser tests across real websites & cyber range
+npm run test:all-online     # Live online industry canaries & real website testbed
+npm run lint                # Zero ESLint warnings / errors
+npm run build:all           # Build Chrome (dist) and Firefox (dist-firefox) bundles
 npm run benchmark:adversarial  # Adversarial mutation benchmark
 ```
 

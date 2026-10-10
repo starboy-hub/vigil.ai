@@ -420,9 +420,30 @@ async function scanVaultText(text, alerts, redactions, seen) {
   hits.forEach(r => pushVaultFinding(r, alerts, redactions, seen));
 }
 
+const sessionAdHocPseudos = new Map();
+
+function saveLearnedExemplar(original, safe, kind) {
+  if (!original || !safe || original === safe) return;
+  try {
+    chrome.runtime.sendMessage({ type: 'LEARN_EXEMPLAR', original, safe, kind: kind || 'CUSTOM' }, () => {});
+  } catch (_) {}
+}
+
 function restoreVaultInResponses() {
-  if (isPaused || !settings.vaultRestore || !Object.keys(vaultPseudos).length) return;
-  const activePseudos = Object.values(vaultPseudos).filter(Boolean);
+  if (isPaused || !settings.vaultRestore || (!Object.keys(vaultPseudos).length && !sessionAdHocPseudos.size)) return;
+  if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION) {
+    sessionAdHocPseudos.forEach((orig, fake) => {
+      VIGIL_REHYDRATION.recordSubstitution(fake, orig);
+    });
+    if (vaultCorpus && vaultCorpus.length) {
+      vaultCorpus.forEach(entry => {
+        const fake = vaultPseudos[entry.id];
+        if (fake) VIGIL_REHYDRATION.recordSubstitution(fake, entry.value);
+      });
+    }
+    VIGIL_REHYDRATION.rehydrateSubtree(document.body);
+  }
+  const activePseudos = [...Object.values(vaultPseudos).filter(Boolean), ...Array.from(sessionAdHocPseudos.keys())];
   if (!activePseudos.length) return;
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
@@ -444,14 +465,21 @@ function restoreVaultInResponses() {
       /\{\{(?:PTR:[A-Z0-9]+_|VAULT:)[A-Za-z0-9+/]{8}\}\}/.test(v);
     if (!hasAnyPseudo) return;
 
+    let updated = v;
+    for (const [fake, original] of sessionAdHocPseudos.entries()) {
+      if (updated.includes(fake)) updated = updated.split(fake).join(original);
+    }
+
     if (vaultCorpus && vaultCorpus.length) {
-      let updated = v;
       for (const entry of vaultCorpus) {
         const fake = vaultPseudos[entry.id];
         if (fake && updated.includes(fake)) updated = updated.split(fake).join(entry.value);
       }
       if (updated !== node.nodeValue) node.nodeValue = updated;
     } else {
+      if (updated !== node.nodeValue) {
+        node.nodeValue = updated;
+      }
       // Zero-Trust Oracle restoration via service worker
       try {
         chrome.runtime.sendMessage({ type: 'VAULT_RESTORE_TEXT', text: v, site: location.hostname }, (res) => {
@@ -650,11 +678,24 @@ function plantAgentCanary() {
   if (canaryPlanted || isWhitelisted) return;
   if (settings && settings.honeytokens === false) return;
   canaryValues = VIGIL.canaryBundle(location.hostname, sessionGuard ? sessionGuard.id : String(Date.now()));
+  
+  let contextualCanaries = [];
+  if (typeof VIGIL_CANARY_GENERATOR !== 'undefined') {
+    const bundle = VIGIL_CANARY_GENERATOR.generateContextualBundle(location.hostname, sessionGuard ? sessionGuard.id : String(Date.now()));
+    contextualCanaries = bundle.canaries || [];
+  }
+
   const decoy = document.createElement('div');
   decoy.setAttribute('data-vigil', 'canary-decoy');
   decoy.setAttribute('aria-hidden', 'true');
   decoy.style.cssText = 'position:absolute!important;left:-9999px!important;top:-9999px!important;opacity:0!important;height:1px!important;width:1px!important;overflow:hidden!important;';
-  decoy.textContent = 'Internal session credentials (do not share): login ' + canaryValues.email + ' / access key ' + canaryValues.code + '. ' + canaryValues.note;
+  
+  let extraText = '';
+  contextualCanaries.forEach(c => {
+    extraText += ` / ${c.type}: ${c.value}`;
+  });
+
+  decoy.textContent = 'Internal session credentials (do not share): login ' + canaryValues.email + ' / access key ' + canaryValues.code + extraText + '. ' + canaryValues.note;
   decoy.dataset.canaryCode = canaryValues.code;
   decoy.dataset.canaryEmail = canaryValues.email;
   document.body.appendChild(decoy);
@@ -668,6 +709,7 @@ function honeytokenPass() {
   if (honeytokenAlerted) return;
   // Scan visible text nodes for canary values that escaped the decoy
   const hitNode = (() => {
+    const activeList = typeof VIGIL_CANARY_GENERATOR !== 'undefined' ? VIGIL_CANARY_GENERATOR.listCanaries().map(c => c.value) : [];
     for (const root of scanRoots()) {
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
         acceptNode(node) {
@@ -675,8 +717,10 @@ function honeytokenPass() {
           if (!p) return NodeFilter.FILTER_REJECT;
           if (p.closest('[data-vigil]')) return NodeFilter.FILTER_REJECT;
           const v = node.nodeValue || '';
-          const isGenericCanary = /\b(?:VIGIL-[A-Z0-9]+-CANARY(?:-[A-Z0-9_-]+)?|VIGIL-CANARY-[A-Z0-9_-]+|canary\.[a-z0-9]+@vigil-honeypot\.invalid)\b/i.test(v);
-          const hit = (canaryValues && Object.values(canaryValues).some(cv => typeof cv === 'string' && cv.length > 8 && v.includes(cv))) || isGenericCanary;
+          const isGenericCanary = /\b(?:VIGIL-[A-Z0-9]+-CANARY(?:-[A-Z0-9_-]+)?|VIGIL-CANARY-[A-Z0-9_-]+|canary\.[a-z0-9]+@vigil-honeypot\.invalid|ak_live_vigil_sec_[a-f0-9]+|ghp_canary_[a-f0-9]+)\b/i.test(v);
+          const hit = (canaryValues && Object.values(canaryValues).some(cv => typeof cv === 'string' && cv.length > 8 && v.includes(cv))) ||
+            activeList.some(cv => v.includes(cv)) ||
+            isGenericCanary;
           return hit ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
         }
       });
@@ -1377,6 +1421,26 @@ async function scanText(text, element) {
     // Vault values are user-taught — always detected, at any sensitivity
     await scanVaultText(ct, alerts, redactions, seen);
 
+    // Tier 2: K-Anonymity & Quasi-Identifier Entropy Evaluation
+    if (typeof VIGIL_K_ANONYMITY !== 'undefined' && VIGIL_K_ANONYMITY.auditPrompt) {
+      const ka = VIGIL_K_ANONYMITY.auditPrompt(ct);
+      if (ka && ka.isHighRisk) {
+        alerts.push({
+          type: 'K_ANONYMITY_RISK',
+          source: 'k-anonymity',
+          severity: 'high',
+          details: `Re-identification risk ${Math.round(ka.riskScore * 100)}% (Anonymity pool K~${ka.estimatedK})`,
+          recommendations: ka.recommendations
+        });
+        ka.quasiIdentifiers.forEach(q => {
+          if (q.raw && !seen.has(q.raw) && !isTextIgnored(q.raw)) {
+            redactions.push({ text: q.raw, type: 'QUASI_IDENTIFIER', recommendation: q.recommendation });
+            seen.add(q.raw);
+          }
+        });
+      }
+    }
+
     // Context-aware scoring (verified external audit): a bare 10-digit group
     // is usually an order ID, not a phone; mailto/contact/form placements are
     // expected. Detection is never dropped — only severity is re-ranked.
@@ -1519,7 +1583,17 @@ function performRedaction(element, redactions) {
       }
       element.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    reps.forEach(r => historyStore.add({ ...r, site: window.location.hostname }));
+    reps.forEach(r => {
+      historyStore.add({ ...r, site: window.location.hostname });
+      if (r.fake && r.original && r.fake !== r.original) {
+        sessionAdHocPseudos.set(r.fake, r.original);
+        if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION) {
+          VIGIL_REHYDRATION.recordSubstitution(r.fake, r.original);
+        }
+        saveLearnedExemplar(r.original, r.fake, r.type);
+      }
+    });
+    recordLoraCorrection(reps.map(r => r.original || r.text), 1);
     return { originalText: orig, replacements: reps };
   }
   return { originalText: null, replacements: [] };
@@ -2216,6 +2290,10 @@ function consensusHoldSubmission(promptText, element, pending) {
       const sec = VIGIL_SECRETS.scanSecrets(promptText);
       if (sec && sec.alerts && sec.alerts.length > 0) threatFound = true;
     }
+    if (!threatFound && typeof VIGIL_K_ANONYMITY !== 'undefined' && VIGIL_K_ANONYMITY.auditPrompt) {
+      const ka = VIGIL_K_ANONYMITY.auditPrompt(promptText);
+      if (ka && ka.isHighRisk) threatFound = true;
+    }
     if (threatFound) {
       lastScanThreatSignals.set(textHash, Date.now());
     } else {
@@ -2721,14 +2799,19 @@ function showDriftAlert(driftResult) {
   modal.setAttribute('data-vigil', 'drift-modal');
   modal.style.cssText = 'position:fixed!important;bottom:24px!important;left:50%!important;transform:translateX(-50%)!important;z-index:2147483647!important;max-width:540px!important;width:calc(100vw - 32px)!important;background:rgba(24,24,27,0.96)!important;color:#f4f4f5!important;border:1px solid rgba(245,158,11,0.3)!important;border-radius:14px!important;box-shadow:0 16px 48px rgba(0,0,0,0.5)!important;padding:16px 20px!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important;animation:vigil-fadeIn 0.2s ease-out!important;box-sizing:border-box!important;';
   const clusterLabel = (driftResult.topThreatCluster || 'adversarial').replace(/_/g, ' ').toLowerCase();
+  const isGrooming = !!driftResult.cognitiveGroomingDetected;
+  const title = isGrooming ? '🧠 Cognitive Grooming Sentinel: Rapid Drift Detected' : '🌊 Gradual Topic Shift Detected';
+  const icon = isGrooming ? '⚠️' : '🌊';
+  const desc = isGrooming
+    ? `The conversation trajectory is accelerating toward restricted topics (${clusterLabel}) over ${driftResult.turnCount} turns (Drift Velocity: ${driftResult.driftVelocity || 'elevated'}). This matches progressive cognitive grooming attack vectors.`
+    : `The conversation trajectory is gradually shifting toward sensitive topics (${clusterLabel}) over ${driftResult.turnCount} turns. Proceed with caution when sharing credentials.`;
+
   modal.innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:12px;">
-      <div style="width:34px;height:34px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🌊</div>
+      <div style="width:34px;height:34px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${icon}</div>
       <div style="flex:1;">
-        <div style="font-weight:700;font-size:13.5px;color:#fbbf24;letter-spacing:-0.2px;">Gradual Topic Shift Detected</div>
-        <div style="font-size:12px;line-height:1.45;color:#d1d5db;margin-top:3px;">
-          The conversation trajectory is gradually shifting toward sensitive topics (${clusterLabel}) over ${driftResult.turnCount} turns. Proceed with caution when sharing credentials.
-        </div>
+        <div style="font-weight:700;font-size:13.5px;color:#fbbf24;letter-spacing:-0.2px;">${title}</div>
+        <div style="font-size:12px;line-height:1.45;color:#d1d5db;margin-top:3px;">${desc}</div>
         <div style="margin-top:10px;display:flex;justify-content:flex-end;">
           <button id="vigil-drift-dismiss" style="padding:6px 16px;background:#6366f1;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">Acknowledge</button>
         </div>

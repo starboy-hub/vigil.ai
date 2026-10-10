@@ -26,6 +26,11 @@ importScripts('zk-compliance.js');
 importScripts('prompt-git.js');
 importScripts('local-lora.js');
 importScripts('enterprise-policy.js');
+importScripts('semantic-abstractor.js');
+importScripts('rehydration-engine.js');
+importScripts('k-anonymity-auditor.js');
+importScripts('honeytoken-canary-generator.js');
+importScripts('adaptive-router.js');
 importScripts('native-bridge.js');
 
 
@@ -310,6 +315,10 @@ function validateMessage(request) {
     case 'LORA_RECORD_PREFERENCE':
       return typeof request.chosen === 'number' && typeof request.rejected === 'number' &&
         ((Array.isArray(request.embedding) && request.embedding.length >= 1) || isStr(request.text, 2000));
+    case 'SET_OLLAMA_MODEL':
+      return isStr(request.model, 100);
+    case 'LEARN_EXEMPLAR':
+      return isStr(request.original, 200) && isStr(request.safe, 200);
     case 'GENERATE_SAFE_PARAPHRASE':
       return isStr(request.text, 20000);
     case 'FORENSICS_REPLAY_PROMPT': case 'REDTEAM_PENTEST_PROMPT': case 'PROMPT_GIT_COMMIT':
@@ -430,14 +439,21 @@ let ollamaCheckPending = false;
 // Last known Ollama availability, updated by CHECK_OLLAMA so CLASSIFY_TEXT
 // can trust it instead of referencing an undefined variable
 let ollamaAvailable = false;
-// Auto-detected model name — the user may have any model pulled, so we
-// never hardcode one (a hardcoded name silently kills the AI layer)
+// Auto-detected or user-selected model name
 let ollamaModel = null;
+let ollamaInstalledModels = [];
 
 const MODEL_PREFERENCES = ['deepseek-r1', 'qwen2.5', 'qwen2.5-coder', 'llama3.3', 'llama3.2', 'llama3.1', 'llama3', 'llama2', 'mistral', 'gemma', 'qwen', 'phi'];
 
-function pickModel(models) {
+function pickModel(models, preferredModel) {
   const names = (models || []).map(m => m.name || m.model).filter(Boolean);
+  ollamaInstalledModels = names;
+  if (preferredModel && names.includes(preferredModel)) return preferredModel;
+
+  // Prefer interactive low-latency models (1B, 1.5B, 2B, 3B, mini) for sub-second in-browser defense
+  const fastHit = names.find(n => /:(?:1b|1\.5b|2b|3b|mini)/i.test(n));
+  if (fastHit) return fastHit;
+
   for (const pref of MODEL_PREFERENCES) {
     const hit = names.find(n => n === pref || n.startsWith(pref + ':'));
     if (hit) return hit;
@@ -448,12 +464,14 @@ function pickModel(models) {
 async function detectOllamaModel() {
   try {
     const resp = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
-    if (!resp.ok) { ollamaModel = null; return null; }
+    if (!resp.ok) { ollamaModel = null; ollamaInstalledModels = []; return null; }
     const data = await resp.json();
-    ollamaModel = pickModel(data.models);
+    const stored = await new Promise(r => chrome.storage.sync.get(['settings'], s => r(s?.settings?.preferredOllamaModel || null)));
+    ollamaModel = pickModel(data.models, stored);
     return ollamaModel;
   } catch (e) {
     ollamaModel = null;
+    ollamaInstalledModels = [];
     return null;
   }
 }
@@ -536,18 +554,75 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           ollamaCheckPending = false;
           ollamaAvailable = r.ok;
           if (r.ok) await detectOllamaModel(); else ollamaModel = null;
-          sendResponse({ available: r.ok, model: ollamaModel });
+          sendResponse({ available: r.ok, model: ollamaModel, models: ollamaInstalledModels });
         })
         .catch(() => {
           clearTimeout(timeoutId);
           ollamaCheckPending = false;
           ollamaAvailable = false;
           ollamaModel = null;
-          sendResponse({ available: false, reason: 'unreachable' });
+          sendResponse({ available: false, reason: 'unreachable', models: [] });
         });
       return true;
     }
+
+    if (request.type === 'SET_OLLAMA_MODEL') {
+      if (typeof request.model === 'string' && request.model.trim()) {
+        ollamaModel = request.model.trim();
+        chrome.storage.sync.get(['settings'], (s) => {
+          const updated = { ...(s.settings || DEFAULT_SETTINGS), preferredOllamaModel: ollamaModel };
+          chrome.storage.sync.set({ settings: updated }, () => {
+            sendResponse({ ok: true, model: ollamaModel });
+          });
+        });
+        return true;
+      }
+      sendResponse({ ok: false, error: 'invalid_model' });
+      return false;
+    }
+
+    if (request.type === 'LEARN_EXEMPLAR') {
+      chrome.storage.local.get(['vigil_learned_exemplars'], (res) => {
+        const list = res.vigil_learned_exemplars || [];
+        const exists = list.some(x => x.original && x.original.toLowerCase() === request.original.toLowerCase());
+        if (!exists) {
+          list.push({ original: request.original, safe: request.safe, kind: request.kind || 'CUSTOM', time: Date.now() });
+          if (list.length > 50) list.shift();
+          chrome.storage.local.set({ vigil_learned_exemplars: list });
+        }
+      });
+      sendResponse({ ok: true });
+      return false;
+    }
     
+    if (request.type === 'AUDIT_QUASI_IDENTIFIERS') {
+      const text = request.text || '';
+      let audit = { isHighRisk: false, cumulativeEntropy: 0, estimatedK: 1000000, riskScore: 0, quasiIdentifiers: [] };
+      if (typeof VIGIL_K_ANONYMITY !== 'undefined' && VIGIL_K_ANONYMITY.auditPrompt) {
+        audit = VIGIL_K_ANONYMITY.auditPrompt(text);
+      }
+      sendResponse({ ok: true, audit });
+      return false;
+    }
+
+    if (request.type === 'GENERATE_WORKFLOW_CANARIES') {
+      let bundle = null;
+      if (typeof VIGIL_CANARY_GENERATOR !== 'undefined') {
+        bundle = VIGIL_CANARY_GENERATOR.generateContextualBundle(request.domain || 'general', request.seed || '');
+      }
+      sendResponse({ ok: true, bundle });
+      return false;
+    }
+
+    if (request.type === 'INSPECT_CANARY_LEAK') {
+      let result = { leakDetected: false, triggeredCanaries: [] };
+      if (typeof VIGIL_CANARY_GENERATOR !== 'undefined') {
+        result = VIGIL_CANARY_GENERATOR.inspectPayloadForCanaries(request.payload || '');
+      }
+      sendResponse({ ok: true, result });
+      return false;
+    }
+
     if (request.type === 'OPEN_OPTIONS') {
       chrome.runtime.openOptionsPage();
       sendResponse({ success: true });
@@ -1561,32 +1636,79 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'GENERATE_SAFE_PARAPHRASE') {
       (async () => {
         const text = request.text || '';
-        // Tier 1: local Ollama
-        if (ollamaAvailable && ollamaModel) {
+        // Tier 1: local Ollama with Adaptive Router
+        if (ollamaAvailable) {
           try {
-            const resp = await fetch('http://localhost:11434/api/generate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: ollamaModel,
-                prompt: `Rewrite the following text so it conveys the same technical intent without including any personally identifiable information, credentials, API keys, proprietary code, or private data. Replace every sensitive token with a clear generic placeholder (e.g. <API_KEY>, <COMPANY_NAME>, <FILEPATH>). Output only the rewritten text, no commentary.\n\nOriginal:\n${text}\n\nRewritten:`,
-                stream: false
-              }),
-              signal: AbortSignal.timeout(12000)
-            });
-            if (resp.ok) {
-              const data = await resp.json();
-              const paraphrased = (data.response || '').trim();
-              if (paraphrased) { sendResponse({ ok: true, text: paraphrased, tier: 'ollama' }); return; }
+            const exemplars = await new Promise(r => chrome.storage.local.get(['vigil_learned_exemplars'], res => r(res?.vigil_learned_exemplars || [])));
+            let exemplarPrompt = '';
+            if (exemplars.length > 0) {
+              exemplarPrompt = '\nLearned user domain mappings:\n' + exemplars.slice(-3).map(e => `- "${e.original}" -> "${e.safe}"`).join('\n') + '\n';
+            }
+            const prompt = `Rewrite the following text so it conveys the same technical intent without including any personally identifiable information, credentials, API keys, proprietary code, or private data. Replace every sensitive token with a clear generic placeholder (e.g. <API_KEY>, <COMPANY_NAME>, <FILEPATH>, <NAME>, <MEDICAL_CONDITION>). Output only the rewritten text, no commentary.${exemplarPrompt}\n\nOriginal:\n${text}\n\nRewritten:`;
+
+            const available = (ollamaInstalledModels && ollamaInstalledModels.length) ? ollamaInstalledModels : (ollamaModel ? [ollamaModel] : []);
+            let route = null;
+            if (typeof VIGIL_ADAPTIVE_ROUTER !== 'undefined') {
+              route = VIGIL_ADAPTIVE_ROUTER.routeTask('FAST_PARAPHRASE', text, available);
+            }
+            if (!route || !route.selectedModel) {
+              route = {
+                taskType: 'FAST_PARAPHRASE',
+                selectedModel: ollamaModel,
+                tier: 'standard',
+                options: { temperature: 0.1, num_predict: 150 },
+                timeoutMs: 35000
+              };
+            }
+
+            if (typeof VIGIL_ADAPTIVE_ROUTER !== 'undefined') {
+              const result = await VIGIL_ADAPTIVE_ROUTER.executeRoutedInference(route, prompt, fetch);
+              if (result.ok && result.text) {
+                sendResponse({ ok: true, text: result.text, tier: 'ollama', model: result.model, routedTier: result.tier });
+                return;
+              }
+            } else {
+              const resp = await fetch('http://localhost:11434/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: route.selectedModel || ollamaModel,
+                  prompt,
+                  options: route.options,
+                  stream: false
+                }),
+                signal: AbortSignal.timeout(route.timeoutMs || 35000)
+              });
+              if (resp.ok) {
+                const data = await resp.json();
+                let paraphrased = (data.response || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                if (paraphrased) { sendResponse({ ok: true, text: paraphrased, tier: 'ollama' }); return; }
+              }
             }
           } catch (_) {}
         }
-        // Tier 2: on-device pseudonymization fallback
+        // Tier 2: on-device semantic scenario abstraction fallback
+        if (typeof VIGIL_ABSTRACTOR !== 'undefined' && VIGIL_ABSTRACTOR.abstractPrompt) {
+          try {
+            const abs = VIGIL_ABSTRACTOR.abstractPrompt(text);
+            if (abs && abs.abstractedText) {
+              sendResponse({ ok: true, text: abs.abstractedText, tier: 'abstractor', domain: abs.domain });
+              return;
+            }
+          } catch (_) {}
+        }
         let fallbackText = text;
         try {
           const alerts = [];
-          if (typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.scanForPII) {
-            alerts.push(...(VIGIL_ENGINE.scanForPII(text) || []));
+          if (typeof VIGIL_ENGINE !== 'undefined') {
+            const rx = VIGIL_ENGINE.scanWithRegex(text, ['EMAIL', 'PHONE', 'SSN', 'CARD', 'CRYPTO', 'IP']);
+            if (rx && rx.redactions) alerts.push(...rx.redactions);
+            const ctx = VIGIL_ENGINE.scanWithContext(text);
+            if (ctx && ctx.redactions) alerts.push(...ctx.redactions);
+            const names = VIGIL_ENGINE.findNamesHeuristic(text);
+            if (names && names.length) {
+              names.forEach(n => alerts.push({ text: n, type: 'NAME' }));
+            }
           }
           if (typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets) {
             const sec = VIGIL_SECRETS.scanSecrets(text);

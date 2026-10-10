@@ -38,6 +38,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('clipboardToggle').checked = settings.monitorClipboard !== false;
     $('sensitivity').value = settings.sensitivity || 'medium';
     $('familyBadge').hidden = !settings.familyMode;
+    if ($('apexBadge')) {
+      chrome.runtime.sendMessage({ type: 'CHECK_OLLAMA' }, (res) => {
+        if (res && res.available && $('apexBadge')) {
+          $('apexBadge').hidden = false;
+          $('apexBadge').textContent = `🛡️ Apex Guardian Active · ${res.model || 'Local AI'}`;
+        }
+      });
+    }
   } catch (e) {
     console.error('VIGIL popup: error loading settings:', e);
   }

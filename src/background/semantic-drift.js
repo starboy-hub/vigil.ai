@@ -333,6 +333,18 @@
       const currentTurnThreatProx = topCluster ? cosineSimilarity(vec, THREAT_ANCHORS[topCluster]) : 0;
       const netDriftTowardThreat = maxProximity - baseThreatProx;
 
+      const prevTurn = existing.turns.length ? existing.turns[existing.turns.length - 1] : null;
+      const prevPrevTurn = existing.turns.length > 1 ? existing.turns[existing.turns.length - 2] : null;
+      const prevDrift = prevTurn ? prevTurn.drift : 0;
+      const prevVelocity = (prevTurn && prevPrevTurn) ? (prevTurn.drift - prevPrevTurn.drift) : 0;
+      const driftVelocity = +(baselineDrift - prevDrift).toFixed(4);
+      const driftAcceleration = +(driftVelocity - prevVelocity).toFixed(4);
+
+      let groomingScore = 0;
+      if (turnNum >= 3 && netDriftTowardThreat > 0) {
+        groomingScore = Math.min(1.0, +(netDriftTowardThreat * 2.5 + Math.max(0, driftVelocity) * 2.0).toFixed(2));
+      }
+
       // Detection Rule (Zero False Positives on Benign Turns):
       // 1. Must have at least minTurns (4+)
       // 2. Trajectory baseline drift >= driftThreshold
@@ -346,10 +358,15 @@
         netDriftTowardThreat >= 0.04 &&
         currentTurnThreatProx >= 0.18;
 
+      const cognitiveGroomingDetected = driftDetected || (turnNum >= this.minTurns && groomingScore >= 0.60 && currentTurnThreatProx >= 0.18);
+
       let warning = null;
       if (driftDetected) {
         const clusterName = topCluster.replace(/_/g, ' ').toLowerCase();
         warning = `Gradual semantic drift detected (${turnNum} turns): conversation trajectory has drifted significantly toward ${clusterName}.`;
+      } else if (cognitiveGroomingDetected) {
+        const clusterName = topCluster.replace(/_/g, ' ').toLowerCase();
+        warning = `Cognitive grooming velocity detected (${turnNum} turns, velocity: ${driftVelocity}): conversation trajectory rapidly approaching ${clusterName}.`;
       }
 
       const turnSummary = {
@@ -357,6 +374,7 @@
         timestamp: Date.now(),
         role,
         drift: +baselineDrift.toFixed(4),
+        driftVelocity,
         threat: topCluster,
         proximity: +maxProximity.toFixed(4)
       };
@@ -372,6 +390,10 @@
         turnCount: turnNum,
         driftScore: +baselineDrift.toFixed(4),
         driftDetected,
+        cognitiveGroomingDetected,
+        driftVelocity,
+        driftAcceleration,
+        groomingScore,
         topThreatCluster: topCluster,
         threatProximity: +maxProximity.toFixed(4),
         threatScores,

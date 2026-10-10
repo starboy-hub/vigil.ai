@@ -396,6 +396,19 @@ document.addEventListener('DOMContentLoaded', () => {
 const ollamaStatus = document.getElementById('ollamaStatus');
 const wizardOllamaStatus = document.getElementById('wizardOllamaStatus');
 const downloadBtn = document.getElementById('downloadDesktopAppBtn');
+const selectOllamaModel = document.getElementById('selectOllamaModel');
+const ollamaModelRow = document.getElementById('ollamaModelRow');
+const learnedExemplarsBadge = document.getElementById('learnedExemplarsBadge');
+
+function updateLearnedBadge() {
+  chrome.storage.local.get(['vigil_learned_exemplars'], (res) => {
+    const count = (res && res.vigil_learned_exemplars && res.vigil_learned_exemplars.length) || 0;
+    if (learnedExemplarsBadge) {
+      learnedExemplarsBadge.textContent = `${count} Learned Pattern${count === 1 ? '' : 's'}`;
+    }
+  });
+}
+updateLearnedBadge();
 
 if (downloadBtn) {
   downloadBtn.addEventListener('click', () => {
@@ -404,11 +417,10 @@ if (downloadBtn) {
 }
 
 function checkOllamaStatus() {
-  fetch('http://localhost:11434/api/tags', { method: 'GET' })
-    .then(response => response.json())
-    .then(data => {
-      const models = (data.models || []).map(m => m.name);
-      const activeModel = models.find(m => m.includes('deepseek-r1') || m.includes('qwen') || m.includes('llama3')) || models[0] || 'active';
+  chrome.runtime.sendMessage({ type: 'CHECK_OLLAMA' }, (bgRes) => {
+    if (bgRes && bgRes.available) {
+      const models = bgRes.models || [];
+      const activeModel = bgRes.model || models[0] || 'active';
       const label = '🟢 Connected (' + activeModel + ')';
       if (ollamaStatus) { ollamaStatus.textContent = label; ollamaStatus.classList.add('on'); }
       if (wizardOllamaStatus) {
@@ -417,8 +429,22 @@ function checkOllamaStatus() {
         wizardOllamaStatus.style.color = '#34d399';
         wizardOllamaStatus.style.borderColor = 'rgba(16,185,129,0.3)';
       }
-    })
-    .catch(() => {
+      if (ollamaModelRow && selectOllamaModel && models.length > 0) {
+        ollamaModelRow.style.display = 'flex';
+        const currentVals = Array.from(selectOllamaModel.options).map(o => o.value);
+        if (currentVals.join(',') !== models.join(',')) {
+          selectOllamaModel.innerHTML = '';
+          models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            const isFast = /:(?:1b|1\.5b|2b|3b|mini)/i.test(m);
+            opt.textContent = `${m} ${isFast ? '⚡ (Fast, Sub-Second)' : '🧠 (Deep Reasoning)'}`;
+            selectOllamaModel.appendChild(opt);
+          });
+        }
+        selectOllamaModel.value = activeModel;
+      }
+    } else {
       const label = '🟡 Fallback Active (WebGPU Neural)';
       if (ollamaStatus) { ollamaStatus.textContent = '○ Not running'; ollamaStatus.classList.remove('on'); }
       if (wizardOllamaStatus) {
@@ -427,7 +453,20 @@ function checkOllamaStatus() {
         wizardOllamaStatus.style.color = '#fde047';
         wizardOllamaStatus.style.borderColor = 'rgba(234,179,8,0.3)';
       }
-    });
+      if (ollamaModelRow) ollamaModelRow.style.display = 'none';
+    }
+  });
+}
+
+if (selectOllamaModel) {
+  selectOllamaModel.addEventListener('change', () => {
+    const selected = selectOllamaModel.value;
+    if (selected) {
+      chrome.runtime.sendMessage({ type: 'SET_OLLAMA_MODEL', model: selected }, () => {
+        checkOllamaStatus();
+      });
+    }
+  });
 }
 
 if (ollamaStatus || wizardOllamaStatus) {
@@ -452,6 +491,7 @@ if (runParaphraseBtn) {
     chrome.runtime.sendMessage({ type: 'GENERATE_SAFE_PARAPHRASE', text }, (res) => {
       runParaphraseBtn.disabled = false;
       runParaphraseBtn.textContent = '✨ Paraphrase Prompt';
+      updateLearnedBadge();
       if (resultArea) resultArea.style.display = 'block';
       if (res && res.text) {
         if (outputText) outputText.textContent = res.text;

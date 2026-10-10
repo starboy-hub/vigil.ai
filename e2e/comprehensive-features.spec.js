@@ -414,5 +414,76 @@ test.describe('comprehensive options features & buttons', () => {
 
     await chatTab.close();
   });
+
+  test('realtime: Local AI Powerhouse - Semantic Abstraction, Rehydration & K-Anonymity', async () => {
+    const sw = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', { timeout: 5000 }).catch(() => null);
+    expect(sw).not.toBeNull();
+
+    const evaluation = await sw.evaluate(async () => {
+      // 1. Semantic Scenario Abstraction
+      const abstractor = typeof VIGIL_ABSTRACTOR !== 'undefined' ? VIGIL_ABSTRACTOR : null;
+      let absResult = null;
+      if (abstractor) {
+        absResult = abstractor.abstractPrompt('I was diagnosed with glioblastoma and need treatment advice.');
+      }
+
+      // 2. K-Anonymity Quasi-Identifier Auditor
+      const kAuditor = typeof VIGIL_K_ANONYMITY !== 'undefined' ? VIGIL_K_ANONYMITY : null;
+      let kResult = null;
+      if (kAuditor) {
+        kResult = kAuditor.auditPrompt('I graduated from MIT in 2018. I work at a 15-person biotech startup in Zurich. I specialize in CRISPR-Cas12b patent law.');
+      }
+
+      // 3. Dynamic Honeytoken Canary Generator
+      const canaryGen = typeof VIGIL_CANARY_GENERATOR !== 'undefined' ? VIGIL_CANARY_GENERATOR : null;
+      let canaryBundle = null;
+      let canaryExfil = null;
+      if (canaryGen) {
+        canaryBundle = canaryGen.generateContextualBundle('github.com', 'test-seed');
+        const key = canaryBundle.canaries[0]?.value || '';
+        canaryExfil = canaryGen.inspectPayloadForCanaries(`{"stolen": "${key}"}`);
+      }
+
+      // 4. Adaptive Test-Time Compute Router
+      const router = typeof VIGIL_ADAPTIVE_ROUTER !== 'undefined' ? VIGIL_ADAPTIVE_ROUTER : null;
+      let routeFast = null;
+      let routeDeep = null;
+      if (router) {
+        routeFast = router.routeTask('FAST_PARAPHRASE', 'Hello world', ['deepseek-r1:8b', 'llama3.2:1b']);
+        routeDeep = router.routeTask('ADVERSARIAL_REDTEAM', 'Complex prompt', ['deepseek-r1:8b', 'llama3.2:1b']);
+      }
+
+      return {
+        absResult,
+        kResult,
+        canaryBundle,
+        canaryExfil,
+        routeFast,
+        routeDeep
+      };
+    });
+
+    // Verify Semantic Abstraction
+    expect(evaluation.absResult).not.toBeNull();
+    expect(evaluation.absResult.domain).toBe('CLINICAL');
+    expect(evaluation.absResult.abstractedText).not.toContain('I was diagnosed');
+
+    // Verify K-Anonymity Entropy & Unique Identification Alert
+    expect(evaluation.kResult).not.toBeNull();
+    expect(evaluation.kResult.isHighRisk).toBe(true);
+    expect(evaluation.kResult.riskTier).toBe('CRITICAL');
+    expect(evaluation.kResult.estimatedK).toBeLessThanOrEqual(5);
+
+    // Verify Honeytoken Canary & Counter-Surveillance
+    expect(evaluation.canaryBundle).not.toBeNull();
+    expect(evaluation.canaryBundle.canaries.length).toBeGreaterThan(0);
+    expect(evaluation.canaryExfil.leakDetected).toBe(true);
+
+    // Verify Adaptive Compute Routing
+    expect(evaluation.routeFast.selectedModel).toBe('llama3.2:1b');
+    expect(evaluation.routeFast.tier).toBe('fast_slm');
+    expect(evaluation.routeDeep.selectedModel).toBe('deepseek-r1:8b');
+    expect(evaluation.routeDeep.tier).toBe('deep_reasoning');
+  });
 });
 

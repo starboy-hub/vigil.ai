@@ -94,12 +94,19 @@
       <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-chip"/></svg> Local AI (Ollama)</div><div class="row-desc">Second opinion from a model running on this machine</div></div>
       <span id="ollamaStatus" class="status-chip">…</span>
     </div>
+    <div class="row" id="ollamaModelRow" style="display:none">
+      <div class="row-info"><div class="row-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-chip"/></svg> Active Model</div><div class="row-desc">Preferred local neural model for on-device tasks</div></div>
+      <select id="selectOllamaModel"></select>
+    </div>
     <details class="sub" id="paraphraseSection">
       <summary><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-chip"/></svg> ✨ Smart Prompt Paraphraser (Local AI)</summary>
       <div class="row row-column">
         <div class="row-info"><div class="row-desc">Rewrite sensitive prompts on-device using local Ollama neural model to sanitize PII while preserving technical intent.</div></div>
         <textarea id="paraphrasePromptInput" style="height:60px" placeholder="Enter sensitive prompt to safely paraphrase…"></textarea>
-        <button id="runParaphraseBtn" class="save-btn">✨ Paraphrase Prompt</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;">
+          <button id="runParaphraseBtn" class="save-btn" style="margin-top:0">✨ Paraphrase Prompt</button>
+          <span id="learnedExemplarsBadge" class="status-chip" style="font-size:10.5px;padding:3px 8px;">0 Learned Patterns</span>
+        </div>
         <div id="paraphraseResultArea" style="display:none;margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(255,255,255,0.05);font-size:12px;">
           <div style="font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Safe Paraphrased Prompt:</div>
           <div id="paraphraseOutputText" style="font-family:monospace;white-space:pre-wrap;color:#10b981;"></div>

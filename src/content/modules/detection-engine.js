@@ -352,6 +352,36 @@
     return alerts;
   }
 
+  function estimateDeanonymizationRisk(text, alerts = []) {
+    if (!text || typeof text !== 'string') return { risk: 'low', count: 0, quasiIdentifiers: [] };
+    const quasiIdentifiers = [];
+
+    if (/\b(?:work at|work for|employed by|employer|boss at|engineer at|manager at|director at)\s+([A-Z][a-zA-Z0-9]+)/i.test(text)) {
+      quasiIdentifiers.push('EMPLOYMENT');
+    }
+    if (/\b(?:graduated in|class of|born in|age \d{1,2}|years old)\b/i.test(text)) {
+      quasiIdentifiers.push('DEMOGRAPHIC');
+    }
+    if (/\b(?:in|near|from|living in|based in)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/.test(text)) {
+      quasiIdentifiers.push('LOCATION');
+    }
+    if (alerts.some(a => a.type === 'MEDICAL' || a.type === 'FINANCIAL')) {
+      quasiIdentifiers.push('SENSITIVE_CONTEXT');
+    }
+
+    const uniqueAttrs = Array.from(new Set(quasiIdentifiers));
+    let risk = 'low';
+    if (uniqueAttrs.length >= 3) risk = 'high';
+    else if (uniqueAttrs.length >= 2) risk = 'medium';
+
+    return {
+      risk,
+      count: uniqueAttrs.length,
+      quasiIdentifiers: uniqueAttrs,
+      warning: risk === 'high' ? 'High Re-Identification Risk: Combining these quasi-identifiers can uniquely de-anonymize you.' : null
+    };
+  }
+
   const VIGIL_ENGINE = {
     PII_PATTERNS,
     CONTEXT_PATTERNS,
@@ -367,7 +397,8 @@
     cleanText,
     luhnValid,
     isLikelyPhoneNumber,
-    applyContextMultiplier
+    applyContextMultiplier,
+    estimateDeanonymizationRisk
   };
   root.VIGIL_ENGINE = VIGIL_ENGINE;
   if (typeof module !== 'undefined' && module.exports) module.exports = VIGIL_ENGINE;
