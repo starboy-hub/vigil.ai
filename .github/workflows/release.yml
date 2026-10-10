@@ -45,7 +45,7 @@ jobs:
         run: npm run pack
 
       - name: Attest Build Provenance (SLSA — extension packages)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: releases/**/*.zip
 
@@ -95,7 +95,7 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
 
       - name: Attest Build Provenance (SLSA — companion binary)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: desktop/target/${{ matrix.target }}/release/${{ matrix.binary_name }}
 
