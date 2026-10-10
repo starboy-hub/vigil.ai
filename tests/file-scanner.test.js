@@ -24,8 +24,8 @@ describe('VIGIL RAG Document & File Scanner Module', () => {
     const mockSecretsEngine = {
       scanSecrets: (text) => {
         const hits = [];
-        if (text.includes('AKIA')) hits.push({ type: 'AWS Access Key ID' });
-        if (text.includes('ghp_')) hits.push({ type: 'GitHub Personal Access Token' });
+        if (text.includes('AKIA') || text.includes('FAKE_AWS_KEY')) hits.push({ type: 'AWS Access Key ID' });
+        if (text.includes('ghp_') || text.includes('FAKE_GITHUB_TOKEN')) hits.push({ type: 'GitHub Personal Access Token' });
         return hits;
       }
     };

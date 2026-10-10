@@ -19,7 +19,7 @@ describe('VIGIL Beast Mode Modules', () => {
     });
 
     test('detects GitHub Personal Access Token', () => {
-      const res = VIGIL_SECRETS.scanSecrets('token: FAKE_GITHUB_TOKEN');
+      const res = VIGIL_SECRETS.scanSecrets('token: ghp_' + '000000000000000000000000000000000000');
       expect(res.alerts.some(a => a.type === 'API_KEY')).toBe(true);
       expect(res.redactions.some(r => r.text.startsWith('ghp_'))).toBe(true);
     });
