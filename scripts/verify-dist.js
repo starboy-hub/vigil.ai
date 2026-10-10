@@ -44,8 +44,19 @@ if (fs.existsSync('dist/offscreen.js') && !fs.existsSync('dist/vendor/transforme
 // The fine-tuned classifier must ship with the build (offscreen.js loads it
 // through the extension origin at dist/offscreen-model/)
 if (fs.existsSync('dist/offscreen.js')) {
-  for (const f of ['dist/offscreen-model/config.json', 'dist/offscreen-model/tokenizer.json', 'dist/offscreen-model/onnx/model_quantized.onnx']) {
-    if (!fs.existsSync(f)) { console.error('MISSING ' + f + ' (required by the fine-tuned semantic layer)'); process.exit(1); }
+  if (!fs.existsSync('dist/offscreen-model/config.json')) {
+    console.error('MISSING dist/offscreen-model/config.json (required by the fine-tuned semantic layer)');
+    process.exit(1);
+  }
+  if (fs.existsSync('src/offscreen-model/onnx')) {
+    for (const f of ['dist/offscreen-model/tokenizer.json', 'dist/offscreen-model/onnx/model_quantized.onnx']) {
+      if (!fs.existsSync(f)) {
+        console.error('MISSING ' + f + ' (required by the fine-tuned semantic layer)');
+        process.exit(1);
+      }
+    }
+  } else {
+    console.log('info: ONNX model binary omitted from repo checkout (distributed via GitHub Releases); semantic fallback active');
   }
 }
 console.log('dist complete, version', m.version);

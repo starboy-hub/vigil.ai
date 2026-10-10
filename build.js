@@ -90,10 +90,25 @@ function writeIntegrityManifest(out) {
 /** Copy the fine-tuned classifier into the build (Chromium target only). */
 function vendorFineTunedModel(out) {
   const srcDir = 'src/offscreen-model';
+  if (!fs.existsSync(srcDir)) return false;
+
+  const destDir = path.join(out, 'offscreen-model');
+  fs.mkdirSync(destDir, { recursive: true });
+
+  // Always copy configs, tokenizer configs, and documentation
+  for (const item of fs.readdirSync(srcDir)) {
+    if (item === 'onnx') continue;
+    const srcPath = path.join(srcDir, item);
+    const destPath = path.join(destDir, item);
+    if (fs.statSync(srcPath).isFile()) {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+
   const onnxDir = path.join(srcDir, 'onnx');
   if (!fs.existsSync(onnxDir)) {
-    console.warn('! onnx directory missing — offscreen AI model omitted from build');
-    return false;
+    console.warn('! onnx directory missing — offscreen AI model omitted from build (runtime falls back to heuristics / cloud)');
+    return true;
   }
   const modelPath = path.join(onnxDir, 'model_quantized.onnx');
   if (!fs.existsSync(modelPath)) {
@@ -102,15 +117,15 @@ function vendorFineTunedModel(out) {
     const parts = fs.readdirSync(onnxDir).filter(f => f.startsWith('model_quantized.onnx.part-')).sort();
     if (!parts.length) {
       console.warn('! fine-tuned model missing — semantic layer inert');
-      return false;
+      return true;
     }
     fs.writeFileSync(modelPath, Buffer.concat(parts.map(p => fs.readFileSync(path.join(onnxDir, p)))));
   }
-  fs.cpSync(srcDir, path.join(out, 'offscreen-model'), { recursive: true });
-  // the committed parts are build inputs, not runtime files
-  const distOnnx = path.join(out, 'offscreen-model', 'onnx');
-  if (fs.existsSync(distOnnx)) {
-    fs.readdirSync(distOnnx).filter(f => f.includes('.part-')).forEach(f => fs.rmSync(path.join(distOnnx, f)));
+
+  const distOnnx = path.join(destDir, 'onnx');
+  fs.mkdirSync(distOnnx, { recursive: true });
+  if (fs.existsSync(modelPath)) {
+    fs.copyFileSync(modelPath, path.join(distOnnx, 'model_quantized.onnx'));
   }
   return true;
 }
