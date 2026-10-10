@@ -90,21 +90,28 @@ function writeIntegrityManifest(out) {
 /** Copy the fine-tuned classifier into the build (Chromium target only). */
 function vendorFineTunedModel(out) {
   const srcDir = 'src/offscreen-model';
-  const modelPath = path.join(srcDir, 'onnx', 'model_quantized.onnx');
+  const onnxDir = path.join(srcDir, 'onnx');
+  if (!fs.existsSync(onnxDir)) {
+    console.warn('! onnx directory missing — offscreen AI model omitted from build');
+    return false;
+  }
+  const modelPath = path.join(onnxDir, 'model_quantized.onnx');
   if (!fs.existsSync(modelPath)) {
     // GitHub caps files at 100 MB, so the model is committed as parts and
     // reassembled here (deterministic byte concatenation)
-    const parts = fs.readdirSync(path.join(srcDir, 'onnx')).filter(f => f.startsWith('model_quantized.onnx.part-')).sort();
+    const parts = fs.readdirSync(onnxDir).filter(f => f.startsWith('model_quantized.onnx.part-')).sort();
     if (!parts.length) {
       console.warn('! fine-tuned model missing — semantic layer inert');
       return false;
     }
-    fs.writeFileSync(modelPath, Buffer.concat(parts.map(p => fs.readFileSync(path.join(srcDir, 'onnx', p)))));
+    fs.writeFileSync(modelPath, Buffer.concat(parts.map(p => fs.readFileSync(path.join(onnxDir, p)))));
   }
   fs.cpSync(srcDir, path.join(out, 'offscreen-model'), { recursive: true });
   // the committed parts are build inputs, not runtime files
   const distOnnx = path.join(out, 'offscreen-model', 'onnx');
-  fs.readdirSync(distOnnx).filter(f => f.includes('.part-')).forEach(f => fs.rmSync(path.join(distOnnx, f)));
+  if (fs.existsSync(distOnnx)) {
+    fs.readdirSync(distOnnx).filter(f => f.includes('.part-')).forEach(f => fs.rmSync(path.join(distOnnx, f)));
+  }
   return true;
 }
 

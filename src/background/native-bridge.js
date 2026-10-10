@@ -103,8 +103,10 @@
 
         this.port.onDisconnect.addListener(() => {
           const err = chrome.runtime.lastError;
-          if (err) {
-            console.warn('🛡️ VIGIL Native Daemon disconnected / unavailable:', err.message);
+          if (err && this.sessionEstablished) {
+            console.warn('🛡️ VIGIL Native Daemon disconnected:', err.message);
+          } else if (err) {
+            console.debug('🛡️ VIGIL Native Companion standby (daemon not running):', err.message);
           }
           this.isConnected = false;
           this.port = null;
@@ -123,7 +125,6 @@
 
         this.isConnected = true;
         this.notifyStateChange(true);
-        console.log('🚀 VIGIL Native Desktop Companion connected');
         return true;
       } catch (e) {
         console.warn('🛡️ VIGIL: Native Messaging connection failed:', e.message);
@@ -228,6 +229,7 @@
           this.sessionEstablished = true;
           this.sequenceNumber = 0;
           this.peerSequenceNumber = 0;
+          console.log('🚀 VIGIL Native Desktop Companion connected & authenticated');
 
           if (res.host_pub_key && this.clientKeyPair) {
             try {
