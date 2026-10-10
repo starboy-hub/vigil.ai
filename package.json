@@ -48,7 +48,7 @@
   "private": true,
   "type": "commonjs",
   "devDependencies": {
-    "@playwright/test": "1.44.1",
+    "@playwright/test": "1.64.0",
     "@types/jest": "30.0.0",
     "eslint": "8.57.1",
     "jest": "30.5.2",
