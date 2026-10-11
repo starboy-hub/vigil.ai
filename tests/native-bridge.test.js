@@ -451,7 +451,6 @@ describe('VIGIL Native Messaging Bridge', () => {
     test('isOriginAllowed strictly validates authorized vs unauthorized extension IDs', () => {
       expect(VIGIL_NATIVE_BRIDGE.isOriginAllowed('chrome-extension://emkokehejldjlfljlhhcimnfefcjcmon/')).toBe(true);
       expect(VIGIL_NATIVE_BRIDGE.isOriginAllowed('chrome-extension://vigil-guardian-id/')).toBe(true);
-      expect(VIGIL_NATIVE_BRIDGE.isOriginAllowed('chrome-extension://vigil-guardian-id/')).toBe(true);
 
       // Malicious or invalid patterns must be rejected
       expect(VIGIL_NATIVE_BRIDGE.isOriginAllowed('chrome-extension://malicious-ext/')).toBe(false);

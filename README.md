@@ -8,7 +8,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-6366f1?style=flat-square)](https://github.com/starboy-hub/vigil.ai)
 [![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-696%20unit%20%7C%20105%20e2e%20passing-10b981?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/tests-709%20unit%20%7C%20105%20e2e%20passing-10b981?style=flat-square)](#testing)
 [![Adversarial Catch Rate](https://img.shields.io/badge/adversarial%20catch%20rate-100%25-10b981?style=flat-square)](#security-score)
 [![False Positives](https://img.shields.io/badge/false%20positive%20rate-0.00%25-10b981?style=flat-square)](#security-score)
 [![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
@@ -48,7 +48,7 @@ Vigil scans every text input before it reaches an AI platform and intercepts sen
 | **Passwords & Credentials** | High-entropy string detection and secret-pattern matching |
 | **Bank Accounts, Passports, Driver Licenses** | Document-type regex with prefix disambiguation |
 | **Salaries & Financial Data** | Multi-currency financial disclosure detection |
-| **Proprietary Code Snippets** | Training data leakage fingerprinting with Jaccard similarity |
+| **Proprietary Code Snippets** | Training data leakage fingerprinting with SimHash / token shingle LSH |
 
 When sensitive content is detected, a non-intrusive **Composer Pill** floats above your input with instant actions:
 
@@ -285,7 +285,7 @@ No raw prompt text, PII, or correction labels ever leave the device — only DP-
 ┌────────────────────┐          ┌───────────────────────┐
 │  Native Desktop    │          │  Self-Hosted Relay     │
 │  Companion (Rust)  │          │  (Optional, Local)     │
-│  · IDE Proxy :8888 │          │  · Swarm Threat Sync   │
+│  · IDE Proxy :8383 │          │  · Swarm Threat Sync   │
 │  · Agent FW  :8765 │          │  · Federated LoRA Avg  │
 │  · OS Keychain     │          └───────────────────────┘
 │  · Audio Canary    │
@@ -310,7 +310,7 @@ Vigil detects when the same jailbreak payload is tested against multiple AI prov
 Autonomous AI agents (AutoGPT, Claude Code, Devin) can enter infinite reasoning loops and exhaust API quotas. Vigil enforces per-session and per-day token budgets with hard-block and soft-alert thresholds. The native desktop proxy enforces these limits at the OS network layer.
 
 ### 🔍 Training Data Leakage Detector
-Inspects AI responses for regurgitated copyrighted code, GPL-licensed snippets, or memorized training data. Uses Jaccard similarity fingerprinting to detect inbound intellectual property contamination before it enters your codebase.
+Inspects AI responses for regurgitated copyrighted code, GPL-licensed snippets, or memorized training data. Uses 64-bit SimHash locality-sensitive fingerprinting over token shingles to detect inbound intellectual property contamination before it enters your codebase.
 
 ### 🏛️ Self-Healing File Integrity Monitor
 Computes SHA-256 hashes of all extension assets against a cryptographic baseline manifest at startup and every 60 minutes. If any file is tampered with by malware or a compromised update, Vigil badges a warning and alerts you immediately.
@@ -320,7 +320,7 @@ A hardened companion app for power users and enterprise environments:
 
 | Component | Function |
 |---|---|
-| **IDE Proxy** (port 8888) | High-throughput forward proxy protecting Cursor, GitHub Copilot, and Ollama. Strips credentials before egress, enforces token budgets. |
+| **IDE Proxy** (port 8383) | High-throughput forward proxy protecting Cursor, GitHub Copilot, and Ollama. Strips credentials before egress, enforces token budgets. |
 | **Agent Firewall** (port 8765) | Intercepts autonomous agent CLI/tool calls (`HTTP_PROXY=127.0.0.1:8765`) with live SSE streaming token reconstitution. |
 | **OS Keychain Integration** | Vault entries bound to Vigil-namespaced OS keychain services. |
 | **Audio Spectral Canary** | Detects ultrasonic and high-frequency covert audio channels used by acoustic data exfiltration attacks. |
@@ -340,7 +340,7 @@ npm run playground    # Starts at http://127.0.0.1:4006
 |---|---|
 | **Station 1 — Prompt Injection** | Zero-width smuggling, system override attempts, roleplay inversion |
 | **Station 2 — Phishing Simulation** | Misdirected links, spoofed senders, urgency pressure patterns |
-| **Station 3 — Clipboard Hijack** | Sensitive clipboard content detection and alerting |
+| **Station 3 — E-Commerce & Clipboard Skimmer** | Form scraping, sensitive clipboard content detection, and skimmer simulation |
 | **Station 4 — PII & Secrets** | AWS keys, SSNs, credit cards, medical data — live masking |
 | **Station 5 — Vision Firewall** | Canvas steganography, synthetic media hashing |
 | **Station 6 — Honeytoken Canary** | AI scraper detection via decoy credential echo |
@@ -398,8 +398,7 @@ Open the **Options panel** (click the Vigil icon → settings gear) to configure
 | **Token Budget** | Set per-session and daily token limits for AI agents |
 | **SIEM Export** | Configure CEF/OCSF/JSON telemetry endpoints |
 
----
-
+<a id="security-score"></a>
 ## Security Score & 10/10 Gold Standard Hardening
 
 Continuously benchmarked by the built-in adversarial evaluation suite:
@@ -421,7 +420,7 @@ npm run benchmark:adversarial
 - ✅ **Encrypted Native Messaging:** Ephemeral ECDH (P-256) key agreement with AES-256-GCM authenticated framing and fail-closed downgrade prevention.
 - ✅ **Anti-Replay & Anomaly Defense:** Monotonic sequence counters, clock-skew jump bounds (`MAX_SEQ_SKIP`), and 15-minute session lifetimes.
 - ✅ **Sensitive Context Deny-List:** Pre-execution isolation blocks content scripts on Google/Microsoft SSO, 1Password/Bitwarden vaults, payment checkouts, and custom user-defined domains.
-- ✅ **Deterministic Reproducible Builds:** Automated supply-chain integrity verification computing composite SHA-256 hash trees (`release-manifest.json`).
+- ✅ **Deterministic Reproducible Builds:** Automated supply-chain integrity verification computing composite SHA-256 hash trees (`dist/release-manifest.json`).
 - ✅ **Automated 7-Gate Release Pipeline:** Hard release gate (`npm run release:gate`) enforcing cryptographic keys, package completeness, reproducible hashes, CSP lockdown, and injection policies.
 - ✅ **Third-Party Audit Dossier:** Automated generation of `dist/audit-dossier.json` and formal audit readiness package (`docs/AUDIT-READINESS.md`).
 - ✅ **STRIDE & PASTA Threat Model:** Comprehensive 8-surface threat matrix and 5 Security Decision Records (`docs/THREAT_MATRIX.md`).
@@ -436,8 +435,8 @@ npm run benchmark:adversarial
 ## Testing
 
 ```bash
-npm test                    # 696 Jest unit tests (53 test suites, 100% passing)
-cargo test --manifest-path desktop/Cargo.toml # 16 Rust companion security tests (100% passing)
+npm test                    # 709 Jest unit tests (55 test suites, 100% passing)
+cargo test --manifest-path desktop/Cargo.toml # 19 Rust companion security tests (100% passing)
 npx playwright test         # 105 end-to-end browser tests across real websites & cyber range
 npm run test:all-online     # Live online industry canaries & real website testbed
 npm run lint                # Zero ESLint warnings / errors

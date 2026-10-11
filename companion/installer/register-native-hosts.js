@@ -35,7 +35,6 @@ function resolveBinaryPath() {
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'chrome-extension://emkokehejldjlfljlhhcimnfefcjcmon/',
-  'chrome-extension://vigil-guardian-id/',
   'chrome-extension://vigil-guardian-id/'
 ];
 
@@ -67,7 +66,6 @@ function createFirefoxManifest(binaryPath) {
     path: binaryPath,
     type: 'stdio',
     allowed_extensions: [
-      'vigil@starboy-hub.github.io',
       'vigil@starboy-hub.github.io'
     ]
   };

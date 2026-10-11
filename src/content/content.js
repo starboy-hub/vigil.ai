@@ -8,12 +8,8 @@
     const policy = (typeof globalThis !== 'undefined' && globalThis.VIGIL_INJECTION_POLICY) ||
                    (typeof VIGIL_INJECTION_POLICY !== 'undefined' ? VIGIL_INJECTION_POLICY : null);
     if (policy && typeof policy.shouldInjectContentScript === 'function') {
-      let customDeny = [];
-      try {
-        const stored = localStorage.getItem('vigil_custom_deny_list');
-        if (stored) customDeny = JSON.parse(stored);
-      } catch (_) {}
-      if (!policy.shouldInjectContentScript(window.location.href, customDeny)) {
+      // Immediate baseline check: block sensitive auth, SSO, password managers & financial gateways
+      if (!policy.shouldInjectContentScript(window.location.href)) {
         console.log('[VIGIL] Execution halted: sensitive auth, credential, or payment surface detected at', window.location.hostname);
         return;
       }
@@ -1976,7 +1972,7 @@ class VIGILPopup {
         });
         refreshVault();
       }
-      localStorage.setItem('vigil_vault_prompt_done', '1');
+      try { sessionStorage.setItem('vigil_vault_prompt_done', '1'); } catch (_) {}
       const btn = document.querySelector('[data-vigil-action="vault-prompt-' + id + '"]'); if (btn) { btn.textContent = 'Added ✓'; btn.disabled = true; }
       return;
     }

@@ -9,7 +9,6 @@
   const HOST_NAME = 'com.vigil.desktop';
   const TRUSTED_EXTENSION_IDS = [
     'emkokehejldjlfljlhhcimnfefcjcmon',
-    'vigil-guardian-id',
     'vigil-guardian-id'
   ];
 

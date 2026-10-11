@@ -64,7 +64,6 @@ impl Drop for SessionInfo {
 const ALLOWED_EXTENSION_IDS: &[&str] = &[
     "emkokehejldjlfljlhhcimnfefcjcmon",
     "vigil-guardian-id",
-    "vigil-guardian-id",
 ];
 
 lazy_static::lazy_static! {
@@ -139,15 +138,11 @@ fn write_native_message<W: Write>(writer: &mut W, message: &str) -> io::Result<(
 fn is_allowed_keychain_service(service: &str) -> bool {
     const ALLOWED_SERVICES: &[&str] = &[
         "vigil-identity-vault",
-        "vigil-identity-vault",
         "vigil-enclave",
-        "vigil-enclave",
-        "vigil-desktop",
         "vigil-desktop",
     ];
     service.len() <= 64
         && (ALLOWED_SERVICES.contains(&service)
-            || service.starts_with("vigil.")
             || service.starts_with("vigil."))
 }
 
@@ -664,20 +659,53 @@ fn dispatch_privileged(req: &JsonRpcRequest, _session: &SessionInfo) -> JsonRpcR
             Ok(serde_json::to_value(report).unwrap_or(Value::Null))
         }
         "vigil.restoreFileIntegrity" => {
+            let default_dir = VigilInstaller::get_vigil_app_dir().join("extension");
+            let default_backup = VigilInstaller::get_vigil_app_dir().join("golden-backup");
             let target_dir_str = params["targetDir"].as_str().unwrap_or("");
             let backup_dir_str = params["backupDir"].as_str().unwrap_or("");
-            let files: Vec<String> = if let Some(arr) = params["files"].as_array() {
-                arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+            let target_path = if target_dir_str.is_empty() {
+                default_dir
             } else {
-                Vec::new()
+                PathBuf::from(target_dir_str)
+            };
+            let backup_path = if backup_dir_str.is_empty() {
+                default_backup
+            } else {
+                PathBuf::from(backup_dir_str)
             };
 
-            let res = FileIntegrityEngine::restore_tampered_files(
-                Path::new(target_dir_str),
-                Path::new(backup_dir_str),
-                &files,
-            );
-            Ok(serde_json::to_value(res).unwrap_or(Value::Null))
+            // Block sensitive system paths
+            let is_protected_system_dir = |p: &Path| -> bool {
+                let s = p.to_string_lossy();
+                s == "/"
+                    || s.starts_with("/etc")
+                    || s.starts_with("/usr")
+                    || s.starts_with("/bin")
+                    || s.starts_with("/sbin")
+                    || s.starts_with("/boot")
+                    || s.starts_with("/sys")
+                    || s.starts_with("/proc")
+                    || s.starts_with("/dev")
+            };
+            if is_protected_system_dir(&target_path) || is_protected_system_dir(&backup_path) {
+                Err(json!({
+                    "code": -32009,
+                    "message": "FORBIDDEN_PATH: Target or backup path points to a protected system directory"
+                }))
+            } else {
+                let files: Vec<String> = if let Some(arr) = params["files"].as_array() {
+                    arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+                } else {
+                    Vec::new()
+                };
+
+                let res = FileIntegrityEngine::restore_tampered_files(
+                    &target_path,
+                    &backup_path,
+                    &files,
+                );
+                Ok(serde_json::to_value(res).unwrap_or(Value::Null))
+            }
         }
         "vigil.generateIntegrityManifest" => {
             let default_dir = VigilInstaller::get_vigil_app_dir().join("extension");

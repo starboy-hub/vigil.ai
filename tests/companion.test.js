@@ -83,6 +83,31 @@ describe('agent firewall — live proxy roundtrip', () => {
     });
   });
 
+  test('companion dashboard endpoints reject cross-origin and rebinding attempts', async () => {
+    const port = firewall.address().port;
+    // 1. Cross-origin request attempt
+    const corsRes = await new Promise((resolve, reject) => {
+      http.get({
+        host: '127.0.0.1',
+        port,
+        path: '/vigil-mode?mode=monitor',
+        headers: { 'origin': 'http://evil.com' }
+      }, (res) => resolve(res.statusCode)).on('error', reject);
+    });
+    expect(corsRes).toBe(403);
+
+    // 2. DNS rebinding attempt via foreign Host header
+    const rebindRes = await new Promise((resolve, reject) => {
+      http.get({
+        host: '127.0.0.1',
+        port,
+        path: '/vigil-status',
+        headers: { 'host': 'evil-rebinding.com' }
+      }, (res) => resolve(res.statusCode)).on('error', reject);
+    });
+    expect(rebindRes).toBe(403);
+  });
+
   test('companion dashboard serves the canary challenge', async () => {
     const port = firewall.address().port;
     const challenge = await new Promise((resolve, reject) => {

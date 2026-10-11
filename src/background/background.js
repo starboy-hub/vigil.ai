@@ -305,13 +305,13 @@ function validateMessage(request) {
     case 'GET_SETTINGS': case 'CHECK_OLLAMA': case 'OPEN_OPTIONS': case 'THREAT_EXPORT': case 'OFFSCREEN_ERROR': case 'OFFSCREEN_LOADED': case 'WEBGPU_PROGRESS': case 'WEBGPU_WARMUP': case 'SENTINEL_WEBGPU': case 'GET_NATIVE_STATUS': case 'GET_SESSION_GUARD': case 'SESSION_EVENT':
     case 'THREAT_COUNT': case 'VAULT_LIST': case 'VAULT_CORPUS': case 'VAULT_CLEAR':
     case 'VAULT_BLIND_INDEX': case 'VAULT_ROTATE_BURNER': case 'VAULT_GET_BURNER_STATUS': case 'VAULT_ROTATE_KEY':
-    case 'INTEGRITY_AUDIT': case 'INTEGRITY_DAEMON_SCAN': case 'INTEGRITY_DAEMON_RESTORE':
-    case 'COMPUTE_GET_STATUS': case 'FORENSICS_GET_HISTORY': case 'FORENSICS_CLEAR_HISTORY':
-    case 'ZK_GENERATE_DLP_PROOF': case 'ZK_VERIFY_PROOF':
-    case 'PROMPT_GIT_LOG': case 'PROMPT_GIT_STATUS':
-    case 'LORA_GET_STATUS': case 'LORA_TRIGGER_TRAIN': case 'LORA_BUILD_CONTRIBUTION': case 'LORA_SYNC_FEDERATED':
-    case 'LORA_TRIGGER_DPO_TRAIN': case 'REDTEAM_TRIGGER_SELF_PLAY':
+    case 'INTEGRITY_AUDIT': case 'INTEGRITY_DAEMON_SCAN':
       return true;
+    case 'INTEGRITY_DAEMON_RESTORE':
+      return (!request.targetDir || isStr(request.targetDir, 500)) &&
+             (!request.backupDir || isStr(request.backupDir, 500)) &&
+             (!request.filesToRestore || (Array.isArray(request.filesToRestore) &&
+               request.filesToRestore.every(f => isStr(f, 250) && !f.includes('..') && !f.startsWith('/') && !f.startsWith('\\'))));
     case 'LORA_RECORD_PREFERENCE':
       return typeof request.chosen === 'number' && typeof request.rejected === 'number' &&
         ((Array.isArray(request.embedding) && request.embedding.length >= 1) || isStr(request.text, 2000));

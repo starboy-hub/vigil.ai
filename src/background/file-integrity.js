@@ -203,8 +203,12 @@
         return { isConnected: false, error: 'Native companion daemon is not connected' };
       }
 
+      const safeFiles = Array.isArray(filesToRestore)
+        ? filesToRestore.filter(f => typeof f === 'string' && f.length > 0 && !f.includes('..') && !f.startsWith('/') && !f.startsWith('\\'))
+        : [];
+
       try {
-        const result = await nativeBridge.sendRequest('vigil.restoreFileIntegrity', { targetDir, backupDir, files: filesToRestore });
+        const result = await nativeBridge.sendRequest('vigil.restoreFileIntegrity', { targetDir, backupDir, files: safeFiles });
         return { isConnected: true, success: true, result };
       } catch (err) {
         return { isConnected: true, success: false, error: err && err.message ? err.message : 'Unknown restore error' };

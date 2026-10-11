@@ -224,6 +224,31 @@ impl FileIntegrityEngine {
         }
     }
 
+    /// Validates that a relative path contains no traversal elements (`..`),
+    /// no leading slashes, and stays strictly within the base directory.
+    pub fn is_safe_relative_path(rel_path: &str) -> bool {
+        if rel_path.is_empty()
+            || rel_path.starts_with('/')
+            || rel_path.starts_with('\\')
+            || rel_path.contains('\0')
+        {
+            return false;
+        }
+
+        let p = Path::new(rel_path);
+        if p.is_absolute() {
+            return false;
+        }
+
+        for comp in p.components() {
+            match comp {
+                std::path::Component::Normal(_) => {}
+                _ => return false,
+            }
+        }
+        true
+    }
+
     /// Self-Healing: Restores tampered, corrupted, or missing files from a golden backup directory
     pub fn restore_tampered_files(
         target_dir: &Path,
@@ -246,6 +271,12 @@ impl FileIntegrityEngine {
         let mut failed = Vec::new();
 
         for rel_path in files_to_restore {
+            // Strict path traversal prevention: reject absolute paths, `..`, and null bytes
+            if !Self::is_safe_relative_path(rel_path) {
+                failed.push(rel_path.clone());
+                continue;
+            }
+
             let backup_file = backup_dir.join(rel_path);
             let target_file = target_dir.join(rel_path);
 
@@ -289,5 +320,51 @@ impl FileIntegrityEngine {
             failed_files: failed,
             error: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_is_safe_relative_path_blocks_traversal() {
+        assert!(FileIntegrityEngine::is_safe_relative_path("script.js"));
+        assert!(FileIntegrityEngine::is_safe_relative_path("subdir/script.js"));
+        assert!(FileIntegrityEngine::is_safe_relative_path("a/b/c.wasm"));
+
+        // Path traversal attempts
+        assert!(!FileIntegrityEngine::is_safe_relative_path("../evil.js"));
+        assert!(!FileIntegrityEngine::is_safe_relative_path("../../etc/passwd"));
+        assert!(!FileIntegrityEngine::is_safe_relative_path("/etc/shadow"));
+        assert!(!FileIntegrityEngine::is_safe_relative_path("\\windows\\system32"));
+        assert!(!FileIntegrityEngine::is_safe_relative_path(""));
+        assert!(!FileIntegrityEngine::is_safe_relative_path("a/../b"));
+    }
+
+    #[test]
+    fn test_restore_tampered_files_rejects_path_traversal() {
+        let temp_dir = std::env::temp_dir().join(format!("vigil_test_{}", std::process::id()));
+        let backup_dir = temp_dir.join("backup");
+        let target_dir = temp_dir.join("target");
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
+
+        let mut f = File::create(backup_dir.join("valid.js")).unwrap();
+        f.write_all(b"console.log('safe');").unwrap();
+
+        let res = FileIntegrityEngine::restore_tampered_files(
+            &target_dir,
+            &backup_dir,
+            &["valid.js".into(), "../traversal.js".into(), "/absolute.js".into()],
+        );
+
+        assert!(!res.success);
+        assert_eq!(res.restored_files, vec!["valid.js".to_string()]);
+        assert!(res.failed_files.contains(&"../traversal.js".to_string()));
+        assert!(res.failed_files.contains(&"/absolute.js".to_string()));
+
+        let _ = fs::remove_dir_all(temp_dir);
     }
 }

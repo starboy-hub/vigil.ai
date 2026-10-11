@@ -34,9 +34,10 @@ const { createSseRewriter, createTextRewriter } = require('./sse-rewrite.js');
 const DEFAULT_PORT = 8765;
 
 function parseArgs(argv) {
-  const args = { mode: 'monitor', port: DEFAULT_PORT, protect: [] };
+  const args = { mode: 'monitor', port: DEFAULT_PORT, protect: [], openGui: false };
   for (const arg of argv.slice(2)) {
-    if (arg.startsWith('--mode=')) args.mode = arg.split('=')[1];
+    if (arg === '--gui' || arg === '--open') args.openGui = true;
+    else if (arg.startsWith('--mode=')) args.mode = arg.split('=')[1];
     else if (arg.startsWith('--port=')) args.port = parseInt(arg.split('=')[1], 10) || DEFAULT_PORT;
     else if (arg.startsWith('--protect=')) {
       const p = arg.split('=')[1];
@@ -472,6 +473,40 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
+function isAuthorizedControlRequest(req) {
+  // 1. Host header validation (prevent DNS rebinding attacks)
+  const host = String(req.headers.host || '').toLowerCase();
+  const hostName = host.split(':')[0];
+  if (hostName !== '127.0.0.1' && hostName !== 'localhost') {
+    return false;
+  }
+
+  // 2. Reject cross-origin browser requests (CSRF protection)
+  const secFetchSite = req.headers['sec-fetch-site'];
+  if (secFetchSite === 'cross-site') {
+    return false;
+  }
+  const secFetchMode = req.headers['sec-fetch-mode'];
+  if (secFetchMode === 'no-cors') {
+    return false;
+  }
+
+  // 3. Origin header validation (if present, must be loopback)
+  const origin = req.headers.origin;
+  if (origin && origin !== 'null') {
+    try {
+      const u = new URL(origin);
+      if (u.hostname !== '127.0.0.1' && u.hostname !== 'localhost') {
+        return false;
+      }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function createFirewallServer(opts) {
   const state = { mode: opts.mode, protect: opts.protect || [], canaryConfig: opts.canaryConfig || { personals: [] }, requests: 0, findingsLog: [] };
   // Stable bidirectional map used to re-hydrate tokens in AI responses
@@ -480,27 +515,43 @@ function createFirewallServer(opts) {
     const url = new URL(req.url, 'http://127.0.0.1');
 
     // ---- Companion dashboard endpoints (before proxying) ----
-    if (url.pathname === '/vigil-dashboard') {
-      res.writeHead(200, { 'content-type': 'text/html' });
-      res.end(DASHBOARD_HTML);
-      return;
-    }
-    if (url.pathname === '/vigil-status') {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ mode: state.mode, requests: state.requests, findings: state.findingsLog.slice(-20).reverse(), protect: state.protect }));
-      return;
-    }
-    if (url.pathname === '/vigil-mode') {
-      const m = url.searchParams.get('mode');
-      if (['monitor', 'guard', 'lock'].includes(m)) state.mode = m;
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ mode: state.mode }));
-      return;
-    }
-    if (url.pathname === '/vigil-canary') {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify(canary.generateChallenge(state.canaryConfig)));
-      return;
+    if (url.pathname.startsWith('/vigil-')) {
+      if (!isAuthorizedControlRequest(req)) {
+        res.writeHead(403, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'FORBIDDEN_CROSS_ORIGIN_OR_REBINDING' }));
+        return;
+      }
+
+      if (url.pathname === '/vigil-dashboard') {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(DASHBOARD_HTML);
+        return;
+      }
+      if (url.pathname === '/vigil-status') {
+        // Redact raw secrets: export masked tokens rather than sensitive values
+        const maskedProtect = state.protect.map((_, idx) => '[VIGIL-' + (idx + 1) + ']');
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({
+          mode: state.mode,
+          requests: state.requests,
+          findings: state.findingsLog.slice(-20).reverse(),
+          protectCount: state.protect.length,
+          protect: maskedProtect
+        }));
+        return;
+      }
+      if (url.pathname === '/vigil-mode') {
+        const m = url.searchParams.get('mode');
+        if (['monitor', 'guard', 'lock'].includes(m)) state.mode = m;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ mode: state.mode }));
+        return;
+      }
+      if (url.pathname === '/vigil-canary') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(canary.generateChallenge(state.canaryConfig)));
+        return;
+      }
     }
 
     state.requests++;
@@ -607,15 +658,49 @@ function createFirewallServer(opts) {
   return server;
 }
 
+function openDashboardInBrowser(url) {
+  try {
+    const { spawn } = require('child_process');
+    if (process.platform === 'darwin') {
+      spawn('open', [url], { detached: true, stdio: 'ignore' }).unref();
+    } else if (process.platform === 'win32') {
+      spawn('cmd.exe', ['/c', 'start', url], { detached: true, stdio: 'ignore' }).unref();
+    } else {
+      spawn('sh', ['-c', 'firefox --new-window "$1" 2>/dev/null || google-chrome --app="$1" 2>/dev/null || chromium --app="$1" 2>/dev/null || gio open "$1" 2>/dev/null || xdg-open "$1" 2>/dev/null', '_', url], { detached: true, stdio: 'ignore' }).unref();
+    }
+  } catch (_) {}
+}
+
 if (require.main === module) {
   const args = parseArgs(process.argv);
   const server = createFirewallServer(args);
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      if (args.openGui) {
+        console.log(`ℹ️ VIGIL Agent Firewall already active on port ${args.port}. Opening dashboard...`);
+        openDashboardInBrowser(`http://127.0.0.1:${args.port}/vigil-dashboard`);
+        process.exit(0);
+      } else {
+        console.error(`Port ${args.port} is already in use by another instance.`);
+        process.exit(1);
+      }
+    } else {
+      console.error('Server error:', err);
+      process.exit(1);
+    }
+  });
+
   server.listen(args.port, '127.0.0.1', () => {
     console.log(`🛡️ VIGIL Agent Firewall — ${args.mode} mode on http://127.0.0.1:${args.port}`);
     console.log(`   dashboard: http://127.0.0.1:${args.port}/vigil-dashboard`);
     console.log(`   protecting ${args.protect.length} configured value(s); agents: vigil-wrap -- <command>`);
     args.protect.forEach((v, i) => console.log(`   [VIGIL-${i + 1}] = ${v}`));
+
+    if (args.openGui) {
+      openDashboardInBrowser(`http://127.0.0.1:${args.port}/vigil-dashboard`);
+    }
   });
 }
 
-module.exports = { createFirewallServer, inspectBody, decide, parseArgs };
+module.exports = { createFirewallServer, inspectBody, decide, parseArgs, openDashboardInBrowser };

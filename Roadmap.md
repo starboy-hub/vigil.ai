@@ -308,7 +308,7 @@ Acceptance tests:
 
 BLUEPRINT 10. ESTABLISH A SAFE PSEUDONYMIZATION AND REHYDRATION BOUNDARY
 Priority: P0
-Files: src/background/semantic-abstractor.js, src/background/rehydration-engine.js, src/background/vigil-vault.js
+Files: src/content/modules/semantic-abstractor.js, src/content/modules/rehydration-engine.js, src/background/vigil-vault.js
 
 Current evidence:
 Vigil's design replaces real identities with surrogates before sending prompts to an AI platform, then restores real identities in responses. The README describes this as a way to preserve reasoning utility without exposing real context to the remote model.
@@ -403,7 +403,7 @@ Test direct and indirect injection, multilingual instructions, obfuscated conten
 
 BLUEPRINT 13. IMPROVE PII AND SECRET DETECTION WITHOUT DESTROYING PROMPT MEANING
 Priority: P1
-Files: src/background/detection-engine.js, src/background/secret-engine.js, src/background/semantic-abstractor.js
+Files: src/content/modules/detection-engine.js, src/content/modules/secret-engine.js, src/content/modules/semantic-abstractor.js
 
 Current evidence:
 The README describes regex, entropy, pattern matching, semantic analysis, and pseudonymization.

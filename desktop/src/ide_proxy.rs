@@ -204,34 +204,31 @@ impl IdeProxyEngine {
         let mut detected_types = Vec::new();
         let mut has_leak = false;
 
+lazy_static::lazy_static! {
+    static ref RE_AWS: regex::Regex = regex::Regex::new(r"AKIA[0-9A-Z]{16}").unwrap();
+    static ref RE_GH: regex::Regex = regex::Regex::new(r"ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{20,}").unwrap();
+    static ref RE_API: regex::Regex = regex::Regex::new(r"sk-[a-zA-Z0-9_-]{20,}").unwrap();
+}
+
         // AWS Access Key ID
-        if prompt.contains("AKIA") {
-            let re_aws = regex_lite("AKIA[0-9A-Z]{16}");
-            if re_aws.is_match(&sanitized) {
-                sanitized = re_aws.replace_all(&sanitized, "[VIGIL-AWS-KEY-REDACTED]").to_string();
-                detected_types.push("AWS_KEY".to_string());
-                has_leak = true;
-            }
+        if prompt.contains("AKIA") && RE_AWS.is_match(&sanitized) {
+            sanitized = RE_AWS.replace_all(&sanitized, "[VIGIL-AWS-KEY-REDACTED]").to_string();
+            detected_types.push("AWS_KEY".to_string());
+            has_leak = true;
         }
 
-        // GitHub Personal Access Token
-        if prompt.contains("ghp_") || prompt.contains("github_pat_") {
-            let re_gh = regex_lite("ghp_[a-zA-Z0-9]{36}");
-            if re_gh.is_match(&sanitized) {
-                sanitized = re_gh.replace_all(&sanitized, "[VIGIL-GITHUB-PAT-REDACTED]").to_string();
-                detected_types.push("GITHUB_PAT".to_string());
-                has_leak = true;
-            }
+        // GitHub Personal Access Token (Classic & Fine-Grained)
+        if (prompt.contains("ghp_") || prompt.contains("github_pat_")) && RE_GH.is_match(&sanitized) {
+            sanitized = RE_GH.replace_all(&sanitized, "[VIGIL-GITHUB-PAT-REDACTED]").to_string();
+            detected_types.push("GITHUB_PAT".to_string());
+            has_leak = true;
         }
 
         // OpenAI / Anthropic API Key
-        if prompt.contains("sk-") {
-            let re_api = regex_lite("sk-[a-zA-Z0-9_-]{20,}");
-            if re_api.is_match(&sanitized) {
-                sanitized = re_api.replace_all(&sanitized, "[VIGIL-API-KEY-REDACTED]").to_string();
-                detected_types.push("AI_API_KEY".to_string());
-                has_leak = true;
-            }
+        if prompt.contains("sk-") && RE_API.is_match(&sanitized) {
+            sanitized = RE_API.replace_all(&sanitized, "[VIGIL-API-KEY-REDACTED]").to_string();
+            detected_types.push("AI_API_KEY".to_string());
+            has_leak = true;
         }
 
         if has_leak {
@@ -259,6 +256,24 @@ fn this_val(atomic: &AtomicU64) -> u64 {
     atomic.load(Ordering::SeqCst)
 }
 
-fn regex_lite(pattern: &str) -> regex::Regex {
-    regex::Regex::new(pattern).unwrap()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_inspect_prompt_redacts_classic_and_fine_grained_github_pats() {
+        let engine = IdeProxyEngine::new(8383);
+
+        // Classic PAT
+        let (sanitized_classic, has_leak1, types1) = engine.inspect_prompt("my token is ghp_111122223333444455556666777788889999 for deployment");
+        assert!(has_leak1);
+        assert!(types1.contains(&"GITHUB_PAT".to_string()));
+        assert_eq!(sanitized_classic, "my token is [VIGIL-GITHUB-PAT-REDACTED] for deployment");
+
+        // Fine-grained PAT
+        let (sanitized_fg, has_leak2, types2) = engine.inspect_prompt("pushing using github_pat_11A1B2C3D4E5F6G7H8I9J0_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 to main");
+        assert!(has_leak2);
+        assert!(types2.contains(&"GITHUB_PAT".to_string()));
+        assert_eq!(sanitized_fg, "pushing using [VIGIL-GITHUB-PAT-REDACTED] to main");
+    }
 }

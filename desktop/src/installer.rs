@@ -73,7 +73,6 @@ impl VigilInstaller {
             "type": "stdio",
             "allowed_origins": [
                 "chrome-extension://emkokehejldjlfljlhhcimnfefcjcmon/",
-                "chrome-extension://vigil-guardian-id/",
                 "chrome-extension://vigil-guardian-id/"
             ]
         });
