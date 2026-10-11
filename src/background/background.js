@@ -306,6 +306,13 @@ function validateMessage(request) {
     case 'THREAT_COUNT': case 'VAULT_LIST': case 'VAULT_CORPUS': case 'VAULT_CLEAR':
     case 'VAULT_BLIND_INDEX': case 'VAULT_ROTATE_BURNER': case 'VAULT_GET_BURNER_STATUS': case 'VAULT_ROTATE_KEY':
     case 'INTEGRITY_AUDIT': case 'INTEGRITY_DAEMON_SCAN':
+    case 'COMPUTE_GET_STATUS': case 'FORENSICS_GET_HISTORY': case 'FORENSICS_CLEAR_HISTORY':
+    case 'ZK_GENERATE_DLP_PROOF': case 'ZK_VERIFY_PROOF':
+    case 'PROMPT_GIT_LOG': case 'PROMPT_GIT_STATUS':
+    case 'LORA_GET_STATUS': case 'LORA_TRIGGER_TRAIN': case 'LORA_BUILD_CONTRIBUTION': case 'LORA_SYNC_FEDERATED':
+    case 'LORA_TRIGGER_DPO_TRAIN': case 'REDTEAM_TRIGGER_SELF_PLAY':
+    case 'AUDIT_QUASI_IDENTIFIERS': case 'GENERATE_WORKFLOW_CANARIES': case 'INSPECT_CANARY_LEAK':
+    case 'SWARM_SYNC':
       return true;
     case 'INTEGRITY_DAEMON_RESTORE':
       return (!request.targetDir || isStr(request.targetDir, 500)) &&
