@@ -18,24 +18,46 @@
     /^blob:/i,
     /^javascript:/i,
 
-    // Identity Providers & Single Sign-On (SSO)
+    // Identity Providers, Authentication & Single Sign-On (SSO)
     /^https?:\/\/accounts\.google\.com/i,
+    /^https?:\/\/myaccount\.google\.com\/(?:security|signinoptions)/i,
     /^https?:\/\/login\.microsoftonline\.com/i,
     /^https?:\/\/login\.microsoft\.com/i,
     /^https?:\/\/login\.live\.com/i,
+    /^https?:\/\/account\.live\.com/i,
     /^https?:\/\/[a-z0-9-]+\.auth0\.com/i,
     /^https?:\/\/[a-z0-9-]+\.okta\.com/i,
+    /^https?:\/\/[a-z0-9-]+\.oktapreview\.com/i,
+    /^https?:\/\/[a-z0-9-]+\.pingidentity\.com/i,
+    /^https?:\/\/[a-z0-9-]+\.pingone\.com/i,
+    /^https?:\/\/[a-z0-9-]+\.onelogin\.com/i,
+    /^https?:\/\/[a-z0-9-]+\.duosecurity\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?login\.salesforce\.com/i,
     /^https?:\/\/appleid\.apple\.com/i,
 
     // Password Managers & Vault Portals
+    /^https?:\/\/passwords\.google\.com/i,
     /^https?:\/\/(?:[a-z0-9-]+\.)?1password\.com/i,
     /^https?:\/\/(?:[a-z0-9-]+\.)?bitwarden\.com/i,
     /^https?:\/\/(?:[a-z0-9-]+\.)?dashlane\.com/i,
     /^https?:\/\/(?:[a-z0-9-]+\.)?lastpass\.com/i,
     /^https?:\/\/(?:[a-z0-9-]+\.)?keepersecurity\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?nordpass\.com/i,
+    /^https?:\/\/pass\.proton\.me/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?proton\.me\/pass/i,
 
-    // Payment Processing Checkouts & Financial Portals
-    /^https?:\/\/(?:[a-z0-9-]+\.)?paypal\.com\/(?:signin|auth)/i,
+    // Tier-1 Banking & Financial Portals
+    /^https?:\/\/(?:[a-z0-9-]+\.)?chase\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?bankofamerica\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?wellsfargo\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?citi\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?fidelity\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?vanguard\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?schwab\.com/i,
+    /^https?:\/\/(?:[a-z0-9-]+\.)?americanexpress\.com/i,
+
+    // Payment Processing, Checkouts & Gateways
+    /^https?:\/\/(?:[a-z0-9-]+\.)?paypal\.com/i,
     /^https?:\/\/checkout\.stripe\.com/i,
     /^https?:\/\/pay\.google\.com/i
   ];

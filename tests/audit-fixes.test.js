@@ -276,4 +276,20 @@ describe('Wiring sanity (source-level guards)', () => {
     const ci = read('.github/workflows/ci.yml');
     expect(ci).toContain('adversarial-benchmark.js');
   });
+
+  test('privileged background messages prohibit execution from webpage content scripts', () => {
+    const bg = read('src/background/background.js');
+    const requiredPrivileged = [
+      'VAULT_LIST', 'VAULT_CORPUS', 'VAULT_CLEAR', 'VAULT_ROTATE_KEY',
+      'VAULT_ADD', 'VAULT_REMOVE', 'VAULT_ADD_TRUSTED', 'VAULT_REMOVE_TRUSTED',
+      'VAULT_ROTATE_BURNER', 'VAULT_GET_BURNER_STATUS',
+      'VAULT_EXPORT_BACKUP', 'VAULT_IMPORT_BACKUP',
+      'SAVE_TRUSTED_SITES', 'INTEGRITY_DAEMON_RESTORE'
+    ];
+    requiredPrivileged.forEach(type => {
+      expect(bg).toContain(`'${type}'`);
+    });
+    expect(bg).toContain('PRIVILEGED_MESSAGES.has(request.type) && sender && sender.tab');
+    expect(bg).toContain('unauthorized_sender_context');
+  });
 });

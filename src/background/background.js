@@ -513,7 +513,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // never from untrusted webpage content script tabs.
     const PRIVILEGED_MESSAGES = new Set([
       'VAULT_LIST', 'VAULT_CORPUS', 'VAULT_CLEAR', 'VAULT_ROTATE_KEY',
-      'VAULT_ADD', 'VAULT_REMOVE', 'SAVE_TRUSTED_SITES', 'INTEGRITY_DAEMON_RESTORE'
+      'VAULT_ADD', 'VAULT_REMOVE', 'VAULT_ADD_TRUSTED', 'VAULT_REMOVE_TRUSTED',
+      'VAULT_ROTATE_BURNER', 'VAULT_GET_BURNER_STATUS',
+      'VAULT_EXPORT_BACKUP', 'VAULT_IMPORT_BACKUP',
+      'SAVE_TRUSTED_SITES', 'INTEGRITY_DAEMON_RESTORE'
     ]);
     if (PRIVILEGED_MESSAGES.has(request.type) && sender && sender.tab) {
       sendResponse({ error: 'unauthorized_sender_context', detail: 'Privileged operations prohibited from web content script' });

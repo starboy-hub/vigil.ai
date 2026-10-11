@@ -38,6 +38,9 @@ jobs:
       - name: Execute Tests
         run: npm test
 
+      - name: Verify Security Release Gates
+        run: npm run release:gate
+
       - name: Generate CycloneDX SBOM (Software Bill of Materials)
         run: npx --yes @cyclonedx/cyclonedx-npm --output-file releases/sbom.json --output-format JSON || true
 

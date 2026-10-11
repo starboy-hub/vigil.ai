@@ -53,13 +53,25 @@ const gates = [
       if (policy.shouldInjectContentScript('https://accounts.google.com/signin')) {
         throw new Error('Gate failure: injection-policy allowed Google Accounts');
       }
+      if (policy.shouldInjectContentScript('https://passwords.google.com/')) {
+        throw new Error('Gate failure: injection-policy allowed Google Passwords');
+      }
+      if (policy.shouldInjectContentScript('https://myaccount.google.com/security')) {
+        throw new Error('Gate failure: injection-policy allowed Google Account Security settings');
+      }
+      if (policy.shouldInjectContentScript('https://login.salesforce.com/')) {
+        throw new Error('Gate failure: injection-policy allowed Salesforce SSO');
+      }
       if (policy.shouldInjectContentScript('https://vault.bitwarden.com/')) {
         throw new Error('Gate failure: injection-policy allowed password manager vault');
+      }
+      if (policy.shouldInjectContentScript('https://www.chase.com/')) {
+        throw new Error('Gate failure: injection-policy allowed banking portal');
       }
       if (policy.shouldInjectContentScript('https://checkout.stripe.com/pay')) {
         throw new Error('Gate failure: injection-policy allowed payment gateway');
       }
-      console.log('   ✅ Sensitive auth/vault injection denial verified');
+      console.log('   ✅ Sensitive auth/vault/banking injection denial verified');
     }
   },
   {

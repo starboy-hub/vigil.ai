@@ -1603,7 +1603,7 @@ function highlightProtected(element, _replacements) {
   element.style.transition = 'all 0.3s ease'; const pColor = tc('#28a745', '#66bb6a'); element.style.color = pColor; element.style.borderLeft = '4px solid ' + pColor;
   showInlineIndicator(element, '🔒 Protected', pColor);
 }
-function clearHighlights(element) { if (!element) return; removeInlineIndicator(element); if (element.getAttribute('contenteditable') === 'true') { element.querySelectorAll('.vigil-sensitive, .vigil-protected').forEach(span => { span.replaceWith(document.createTextNode(span.textContent)); }); } else { element.style.borderLeft = ''; element.style.color = ''; } }
+function clearHighlights(element) { if (!element) return; removeInlineIndicator(element); if (element.isContentEditable || (element.getAttribute && (element.getAttribute('contenteditable') === 'true' || element.getAttribute('contenteditable') === 'plaintext-only'))) { element.querySelectorAll('.vigil-sensitive, .vigil-protected').forEach(span => { span.replaceWith(document.createTextNode(span.textContent)); }); } else { element.style.borderLeft = ''; element.style.color = ''; } }
 function showInlineIndicator(element, text, color) { const rect = element.getBoundingClientRect(); const indicator = document.createElement('div'); indicator.className = 'vigil-inline-indicator'; indicator.textContent = text; indicator.style.cssText = `position:absolute!important;top:${rect.top - 28}px!important;left:${rect.left}px!important;background:${color}!important;color:white!important;padding:4px 10px!important;border-radius:4px!important;font-size:11px!important;font-weight:600!important;z-index:2147483645!important;font-family:-apple-system,sans-serif!important;box-shadow:0 2px 8px ${currentTheme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)'}!important;pointer-events:none!important;`; document.body.appendChild(indicator); }
 function removeInlineIndicator() { document.querySelectorAll('.vigil-inline-indicator').forEach(el => el.remove()); }
 
@@ -2025,11 +2025,74 @@ class VIGILPopup {
 }
 let popup;
 
+const SUBMISSION_ACTION_REGEX = /(?:send|submit|generate|prompt|ask|run|chat|enviar|envoyer|senden|absenden|abschicken|invia|inviare|kirim|отправить|выполнить|发送|提交|送信|전송|보내기|إرسال|ارسال|wyślij|verzenden|versturen|gönder|gửi|भेजें)/i;
+const NON_SUBMISSION_EXCLUSION_REGEX = /(?:cancel|dismiss|close|clear|delete|remove|attach|upload|file|audio|voice|mic|history|dropdown|menu|setting|copy|fork|share|thumbs|like|dislike)/i;
+
+function isEditableElement(el) {
+  if (!el || !(el instanceof Element)) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName === 'INPUT') {
+    const inputType = (el.getAttribute('type') || '').toLowerCase();
+    if (['button', 'submit', 'reset', 'checkbox', 'radio', 'hidden', 'file', 'image'].includes(inputType)) {
+      return false;
+    }
+    return true;
+  }
+  if (el.isContentEditable) return true;
+  const ce = el.getAttribute('contenteditable');
+  if (ce !== null && ce !== 'false' && ce !== 'none') return true;
+  if (el.getAttribute('role') === 'textbox') return true;
+  return Boolean(el.closest && el.closest('[contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""]'));
+}
+
+function isSubmissionButton(button) {
+  if (!button || !(button instanceof Element)) return false;
+  if (button.closest && button.closest('[data-vigil="unified-popup"]')) return false;
+  if (button.id === 'vigil-modal-cancel' || button.id === 'vigil-modal-confirm') return false;
+
+  const testId = (button.getAttribute('data-testid') || '').toLowerCase();
+  const ariaLabel = (button.getAttribute('aria-label') || '').toLowerCase();
+  const title = (button.getAttribute('title') || '').toLowerCase();
+  const textContent = (button.textContent || '').trim().toLowerCase();
+  const ariaKeyShortcuts = (button.getAttribute('aria-keyshortcuts') || '').toLowerCase();
+  const btnType = (button.getAttribute('type') || '').toLowerCase();
+
+  // 1. Explicit submission attribute indicators
+  if (btnType === 'submit') return true;
+  if (ariaKeyShortcuts === 'enter') return true;
+
+  // 2. data-testid matching submission semantics (send-button, submit-button, composer-send-button, etc.)
+  if (testId && /(?:send|submit|generate|prompt)/i.test(testId) && !/(?:cancel|clear|close|delete|attach)/i.test(testId)) {
+    return true;
+  }
+
+  // 3. Exclude explicitly non-submission buttons (cancel, attach, upload, close, etc.)
+  const combinedDesc = `${textContent} ${ariaLabel} ${title}`;
+  if (NON_SUBMISSION_EXCLUSION_REGEX.test(combinedDesc)) {
+    return false;
+  }
+
+  // 4. Multi-lingual action verb matching
+  if (SUBMISSION_ACTION_REGEX.test(combinedDesc)) {
+    return true;
+  }
+
+  // 5. SVG / icon button heuristics
+  if (button.querySelector && button.querySelector('svg')) {
+    const btnClass = (button.className || '').toString().toLowerCase();
+    if (/(?:send|submit|prompt)/i.test(btnClass)) return true;
+    const svgAttr = (button.querySelector('svg').getAttribute('aria-label') || '').toLowerCase();
+    if (SUBMISSION_ACTION_REGEX.test(svgAttr)) return true;
+  }
+
+  return false;
+}
+
 function setupPasteGuardian() {
   document.addEventListener('paste', async (e) => {
     if (isWhitelisted || isPaused) return;
     const target = e.target;
-    if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && target.getAttribute && target.getAttribute('contenteditable') !== 'true')) return;
+    if (!target || !isEditableElement(target)) return;
     let pastedText = '';
     if (e.clipboardData && e.clipboardData.getData) pastedText = e.clipboardData.getData('text/plain') || '';
     if (!pastedText || pastedText.length < 5) return;
@@ -2071,13 +2134,13 @@ function getActiveInputElement() {
     lastActiveTarget = active;
     return active;
   }
-  if (active && (active.isContentEditable || active.getAttribute('contenteditable') === 'true')) {
-    const el = active.closest('[contenteditable="true"]') || active;
+  if (active && isEditableElement(active)) {
+    const el = (active.closest && active.closest('[contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""]')) || active;
     lastActiveTarget = el;
     return el;
   }
   if (lastActiveTarget && document.contains(lastActiveTarget)) return lastActiveTarget;
-  const chatInput = document.querySelector('textarea[placeholder], [contenteditable="true"], [role="textbox"], textarea, input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
+  const chatInput = document.querySelector('textarea[placeholder], [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"], textarea, input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
   return chatInput;
 }
 
@@ -2271,7 +2334,7 @@ async function performScan(target) {
 let lastInputTimestamp = Date.now(), lastInputLength = 0;
 function handleInputEvent(e) {
   const target = (e && e.composedPath && e.composedPath()[0]) || (e ? e.target : null);
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable || (target.getAttribute && target.getAttribute('contenteditable') === 'true'))) {
+  if (target && isEditableElement(target)) {
     lastActiveTarget = target;
   }
   const now = Date.now();
@@ -2621,12 +2684,7 @@ function setupSubmissionGuard() {
       const button = target.closest('button, [role="button"]');
       if (button && button.closest('[data-vigil="unified-popup"]')) return;
       if (target.id === 'vigil-modal-cancel' || target.id === 'vigil-modal-confirm') return;
-      const isSendButton = button && (
-        button.getAttribute('data-testid') === 'send-button' ||
-        button.getAttribute('data-testid') === 'submit-button' ||
-        button.type === 'submit' ||
-        /send|submit|generate|prompt|ask|run/i.test(button.textContent || button.getAttribute('aria-label') || button.getAttribute('title') || '')
-      );
+      const isSendButton = isSubmissionButton(button);
       if (isSendButton) {
         const activeEl = getActiveInputElement() || (button && button.closest('form'));
         const promptText = getPromptTextFromElement(activeEl);
@@ -2655,18 +2713,20 @@ function setupSubmissionGuard() {
     try {
       if (!submissionGuardEnabled || !hasUserInteracted) return;
       if ((e.key === 'Enter' && !e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
-        const target = (e.composedPath && e.composedPath()[0]) || e.target;
-        if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.getAttribute('contenteditable') === 'true') {
-          const promptText = getPromptTextFromElement(target);
+        const rawTarget = (e.composedPath && e.composedPath()[0]) || e.target;
+        const target = rawTarget instanceof Element ? rawTarget : (rawTarget && rawTarget.parentElement instanceof Element ? rawTarget.parentElement : null);
+        if (target && isEditableElement(target)) {
+          const editableHost = (target.isContentEditable && (target.closest('[contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""]') || target)) || target;
+          const promptText = getPromptTextFromElement(editableHost);
           checkOutboundShopping(promptText);
-          if (hasUnprotectedPII(target)) {
+          if (hasUnprotectedPII(editableHost)) {
             e.preventDefault();
             e.stopPropagation();
-            pendingSubmission = { type: 'enter', element: target };
+            pendingSubmission = { type: 'enter', element: editableHost };
             showSubmissionConfirmation();
             return;
           }
-          if (consensusHoldSubmission(promptText, target, { type: 'enter', element: target })) {
+          if (consensusHoldSubmission(promptText, editableHost, { type: 'enter', element: editableHost })) {
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -2885,8 +2945,8 @@ function getPromptTextFromElement(el) {
   if (!el) return '';
   if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return el.value || '';
   if (el.tagName === 'FORM') {
-    const inputs = Array.from(el.querySelectorAll('input, textarea'));
-    const formVals = inputs.map(i => i.value || '').filter(Boolean).join(' ');
+    const inputs = Array.from(el.querySelectorAll('input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"]'));
+    const formVals = inputs.map(i => ((i.tagName === 'INPUT' || i.tagName === 'TEXTAREA') ? (i.value || '') : (i.innerText || i.textContent || ''))).filter(Boolean).join(' ');
     if (formVals) return formVals;
   }
   return el.innerText || el.textContent || '';
@@ -3166,7 +3226,7 @@ async function init() {
     popup.render = function () { originalRender(); updateBubbleVisibility(); };
   document.addEventListener('input', handleInputEvent, true); document.addEventListener('keyup', handleInputEvent, true);
   document.addEventListener('change', handleInputEvent, true); // autofill + pickers fire change, not input
-  document.addEventListener('focusout', (e) => { const el = e.target; if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.getAttribute && el.getAttribute('contenteditable') === 'true')) handleInputEvent(); }, true); // last look before submit
+  document.addEventListener('focusout', (e) => { const el = e.target; if (el && isEditableElement(el)) handleInputEvent(); }, true); // last look before submit
   // CSS-autofill detection: Chrome marks autofilled inputs with :-webkit-autofill —
   // a 1ms animation on that state surfaces fills that fire no input event
   try {
@@ -3175,7 +3235,7 @@ async function init() {
     document.head.appendChild(style);
     document.addEventListener('animationstart', (e) => { if (e.animationName === 'vigilAutofillFill') { scanDebounce && clearTimeout(scanDebounce); scanDebounce = setTimeout(performScan, 50); } }, true);
   } catch (e) {}
-  document.addEventListener('focusin', (e) => { const el = e.target; if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.getAttribute('contenteditable') === 'true')) handleInputEvent(); }, true);
+  document.addEventListener('focusin', (e) => { const el = e.target; if (el && isEditableElement(el)) handleInputEvent(); }, true);
   // Page passes are CHANGE-DRIVEN (verified external audit): a 2s full-page
   // poll burned CPU on complex pages. The MutationObserver runs the page
   // passes when content actually changes (throttled to 4s, debounced 800ms);
@@ -3225,6 +3285,18 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+// Expose submission helpers for test and verification harnesses
+if (typeof globalThis !== 'undefined') {
+  globalThis.__VIGIL_SUBMISSION_HELPERS__ = {
+    isEditableElement,
+    isSubmissionButton,
+    SUBMISSION_ACTION_REGEX,
+    NON_SUBMISSION_EXCLUSION_REGEX,
+    getPromptTextFromElement,
+    getActiveInputElement
+  };
 }
 
 })(); // End IIFE wrapper
