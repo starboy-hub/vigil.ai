@@ -194,4 +194,90 @@ describe('Blueprint #5: Cryptographic Native Messaging Channel (ECDH + AES-GCM)'
       expect(res).toEqual({ secret: 'my-super-password' });
     });
   });
+
+  describe('4. Fail-Closed Security & Roadmap Validation (Blueprints 01-03)', () => {
+    test('failed ECDH setup fails closed without falling back to unkeyed traffic', async () => {
+      VIGIL_NATIVE_BRIDGE.connect();
+      VIGIL_NATIVE_BRIDGE.sessionEstablished = false;
+
+      const spy = jest.spyOn(VIGIL_NATIVE_BRIDGE, 'performCryptoHandshake')
+        .mockRejectedValue(new Error('ECDH_NEGOTIATION_FAILED'));
+
+      await expect(VIGIL_NATIVE_BRIDGE.sendRequest('vigil.keychainGet', { account: 'test' }))
+        .rejects.toThrow(/SECURITY_HANDSHAKE_FAILED/);
+
+      const sentMethods = mockPort.postMessage.mock.calls.map(c => c[0].method);
+      expect(sentMethods).not.toContain('vigil.keychainGet');
+      spy.mockRestore();
+    });
+
+    test('failed key derivation rejects handshake loudly (fail closed)', async () => {
+      VIGIL_NATIVE_BRIDGE.connect();
+      VIGIL_NATIVE_BRIDGE.clientKeyPair = await VIGIL_NATIVE_BRIDGE.generateEcdhKeyPair();
+
+      const spy = jest.spyOn(VIGIL_NATIVE_BRIDGE, 'importPeerPublicKey')
+        .mockRejectedValue(new Error('INVALID_PEER_KEY'));
+
+      const hsPromise = VIGIL_NATIVE_BRIDGE.performHandshake(null, null, 'VALID_PUB_KEY');
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      const hsCall = mockPort.postMessage.mock.calls[0][0];
+      mockPort.onMessage.addListener.mock.calls[0][0]({
+        jsonrpc: '2.0',
+        id: hsCall.id,
+        result: { authenticated: true, session_token: 'token123', host_pub_key: 'corrupt-host-key' }
+      });
+
+      await expect(hsPromise).rejects.toThrow(/CRYPTO_CHANNEL_ESTABLISHMENT_FAILED/);
+      expect(VIGIL_NATIVE_BRIDGE.isEncryptedChannel).toBe(false);
+      expect(VIGIL_NATIVE_BRIDGE.sharedKey).toBeNull();
+      spy.mockRestore();
+    });
+
+    test('missing session token in handshake response is rejected', async () => {
+      VIGIL_NATIVE_BRIDGE.connect();
+      const hsPromise = VIGIL_NATIVE_BRIDGE.performHandshake();
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      const hsCall = mockPort.postMessage.mock.calls[0][0];
+      mockPort.onMessage.addListener.mock.calls[0][0]({
+        jsonrpc: '2.0',
+        id: hsCall.id,
+        result: { authenticated: true }
+      });
+
+      await expect(hsPromise).rejects.toThrow(/missing session token/);
+    });
+
+    test('malformed encrypted frame lacking sequence number is rejected', async () => {
+      const clientKp = await VIGIL_NATIVE_BRIDGE.generateEcdhKeyPair();
+      const serverKp = await VIGIL_NATIVE_BRIDGE.generateEcdhKeyPair();
+      VIGIL_NATIVE_BRIDGE.sharedKey = await VIGIL_NATIVE_BRIDGE.deriveSharedSecret(clientKp.privateKey, serverKp.publicKey);
+
+      const subtle = cryptoObj.subtle;
+      const iv = cryptoObj.getRandomValues(new Uint8Array(12));
+      const badFrameBytes = await subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        VIGIL_NATIVE_BRIDGE.sharedKey,
+        Buffer.from(JSON.stringify({ result: 'no-seq' }))
+      );
+
+      const frameObj = {
+        iv: Buffer.from(iv).toString('base64'),
+        ciphertext: Buffer.from(badFrameBytes).toString('base64')
+      };
+
+      await expect(VIGIL_NATIVE_BRIDGE.decryptFrame(frameObj)).rejects.toThrow(/MALFORMED_FRAME/);
+    });
+
+    test('privileged operations fail if encrypted channel is not active', async () => {
+      VIGIL_NATIVE_BRIDGE.connect();
+      VIGIL_NATIVE_BRIDGE.sessionEstablished = true;
+      VIGIL_NATIVE_BRIDGE.isEncryptedChannel = false;
+      VIGIL_NATIVE_BRIDGE.sharedKey = null;
+
+      await expect(VIGIL_NATIVE_BRIDGE.sendRequest('vigil.keychainGet', { account: 'test' }))
+        .rejects.toThrow(/PRIVILEGED_OP_DENIED/);
+    });
+  });
 });

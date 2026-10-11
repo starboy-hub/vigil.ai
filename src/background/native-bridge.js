@@ -49,11 +49,16 @@
     }
     try {
       const nodeCrypto = require('crypto');
-      return nodeCrypto.webcrypto.getRandomValues(arr);
-    } catch (e) {
-      for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
-      return arr;
+      if (nodeCrypto.webcrypto && typeof nodeCrypto.webcrypto.getRandomValues === 'function') {
+        return nodeCrypto.webcrypto.getRandomValues(arr);
+      }
+      if (typeof nodeCrypto.randomFillSync === 'function') {
+        return nodeCrypto.randomFillSync(arr);
+      }
+    } catch (_e) {
+      // ignore
     }
+    throw new Error('Cryptographically secure randomness unavailable');
   }
 
   class VigilNativeBridge {
@@ -168,7 +173,7 @@
         { name: 'ECDH', public: peerPublicKey },
         privateKey,
         { name: 'AES-GCM', length: 256 },
-        true, // extractable
+        false, // non-extractable (Blueprint 02)
         ['encrypt', 'decrypt']
       );
     }
@@ -198,12 +203,13 @@
       const decryptedBuf = await subtle.decrypt({ name: 'AES-GCM', iv }, this.sharedKey, cipherBytes);
       const plainText = new TextDecoderCls().decode(decryptedBuf);
       const innerObj = JSON.parse(plainText);
-      if (typeof innerObj.seq === 'number') {
-        if (innerObj.seq <= this.peerSequenceNumber) {
-          throw new Error(`REPLAY_ATTACK_DETECTED: Frame sequence ${innerObj.seq} <= last seen ${this.peerSequenceNumber}`);
-        }
-        this.peerSequenceNumber = innerObj.seq;
+      if (typeof innerObj.seq !== 'number') {
+        throw new Error('MALFORMED_FRAME: Encrypted frame lacks a valid sequence number');
       }
+      if (innerObj.seq <= this.peerSequenceNumber) {
+        throw new Error(`REPLAY_ATTACK_DETECTED: Frame sequence ${innerObj.seq} <= last seen ${this.peerSequenceNumber}`);
+      }
+      this.peerSequenceNumber = innerObj.seq;
       return innerObj;
     }
 
@@ -239,6 +245,7 @@
             } catch (err) {
               this.sharedKey = null;
               this.isEncryptedChannel = false;
+              throw new Error(`CRYPTO_CHANNEL_ESTABLISHMENT_FAILED: ${err && err.message}`);
             }
           }
           return res;
@@ -271,14 +278,13 @@
       const skipSession = internalOptions.skipSession === true;
 
       // Establish the session exactly once before the first privileged
-      // request. performCryptoHandshake prefers the E2E-encrypted channel
-      // (the daemon generates an ECDH keypair per session) and degrades to a
-      // plain authenticated handshake when WebCrypto is unavailable.
+      // request. performCryptoHandshake establishes the E2E-encrypted channel.
+      // If the cryptographic handshake fails, fail closed (Blueprint 01).
       if (!isAuthMethod && !skipSession && !this.sessionEstablished && !this.handshakePromise) {
         this.handshakePromise = this.performCryptoHandshake().catch((err) => {
           this.handshakePromise = null;
-          console.warn('[VIGIL] Crypto handshake failed, retrying unkeyed:', err && err.message);
-          return this.performHandshake();
+          console.warn('[VIGIL] Security handshake failed (fail-closed):', err && err.message);
+          throw new Error(`SECURITY_HANDSHAKE_FAILED: ${err && err.message}`);
         });
       }
 
@@ -327,12 +333,17 @@
       if (!this.sessionEstablished && !this.handshakePromise) {
         this.handshakePromise = this.performCryptoHandshake().catch((err) => {
           this.handshakePromise = null;
-          console.warn('[VIGIL] Crypto handshake failed, retrying unkeyed:', err && err.message);
-          return this.performHandshake();
+          console.warn('[VIGIL] Security handshake failed (fail-closed):', err && err.message);
+          throw new Error(`SECURITY_HANDSHAKE_FAILED: ${err && err.message}`);
         });
       }
 
       const buildAndSend = () => {
+        const SENSITIVE_METHODS = new Set(['vigil.keychainGet', 'vigil.keychainSet', 'vigil.offloadMl', 'vigil.hardwareEnclave']);
+        if (SENSITIVE_METHODS.has(method) && (!this.isEncryptedChannel || !this.sharedKey) && options.plain !== true) {
+          return Promise.reject(new Error(`PRIVILEGED_OP_DENIED: Method ${method} requires an established encrypted channel`));
+        }
+
         const mergedParams = Object.assign({}, params, {
           auth_token: options.overrideToken !== undefined ? options.overrideToken : (this.sessionToken || null),
           origin: options.overrideOrigin !== undefined ? options.overrideOrigin : this.getOrigin()

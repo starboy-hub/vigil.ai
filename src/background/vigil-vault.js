@@ -95,11 +95,11 @@
       if (cachedKey) return cachedKey;
       const stored = await storage.get(KEYS.VAULT_KEY);
       if (stored[KEYS.VAULT_KEY]) {
-        cachedKey = await subtle.importKey('raw', b64decode(stored[KEYS.VAULT_KEY]), 'AES-GCM', true, ['encrypt', 'decrypt']);
+        cachedKey = await subtle.importKey('raw', b64decode(stored[KEYS.VAULT_KEY]), 'AES-GCM', false, ['encrypt', 'decrypt']);
       } else {
-        cachedKey = await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-        const raw = await subtle.exportKey('raw', cachedKey);
-        await storage.set({ [KEYS.VAULT_KEY]: b64encode(raw) });
+        const rawKey = cryptoObj.getRandomValues(new Uint8Array(32));
+        await storage.set({ [KEYS.VAULT_KEY]: b64encode(rawKey) });
+        cachedKey = await subtle.importKey('raw', rawKey, 'AES-GCM', false, ['encrypt', 'decrypt']);
       }
       return cachedKey;
     }
@@ -124,7 +124,16 @@
     async function loadVault() {
       if (cachedVault) return cachedVault;
       const stored = await storage.get(KEYS.VAULT_DATA);
-      const blob = stored[KEYS.VAULT_DATA] ? await decryptJson(stored[KEYS.VAULT_DATA]) : { entries: [], trusted: [] };
+      if (!stored[KEYS.VAULT_DATA]) {
+        cachedVault = { entries: [], trusted: [] };
+        return cachedVault;
+      }
+      const blob = await decryptJson(stored[KEYS.VAULT_DATA]);
+      if (blob && blob.error === 'DECRYPTION_FAILED') {
+        const err = new Error('VAULT_CORRUPTED_OR_LOCKED: Decryption failed. Operation halted to prevent silent data loss.');
+        err.code = 'VAULT_CORRUPT';
+        throw err;
+      }
       // Backward compatibility: blobs from before the trust graph lack `trusted`
       cachedVault = { entries: blob.entries || [], trusted: blob.trusted || [] };
       return cachedVault;

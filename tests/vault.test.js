@@ -238,4 +238,19 @@ describe('Blueprint 6: Encrypted Backup & Recovery Protocol', () => {
     const freshVault = makeVault();
     await expect(freshVault.importVaultEncrypted(backupJson, 'WrongPassphrase!')).rejects.toThrow();
   });
+
+  test('loadVault throws and halts on corrupted vault ciphertext to prevent silent overwrite', async () => {
+    const storage = makeStorage();
+    // Intentionally inject corrupted ciphertext into storage
+    await storage.set({
+      vault_data: { iv: 'dGVzdGl2', data: 'dGVzdGRhdGE=' }
+    });
+
+    const vault = createVault(storage, cryptoObj);
+    await expect(vault.listEntries()).rejects.toThrow(/VAULT_CORRUPTED_OR_LOCKED/);
+
+    // Verify storage was not overwritten with an empty vault
+    const rawStored = await storage.get('vault_data');
+    expect(rawStored.vault_data).toEqual({ iv: 'dGVzdGl2', data: 'dGVzdGRhdGE=' });
+  });
 });

@@ -387,7 +387,7 @@ describe('VIGIL Native Messaging Bridge', () => {
     test('attaches session_token and origin metadata to subsequent privileged RPC requests', async () => {
       VIGIL_NATIVE_BRIDGE.connect();
       VIGIL_NATIVE_BRIDGE.sessionToken = 'vigil_sess_valid_token_123';
-      const reqPromise = VIGIL_NATIVE_BRIDGE.sendRequest('vigil.keychainGet', { service: 'vault' });
+      const reqPromise = VIGIL_NATIVE_BRIDGE.sendRequest('vigil.keychainGet', { service: 'vault' }, { plain: true });
 
       const sentPayload = mockPort.postMessage.mock.calls[0][0];
       expect(sentPayload.params.auth_token).toBe('vigil_sess_valid_token_123');

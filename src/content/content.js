@@ -2434,7 +2434,7 @@ function showConsensusModal(promptText, verdict, details, pending) {
   modal.innerHTML = '<div id="vigil-consensus-icon" style="margin-bottom:10px;">' + getVigilSpinningLogo(36) + '</div>' +
     '<div id="vigil-consensus-title" style="font-size:16px;font-weight:700;margin-bottom:6px;color:#f8fafc;">Multi-model consensus check…</div>' +
     `<div id="vigil-consensus-body" style="font-size:12.5px;line-height:1.5;margin-bottom:4px;color:${secondaryText};">Vigil held this send while independent safety classifiers evaluate the flagged prompt.</div>` +
-    (details ? `<div style="font-size:11px;color:${secondaryText};margin-top:6px;font-family:monospace;">${details}</div>` : '') +
+    (details ? `<div style="font-size:11px;color:${secondaryText};margin-top:6px;font-family:monospace;">${escapeHtml(details)}</div>` : '') +
     '<div id="vigil-consensus-actions" style="display:flex;gap:10px;justify-content:center;margin-top:16px;"></div>';
   document.body.appendChild(modal);
   if (verdict !== 'checking') updateConsensusModal(verdict, details, promptText, pending);
@@ -2447,8 +2447,9 @@ function renderConsensusVoteChips(votes) {
   const color = (v) => v === 'block' ? '#ef4444' : v === 'allow' ? '#22c55e' : '#9ca3af';
   return '<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:12px;">' +
     votes.map(v => {
-      const cls = (v.classifier || 'model').replace(/[_]/g, ' ');
-      return `<span style="font-size:10.5px;padding:3px 8px;border-radius:999px;background:${color(v.vote)};color:white;font-weight:600;">${cls}: ${v.vote}</span>`;
+      const cls = escapeHtml((v.classifier || 'model').replace(/[_]/g, ' '));
+      const voteVal = escapeHtml(v.vote || '');
+      return `<span style="font-size:10.5px;padding:3px 8px;border-radius:999px;background:${color(v.vote)};color:white;font-weight:600;">${cls}: ${voteVal}</span>`;
     }).join('') +
     '</div>';
 }
@@ -2469,7 +2470,7 @@ function updateConsensusModal(verdict, details, promptText, pending, votes) {
   if (verdict === 'blocked') {
     icon.textContent = '⛔';
     title.textContent = 'Blocked by multi-model consensus';
-    body.innerHTML = `Multiple independent classifiers identified this text as adversarial.<br><strong>For your protection, this send cannot be overridden from here.</strong>${details ? '<br><span style="font-size:11.5px;font-family:monospace;color:' + secondaryText + ';">' + details + '</span>' : ''}${chips}`;
+    body.innerHTML = `Multiple independent classifiers identified this text as adversarial.<br><strong>For your protection, this send cannot be overridden from here.</strong>${details ? '<br><span style="font-size:11.5px;font-family:monospace;color:' + secondaryText + ';">' + escapeHtml(details) + '</span>' : ''}${chips}`;
     actions.innerHTML = mkBtn('vigil-consensus-cancel', 'Got it', '#6b7280');
     modal.querySelector('#vigil-consensus-cancel').onclick = (e) => {
       e.preventDefault(); e.stopPropagation(); modal.remove(); pendingSubmission = null;
@@ -2477,7 +2478,7 @@ function updateConsensusModal(verdict, details, promptText, pending, votes) {
   } else if (verdict === 'soft_block') {
     icon.textContent = '⚠️';
     title.textContent = 'Consensus warning — override required';
-    body.innerHTML = `One classifier flagged this text while others abstained.<br><strong>Sending requires your explicit override.</strong>${details ? '<br><span style="font-size:11.5px;font-family:monospace;color:' + secondaryText + ';">' + details + '</span>' : ''}${chips}`;
+    body.innerHTML = `One classifier flagged this text while others abstained.<br><strong>Sending requires your explicit override.</strong>${details ? '<br><span style="font-size:11.5px;font-family:monospace;color:' + secondaryText + ';">' + escapeHtml(details) + '</span>' : ''}${chips}`;
     actions.innerHTML = mkBtn('vigil-consensus-cancel', 'Cancel', '#6b7280') + mkBtn('vigil-consensus-override', 'Send anyway', '#f59e0b');
     modal.querySelector('#vigil-consensus-cancel').onclick = (e) => {
       e.preventDefault(); e.stopPropagation(); modal.remove(); pendingSubmission = null;
@@ -2871,8 +2872,8 @@ function showDriftAlert(driftResult) {
     <div style="display:flex;align-items:flex-start;gap:12px;">
       <div style="width:34px;height:34px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${icon}</div>
       <div style="flex:1;">
-        <div style="font-weight:700;font-size:13.5px;color:#fbbf24;letter-spacing:-0.2px;">${title}</div>
-        <div style="font-size:12px;line-height:1.45;color:#d1d5db;margin-top:3px;">${desc}</div>
+        <div style="font-weight:700;font-size:13.5px;color:#fbbf24;letter-spacing:-0.2px;">${escapeHtml(title)}</div>
+        <div style="font-size:12px;line-height:1.45;color:#d1d5db;margin-top:3px;">${escapeHtml(desc)}</div>
         <div style="margin-top:10px;display:flex;justify-content:flex-end;">
           <button id="vigil-drift-dismiss" style="padding:6px 16px;background:#6366f1;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">Acknowledge</button>
         </div>
@@ -2894,7 +2895,7 @@ function showShoppingAlert(providers) {
   const modal = document.createElement('div');
   modal.setAttribute('data-vigil', 'shopping-modal');
   modal.style.cssText = 'position:fixed!important;bottom:24px!important;left:50%!important;transform:translateX(-50%)!important;z-index:2147483647!important;max-width:540px!important;width:calc(100vw - 32px)!important;background:rgba(24,24,27,0.96)!important;color:#f4f4f5!important;border:1px solid rgba(239,68,68,0.3)!important;border-radius:14px!important;box-shadow:0 16px 48px rgba(0,0,0,0.5)!important;padding:16px 20px!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important;animation:vigil-fadeIn 0.2s ease-out!important;box-sizing:border-box!important;';
-  const providerList = (providers || []).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
+  const providerList = (providers || []).map(p => escapeHtml(p.charAt(0).toUpperCase() + p.slice(1))).join(', ');
   modal.innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:12px;">
       <div style="width:34px;height:34px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🛑</div>
@@ -3023,12 +3024,12 @@ function showAttachmentWarning(title, message, fileName, fileSize, fileType) {
   modal.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
       ${getVigilSpinningLogo(22)}
-      <span style="font-size:15px;font-weight:700;color:#f8fafc;">${title}</span>
+      <span style="font-size:15px;font-weight:700;color:#f8fafc;">${escapeHtml(title)}</span>
     </div>
-    <div style="font-size:12.5px;line-height:1.5;color:#d1d5db;margin-bottom:12px;">${message}</div>
+    <div style="font-size:12.5px;line-height:1.5;color:#d1d5db;margin-bottom:12px;">${escapeHtml(message)}</div>
     <div style="background:rgba(255,255,255,0.06);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-weight:600;color:#fff;">${fileName}</span>
-      <span style="color:#9ca3af;">${fileSize} MB • ${fileType}</span>
+      <span style="font-weight:600;color:#fff;">${escapeHtml(fileName)}</span>
+      <span style="color:#9ca3af;">${escapeHtml(fileSize)} MB • ${escapeHtml(fileType)}</span>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;">
       <button id="vigil-attach-cancel" style="padding:8px 16px;background:rgba(255,255,255,0.08);color:#d1d5db;border:1px solid rgba(255,255,255,0.14);border-radius:8px;cursor:pointer;font-weight:500;font-size:12px;" aria-label="Cancel upload">${t('cancelUpload')}</button>
