@@ -26,6 +26,7 @@ To be eligible for recognition in the Vigil AI Hall of Fame:
 4. **Reproducible Report:** Provide a clear description, proof of concept (PoC), reproduction steps, or actionable remediation advice.
 
 ### What We Offer
+Vigil AI is an independent, community-driven open-source project maintained on a volunteer basis. We do **not** offer financial bounties or cash compensation. We offer:
 - **Public Recognition:** Permanent listing in this Hall of Fame with your preferred name, GitHub profile, personal website, or social handle.
 - **Release Notes Credit:** Prominent attribution in GitHub release notes and security advisories.
 - **Reference & Recommendation:** We are glad to serve as a professional reference or verify your research contributions for prospective employers or academic programs.
@@ -41,3 +42,4 @@ If you discover a security issue or potential weakness in Vigil AI:
 - **Policy Details:** Review our full SLA commitments and scope in [SECURITY.md](SECURITY.md) and RFC 9116 [security.txt](.well-known/security.txt).
 
 Thank you for helping keep Vigil AI secure for everyone!
+
