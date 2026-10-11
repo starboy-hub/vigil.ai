@@ -115,6 +115,17 @@ describe('Blueprint #5: Cryptographic Native Messaging Channel (ECDH + AES-GCM)'
     });
   });
 
+  async function waitForPostMessageCall(index = 0, timeoutMs = 2000) {
+    const start = Date.now();
+    while (!mockPort.postMessage.mock.calls[index]) {
+      if (Date.now() - start > timeoutMs) {
+        throw new Error(`Timeout waiting for mockPort.postMessage call ${index}`);
+      }
+      await new Promise(r => setTimeout(r, 5));
+    }
+    return mockPort.postMessage.mock.calls[index][0];
+  }
+
   describe('3. Mutual Handshake & Encrypted Channel Negotiation', () => {
     test('handshake negotiates encrypted channel when host_pub_key is provided', async () => {
       VIGIL_NATIVE_BRIDGE.connect();
@@ -123,9 +134,8 @@ describe('Blueprint #5: Cryptographic Native Messaging Channel (ECDH + AES-GCM)'
       const serverPubB64 = await VIGIL_NATIVE_BRIDGE.exportPublicKey(serverKp.publicKey);
 
       const handshakePromise = VIGIL_NATIVE_BRIDGE.performCryptoHandshake();
-      await new Promise(resolve => setTimeout(resolve, 10));
+      const sentPayload = await waitForPostMessageCall(0);
 
-      const sentPayload = mockPort.postMessage.mock.calls[0][0];
       expect(sentPayload.method).toBe('vigil.auth.handshake');
       expect(sentPayload.params.client_pub_key).toBeDefined();
 
@@ -154,9 +164,8 @@ describe('Blueprint #5: Cryptographic Native Messaging Channel (ECDH + AES-GCM)'
       const serverKp = await VIGIL_NATIVE_BRIDGE.generateEcdhKeyPair();
       const serverPubB64 = await VIGIL_NATIVE_BRIDGE.exportPublicKey(serverKp.publicKey);
       const handshakePromise = VIGIL_NATIVE_BRIDGE.performCryptoHandshake();
-      await new Promise(resolve => setTimeout(resolve, 10));
 
-      const hsPayload = mockPort.postMessage.mock.calls[0][0];
+      const hsPayload = await waitForPostMessageCall(0);
       mockPort.onMessage.addListener.mock.calls[0][0]({
         jsonrpc: '2.0',
         id: hsPayload.id,
@@ -166,9 +175,8 @@ describe('Blueprint #5: Cryptographic Native Messaging Channel (ECDH + AES-GCM)'
 
       // Now send privileged request
       const reqPromise = VIGIL_NATIVE_BRIDGE.sendRequest('vigil.keychainGet', { account: 'master' });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      const encPayload = await waitForPostMessageCall(1);
 
-      const encPayload = mockPort.postMessage.mock.calls[1][0];
       expect(encPayload.method).toBe('vigil.encrypted_frame');
       expect(encPayload.params.ciphertext).toBeDefined();
       expect(encPayload.params.iv).toBeDefined();
@@ -219,9 +227,8 @@ describe('Blueprint #5: Cryptographic Native Messaging Channel (ECDH + AES-GCM)'
         .mockRejectedValue(new Error('INVALID_PEER_KEY'));
 
       const hsPromise = VIGIL_NATIVE_BRIDGE.performHandshake(null, null, 'VALID_PUB_KEY');
-      await new Promise(resolve => setTimeout(resolve, 5));
+      const hsCall = await waitForPostMessageCall(0);
 
-      const hsCall = mockPort.postMessage.mock.calls[0][0];
       mockPort.onMessage.addListener.mock.calls[0][0]({
         jsonrpc: '2.0',
         id: hsCall.id,
@@ -237,9 +244,8 @@ describe('Blueprint #5: Cryptographic Native Messaging Channel (ECDH + AES-GCM)'
     test('missing session token in handshake response is rejected', async () => {
       VIGIL_NATIVE_BRIDGE.connect();
       const hsPromise = VIGIL_NATIVE_BRIDGE.performHandshake();
-      await new Promise(resolve => setTimeout(resolve, 5));
+      const hsCall = await waitForPostMessageCall(0);
 
-      const hsCall = mockPort.postMessage.mock.calls[0][0];
       mockPort.onMessage.addListener.mock.calls[0][0]({
         jsonrpc: '2.0',
         id: hsCall.id,

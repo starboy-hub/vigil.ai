@@ -39,3 +39,13 @@ Vigil AI implements an uncompromising local-first, zero-telemetry defense model:
 2. **Encrypted Native Messaging:** AES-256-GCM channel negotiated via ephemeral ECDH with replay counters.
 3. **Sensitive Surface Isolation:** Pre-execution deny-list prevents injection on SSO, password managers, and payment flows.
 4. **Zero Outbound Egress:** Telemetry is strictly zero; all AI models and regex heuristics run 100% on localhost.
+
+## Integration Coverage & Traffic Inspection Matrix
+
+| Integration Surface | Protocol / Channel | Inspection & Redaction Coverage | Explicit Security Boundaries & Policy |
+| :--- | :--- | :--- | :--- |
+| **Browser Extension** (`src/`) | DOM Content Scripts / In-Memory Interceptors | **Full Pre-Encryption Inspection**<br>Scans all DOM submissions (buttons, Enter key, forms, quarantine buffer) for PII, secrets, and prompt injection before transport. | Deny-list excludes banking, password managers, and payment flows. Context isolation prevents content scripts from accessing privileged vault keys. |
+| **Native IDE Proxy** (`desktop/`, Port 8383) | Loopback HTTP / IPC | **Full Prompt Inspection**<br>Inspects prompts from Cursor, Copilot, and Ollama. Redacts AWS keys, GitHub PATs, API keys, and RSA/PKCS#8 keys. Enforces token budgets. | Bound to `127.0.0.1`. Plaintext prompts only; token budget engine enforces hard block / soft alert thresholds. |
+| **Agent Firewall — Plain HTTP** (`companion/`, Port 8765) | HTTP/1.1 Forward Proxy | **Full Streaming DLP Inspection**<br>Redacts request and response streams. Rewrites tokens in SSE streams with bounded memory. | Drops recursive proxy loops (400) and cloud metadata IMDS SSRF (403). Validates actual connected socket IP and blocks prohibited redirects. |
+| **Agent Firewall — HTTPS Tunnels** (`companion/`, Port 8765) | HTTP `CONNECT` Tunneling | **Uninspected Traffic (`tunnel_uninspected`)**<br>TCP byte stream is end-to-end TLS encrypted between client and upstream host. | **Fundamental TLS Limitation:** Vigil does NOT install an OS root CA certificate (TLS MITM) to decrypt HTTPS payloads. Destination safety (blocking IMDS SSRF and recursive loops) is enforced, but encrypted payload bodies are strictly audited as `tunnel_uninspected`. |
+

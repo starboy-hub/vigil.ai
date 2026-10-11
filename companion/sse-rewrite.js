@@ -54,11 +54,15 @@ function createSseRewriter(opts) {
   const mappings = makeMappings(opts && opts.mappings);
   const replaceAll = makeReplacer(mappings);
   const tokens = mappings.map(m => m.token);
+  const maxBufferLimit = (opts && opts.maxBuffer) || (64 * 1024);
+  const failClosedPolicy = (opts && opts.failClosed) || 'error-frame'; // 'error-frame' | 'throw'
   let carry = '';
   let buffer = '';
+  let faulted = false;
 
   // Rewrite one content fragment, carrying a possible partial token
   const rewriteContent = (s) => {
+    if (faulted) return '';
     const replaced = replaceAll(carry + s);
     const keep = longestSuffixKeep(replaced, tokens);
     carry = replaced.slice(replaced.length - keep);
@@ -66,7 +70,7 @@ function createSseRewriter(opts) {
   };
 
   const transformFrame = (frame) => {
-    if (!frame) return '';
+    if (!frame || faulted) return '';
     return frame.split('\n').map((line) => {
       if (!/^data:\s?/.test(line) || DONE_LINE.test(line)) return line;
       const payload = line.replace(/^data:\s?/, '');
@@ -95,21 +99,58 @@ function createSseRewriter(opts) {
 
   return {
     push(chunk) {
-      buffer += String(chunk);
+      if (faulted) return '';
+      buffer += String(chunk || '');
       let out = '';
       let idx;
+
+      // Extract and transform complete frames delimited by \n\n
       while ((idx = buffer.indexOf('\n\n')) !== -1) {
         const frame = buffer.slice(0, idx + 2);
         buffer = buffer.slice(idx + 2);
         out += transformFrame(frame);
       }
+
+      // Explicit fail-closed policy on oversized incomplete frames:
+      // A single incomplete event that exceeds maxBufferLimit cannot be parsed
+      // safely without unbounded buffering or slicing across secrets.
+      // Therefore, fail closed: purge buffer/carry and emit error or throw.
+      if (buffer.length > maxBufferLimit) {
+        faulted = true;
+        buffer = '';
+        carry = '';
+        if (failClosedPolicy === 'throw') {
+          throw new RangeError(`SSE frame exceeded buffer limit of ${maxBufferLimit} bytes`);
+        }
+        return out + 'event: error\ndata: {"error":"FRAME_EXCEEDED_BUFFER_LIMIT","code":413}\n\n';
+      }
+
       return out;
     },
+
     flush() {
-      const out = transformFrame(buffer) + carry;
-      buffer = '';
+      if (faulted) return '';
+      let out = '';
+      if (buffer.length > 0) {
+        if (buffer.length > maxBufferLimit) {
+          faulted = true;
+          buffer = '';
+          carry = '';
+          if (failClosedPolicy === 'throw') {
+            throw new RangeError(`SSE frame exceeded buffer limit of ${maxBufferLimit} bytes`);
+          }
+          return 'event: error\ndata: {"error":"FRAME_EXCEEDED_BUFFER_LIMIT","code":413}\n\n';
+        }
+        out = transformFrame(buffer);
+        buffer = '';
+      }
+      out += carry;
       carry = '';
       return out;
+    },
+
+    isFaulted() {
+      return faulted;
     }
   };
 }

@@ -1608,65 +1608,70 @@ function showInlineIndicator(element, text, color) { const rect = element.getBou
 function removeInlineIndicator() { document.querySelectorAll('.vigil-inline-indicator').forEach(el => el.remove()); }
 
 function performRedaction(element, redactions) {
-  console.log('[dbg] performRedaction:', JSON.stringify(redactions && redactions.map(r => r.text)));
-  if (!redactions || redactions.length === 0) return { originalText: null, replacements: [] };
-  const cur = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' ? element.value : (element.innerText || '');
-  // Vault entries get their stable per-site pseudonym here (assigned once,
-  // persisted, then reused so conversations stay coherent)
-  const enriched = redactions.map(r => {
-    if (!r.vaultId) return r;
-    let fake = vaultPseudos[r.vaultId];
-    if (!fake) {
-      fake = pickVaultFake(r.vaultKind, r.vaultId, r.text);
-      vaultPseudos[r.vaultId] = fake;
-      try { chrome.runtime.sendMessage({ type: 'PSEUDO_RECORD', entryId: r.vaultId, site: location.hostname, fake }, () => {}); } catch (e) {}
-    }
-    const opaquePointer = r.opaquePointer || ((typeof VIGIL_FAKE !== 'undefined' && VIGIL_FAKE.createOpaquePointer)
-      ? VIGIL_FAKE.createOpaquePointer(r.vaultKind, r.vaultId)
-      : `{{PTR:VAULT_${r.vaultId.slice(0, 8)}}}`);
-    return { ...r, vaultFake: fake, opaquePointer };
-  });
-  const result = VIGIL_FAKE.redactText(cur, enriched, settings.useFakeData);
-  const txt = result.text; const reps = result.replacements; const orig = cur;
-  if (txt !== orig) {
-    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-      const valueProto = element.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(valueProto, 'value').set;
-      if (nativeInputValueSetter) nativeInputValueSetter.call(element, txt);
-      else element.value = txt;
-      element.dispatchEvent(new Event('input', { bubbles: true }));
-    } else {
-      if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
-        element.focus();
-        try {
-          const sel = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(element);
-          sel.removeAllRanges();
-          sel.addRange(range);
-          document.execCommand('insertText', false, txt);
-        } catch (e) {
+  try {
+    console.log('[dbg] performRedaction:', JSON.stringify(redactions && redactions.map(r => r.text)));
+    if (!redactions || redactions.length === 0) return { originalText: null, replacements: [] };
+    const cur = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' ? element.value : (element.innerText || '');
+    // Vault entries get their stable per-site pseudonym here (assigned once,
+    // persisted, then reused so conversations stay coherent)
+    const enriched = redactions.map(r => {
+      if (!r.vaultId) return r;
+      let fake = vaultPseudos[r.vaultId];
+      if (!fake) {
+        fake = pickVaultFake(r.vaultKind, r.vaultId, r.text);
+        vaultPseudos[r.vaultId] = fake;
+        try { chrome.runtime.sendMessage({ type: 'PSEUDO_RECORD', entryId: r.vaultId, site: location.hostname, fake }, () => {}); } catch (e) {}
+      }
+      const opaquePointer = r.opaquePointer || ((typeof VIGIL_FAKE !== 'undefined' && VIGIL_FAKE.createOpaquePointer)
+        ? VIGIL_FAKE.createOpaquePointer(r.vaultKind, r.vaultId)
+        : `{{PTR:VAULT_${r.vaultId.slice(0, 8)}}}`);
+      return { ...r, vaultFake: fake, opaquePointer };
+    });
+    const result = VIGIL_FAKE.redactText(cur, enriched, settings.useFakeData);
+    const txt = result.text; const reps = result.replacements; const orig = cur;
+    if (txt !== orig) {
+      if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+        const valueProto = element.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(valueProto, 'value').set;
+        if (nativeInputValueSetter) nativeInputValueSetter.call(element, txt);
+        else element.value = txt;
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
+          element.focus();
+          try {
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand('insertText', false, txt);
+          } catch (e) {
+            element.innerText = txt;
+          }
+        } else {
           element.innerText = txt;
         }
-      } else {
-        element.innerText = txt;
+        element.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      element.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    reps.forEach(r => {
-      historyStore.add({ ...r, site: window.location.hostname });
-      if (r.fake && r.original && r.fake !== r.original) {
-        sessionAdHocPseudos.set(r.fake, r.original);
-        if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION) {
-          VIGIL_REHYDRATION.recordSubstitution(r.fake, r.original);
+      reps.forEach(r => {
+        historyStore.add({ ...r, site: window.location.hostname });
+        if (r.fake && r.original && r.fake !== r.original) {
+          sessionAdHocPseudos.set(r.fake, r.original);
+          if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION) {
+            VIGIL_REHYDRATION.recordSubstitution(r.fake, r.original);
+          }
+          saveLearnedExemplar(r.original, r.fake, r.type);
         }
-        saveLearnedExemplar(r.original, r.fake, r.type);
-      }
-    });
-    recordLoraCorrection(reps.map(r => r.original || r.text), 1);
-    return { originalText: orig, replacements: reps };
+      });
+      recordLoraCorrection(reps.map(r => r.original || r.text), 1);
+      return { originalText: orig, replacements: reps, sanitizedText: txt };
+    }
+    return { originalText: null, replacements: [] };
+  } catch (err) {
+    console.error('[VIGIL] performRedaction failed:', err);
+    return { originalText: null, replacements: [], error: true };
   }
-  return { originalText: null, replacements: [] };
 }
 function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
@@ -2385,10 +2390,11 @@ function consensusHoldSubmission(promptText, element, pending) {
   pendingSubmission = pending;
   showConsensusModal(promptText, 'checking', null, pending);
   try {
+    const isStrict = Boolean(settings.failClosedOnTimeout || settings.protectionPreset === 'strict');
     chrome.runtime.sendMessage(
-      { type: 'CONSENSUS_EVALUATE', text: promptText.slice(0, 20000), site: location.hostname },
+      { type: 'CONSENSUS_EVALUATE', text: promptText.slice(0, 20000), site: location.hostname, strict: isStrict },
       (res) => {
-        const verdict = (res && res.verdict) || 'allowed';
+        const verdict = (res && res.verdict) || (isStrict ? 'soft_block' : 'allowed');
         const details = res && res.details;
         const votes = res && Array.isArray(res.votes) ? res.votes : [];
         consensusGateCache.set(key, { verdict, ts: Date.now(), details, votes });
@@ -2396,17 +2402,27 @@ function consensusHoldSubmission(promptText, element, pending) {
         updateConsensusModal(verdict, details, promptText, pending, votes);
       }
     );
-    // Safety net: a hung background must not swallow the send forever —
-    // the deterministic tiers already had their say, so resume on timeout.
+    // Safety net: a hung background must not swallow the send forever in standard mode.
+    // In strict mode (Blueprint #1), timeout enforces a soft_block requiring user confirmation.
     setTimeout(() => {
       const modal = document.querySelector('[data-vigil="consensus-modal"]');
       if (modal && modal.dataset.verdict === 'checking') {
-        consensusGateCache.set(key, { verdict: 'allowed', ts: Date.now(), details: 'consensus timeout' });
-        resumeHeldSubmission(promptText, pending);
+        if (isStrict) {
+          consensusGateCache.set(key, { verdict: 'soft_block', ts: Date.now(), details: 'Consensus timeout — verification required (Strict Mode)' });
+          updateConsensusModal('soft_block', 'Consensus check timed out. Explicit verification required before sending (Strict Mode).', promptText, pending, []);
+        } else {
+          consensusGateCache.set(key, { verdict: 'allowed', ts: Date.now(), details: 'consensus timeout' });
+          resumeHeldSubmission(promptText, pending);
+        }
       }
     }, CONSENSUS_TIMEOUT_MS);
   } catch (e) {
-    resumeHeldSubmission(promptText, pending);
+    const isStrict = Boolean(settings.failClosedOnTimeout || settings.protectionPreset === 'strict');
+    if (isStrict) {
+      updateConsensusModal('soft_block', 'Consensus service unavailable — verification required (Strict Mode)', promptText, pending, []);
+    } else {
+      resumeHeldSubmission(promptText, pending);
+    }
   }
   return true;
 }
@@ -2514,7 +2530,11 @@ document.addEventListener('keydown', () => { hasUserInteracted = true; }, { once
 
 function setupSubmissionGuard() {
   document.addEventListener('click', (e) => {
-    const target = e.target;
+    const rawTarget = e.target;
+    if (!rawTarget) return;
+    const target = rawTarget instanceof Element ? rawTarget : (rawTarget.parentElement instanceof Element ? rawTarget.parentElement : null);
+    if (!target || typeof target.closest !== 'function') return;
+
     if (target.id === 'vigil-modal-cancel' || target.closest('#vigil-modal-cancel')) {
       e.preventDefault();
       e.stopPropagation();
@@ -2535,11 +2555,19 @@ function setupSubmissionGuard() {
           const txt = getPromptTextFromElement(activeEl);
           if (typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.scanWithRegex) {
             const sc = VIGIL_ENGINE.scanWithRegex(txt);
-            if (sc && sc.redactions) reds = sc.redactions;
+            if (sc && sc.redactions) reds = reds.concat(sc.redactions);
+          }
+          if (typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets) {
+            const sec = VIGIL_SECRETS.scanSecrets(txt);
+            if (sec && sec.redactions) reds = reds.concat(sec.redactions);
           }
         }
         if (reds.length) {
-          performRedaction(activeEl, reds);
+          const redResult = performRedaction(activeEl, reds);
+          if (redResult && redResult.error) {
+            console.error('[VIGIL] Redaction failed — aborting submission to prevent leak');
+            return;
+          }
         }
         allowCurrentPrompt(activeEl);
       }
@@ -2582,78 +2610,106 @@ function setupSubmissionGuard() {
   }, true);
 
   document.addEventListener('click', (e) => {
-    if (!submissionGuardEnabled || !hasUserInteracted) return;
-    if (e.target.closest('[data-vigil]')) return;
-    const target = (e.composedPath && e.composedPath()[0]) || e.target;
-    const button = target.closest('button');
-    if (button && button.closest('[data-vigil="unified-popup"]')) return;
-    if (target.id === 'vigil-modal-cancel' || target.id === 'vigil-modal-confirm') return;
-    const isSendButton = button && (button.getAttribute('data-testid') === 'send-button' || button.type === 'submit' || /send|submit/i.test(button.textContent || button.getAttribute('aria-label') || ''));
-    if (isSendButton) {
-      const activeEl = getActiveInputElement() || (button && button.closest('form'));
-      const promptText = getPromptTextFromElement(activeEl);
-      checkOutboundShopping(promptText);
-      if (hasUnprotectedPII(activeEl || button)) {
-        e.preventDefault();
-        e.stopPropagation();
-        pendingSubmission = { type: 'button', element: button };
-        showSubmissionConfirmation();
-        return;
+    try {
+      if (!submissionGuardEnabled || !hasUserInteracted) return;
+      if (e.target && typeof e.target.closest === 'function' && e.target.closest('[data-vigil]')) return;
+      const rawTarget = (e.composedPath && e.composedPath()[0]) || e.target;
+      if (!rawTarget) return;
+      const target = rawTarget instanceof Element ? rawTarget : (rawTarget.parentElement instanceof Element ? rawTarget.parentElement : null);
+      if (!target || typeof target.closest !== 'function') return;
+
+      const button = target.closest('button, [role="button"]');
+      if (button && button.closest('[data-vigil="unified-popup"]')) return;
+      if (target.id === 'vigil-modal-cancel' || target.id === 'vigil-modal-confirm') return;
+      const isSendButton = button && (
+        button.getAttribute('data-testid') === 'send-button' ||
+        button.getAttribute('data-testid') === 'submit-button' ||
+        button.type === 'submit' ||
+        /send|submit|generate|prompt|ask|run/i.test(button.textContent || button.getAttribute('aria-label') || button.getAttribute('title') || '')
+      );
+      if (isSendButton) {
+        const activeEl = getActiveInputElement() || (button && button.closest('form'));
+        const promptText = getPromptTextFromElement(activeEl);
+        checkOutboundShopping(promptText);
+        if (hasUnprotectedPII(activeEl || button)) {
+          e.preventDefault();
+          e.stopPropagation();
+          pendingSubmission = { type: 'button', element: button };
+          showSubmissionConfirmation();
+          return;
+        }
+        if (consensusHoldSubmission(promptText, activeEl, { type: 'button', element: button })) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
       }
-      if (consensusHoldSubmission(promptText, activeEl, { type: 'button', element: button })) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
+    } catch (err) {
+      console.error('[VIGIL] Click submission guard error — failing closed:', err);
+      e.preventDefault();
+      e.stopPropagation();
     }
   }, true);
 
   document.addEventListener('keydown', (e) => {
-    if (!submissionGuardEnabled || !hasUserInteracted) return;
-    if ((e.key === 'Enter' && !e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
-      const target = (e.composedPath && e.composedPath()[0]) || e.target;
-      if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.getAttribute('contenteditable') === 'true') {
-        const promptText = getPromptTextFromElement(target);
-        checkOutboundShopping(promptText);
-        if (hasUnprotectedPII(target)) {
-          e.preventDefault();
-          e.stopPropagation();
-          pendingSubmission = { type: 'enter', element: target };
-          showSubmissionConfirmation();
-          return;
-        }
-        if (consensusHoldSubmission(promptText, target, { type: 'enter', element: target })) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
+    try {
+      if (!submissionGuardEnabled || !hasUserInteracted) return;
+      if ((e.key === 'Enter' && !e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
+        const target = (e.composedPath && e.composedPath()[0]) || e.target;
+        if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.getAttribute('contenteditable') === 'true') {
+          const promptText = getPromptTextFromElement(target);
+          checkOutboundShopping(promptText);
+          if (hasUnprotectedPII(target)) {
+            e.preventDefault();
+            e.stopPropagation();
+            pendingSubmission = { type: 'enter', element: target };
+            showSubmissionConfirmation();
+            return;
+          }
+          if (consensusHoldSubmission(promptText, target, { type: 'enter', element: target })) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
         }
       }
+    } catch (err) {
+      console.error('[VIGIL] Keydown submission guard error — failing closed:', err);
+      e.preventDefault();
+      e.stopPropagation();
     }
   }, true);
 
   document.addEventListener('submit', (e) => {
-    if (!submissionGuardEnabled || !hasUserInteracted) return;
-    const activeEl = getActiveInputElement();
-    const promptText = getPromptTextFromElement(activeEl);
-    checkOutboundShopping(promptText);
-    if (hasUnprotectedPII(activeEl || e.target)) {
+    try {
+      if (!submissionGuardEnabled || !hasUserInteracted) return;
+      const activeEl = getActiveInputElement();
+      const promptText = getPromptTextFromElement(activeEl);
+      checkOutboundShopping(promptText);
+      if (hasUnprotectedPII(activeEl || e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        pendingSubmission = { type: 'form', element: e.target };
+        showSubmissionConfirmation();
+        return;
+      }
+      if (consensusHoldSubmission(promptText, activeEl, { type: 'form', element: e.target })) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    } catch (err) {
+      console.error('[VIGIL] Form submit guard error — failing closed:', err);
       e.preventDefault();
       e.stopPropagation();
-      pendingSubmission = { type: 'form', element: e.target };
-      showSubmissionConfirmation();
-      return;
-    }
-    if (consensusHoldSubmission(promptText, activeEl, { type: 'form', element: e.target })) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
     }
   }, true);
   console.log('[VIGIL] Universal submission guard active');
 }
 
 function hasUnprotectedPII(target) {
-  if (typeof popup !== 'undefined' && popup && popup.activeAlerts && popup.activeAlerts.length > 0) {
+  try {
+    if (typeof popup !== 'undefined' && popup && popup.activeAlerts && popup.activeAlerts.length > 0) {
     const unscoped = popup.activeAlerts.filter(a => !a.isProtected && a.element);
     if (unscoped.length > 0) {
       if (!target) return true;
@@ -2690,7 +2746,11 @@ function hasUnprotectedPII(target) {
     }
   }
 
-  return false;
+    return false;
+  } catch (err) {
+    console.error('[VIGIL] Error in hasUnprotectedPII (failing closed for protection):', err);
+    return true; // Fail closed: sensitive data must never leak due to detector error
+  }
 }
 
 function showSubmissionConfirmation() {
@@ -2737,11 +2797,19 @@ function showSubmissionConfirmation() {
           const txt = getPromptTextFromElement(activeEl);
           if (typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.scanWithRegex) {
             const sc = VIGIL_ENGINE.scanWithRegex(txt);
-            if (sc && sc.redactions) reds = sc.redactions;
+            if (sc && sc.redactions) reds = reds.concat(sc.redactions);
+          }
+          if (typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets) {
+            const sec = VIGIL_SECRETS.scanSecrets(txt);
+            if (sec && sec.redactions) reds = reds.concat(sec.redactions);
           }
         }
         if (reds.length) {
-          performRedaction(activeEl, reds);
+          const redResult = performRedaction(activeEl, reds);
+          if (redResult && redResult.error) {
+            console.error('[VIGIL] Redaction failed — aborting submission to prevent leak');
+            return false;
+          }
         }
         allowCurrentPrompt(activeEl);
       }
@@ -2978,14 +3046,35 @@ class AsynchronousQuarantineBuffer {
     if (!payload || typeof payload !== 'string' || isWhitelisted || isPaused) {
       return { pass: true, sanitized: payload };
     }
-    const ct = VIGIL_ENGINE.cleanText(payload);
-    const regexRes = settings.regexEnabled ? VIGIL_ENGINE.scanWithRegex(ct) : { redactions: [] };
-    const secretRes = typeof VIGIL_SECRETS !== 'undefined' ? VIGIL_SECRETS.scanSecrets(ct) : { redactions: [] };
-    const hasSensitive = (regexRes.redactions && regexRes.redactions.length > 0) || (secretRes.redactions && secretRes.redactions.length > 0);
+    let text = payload;
+    try {
+      const j = JSON.parse(payload);
+      const vals = [];
+      (function walk(n) {
+        if (n && typeof n === 'object') {
+          Object.values(n).forEach(v => walk(v));
+        } else if (typeof n === 'string') {
+          vals.push(n);
+        }
+      })(j);
+      if (vals.length) text = vals.join(' ');
+    } catch (_) {}
+    const ct = VIGIL_ENGINE.cleanText(text);
+    const regexRes = (typeof settings === 'undefined' || settings.regexEnabled !== false)
+      ? VIGIL_ENGINE.scanWithRegex(ct) : { redactions: [] };
+    const secretRes = typeof VIGIL_SECRETS !== 'undefined'
+      ? VIGIL_SECRETS.scanSecrets(text) : { redactions: [] };
+    const rawSecretRes = typeof VIGIL_SECRETS !== 'undefined'
+      ? VIGIL_SECRETS.scanSecrets(payload) : { redactions: [] };
+    const allRedactions = [
+      ...(regexRes.redactions || []),
+      ...(secretRes.redactions || []),
+      ...(rawSecretRes.redactions || [])
+    ];
 
-    if (hasSensitive) {
+    if (allRedactions.length > 0) {
       await new Promise(r => setTimeout(r, this.holdDurationMs));
-      return { pass: false, reason: 'PII_DETECTED_IN_PAYLOAD', redactions: [...(regexRes.redactions || []), ...(secretRes.redactions || [])] };
+      return { pass: false, reason: 'PII_DETECTED_IN_PAYLOAD', redactions: allRedactions };
     }
     return { pass: true, sanitized: payload };
   }
@@ -3003,8 +3092,10 @@ function setupAttachmentGuard() {
       if (isWhitelisted || isPaused) return;
       let text = body;
       try { const j = JSON.parse(body); const vals = []; (function walk(n) { if (n && typeof n === 'object') { Object.values(n).forEach(v => walk(v)); } else if (typeof n === 'string') { vals.push(n); } })(j); text = vals.join(' '); } catch (e) {}
-      const r = VIGIL_ENGINE.scanWithRegex(VIGIL_ENGINE.cleanText(text));
-      const pii = [...new Set((r.redactions || []).map(x => x.type))];
+      const ct = VIGIL_ENGINE.cleanText(text);
+      const r = VIGIL_ENGINE.scanWithRegex(ct);
+      const sec = typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets ? VIGIL_SECRETS.scanSecrets(ct) : { redactions: [] };
+      const pii = [...new Set([...(r.redactions || []).map(x => x.type), ...(sec.redactions || []).map(x => x.type)])];
       if (!pii.length || !popup) return;
       const now = Date.now();
       if (now - lastBodyWarn < 30000) return; // one warning per 30s

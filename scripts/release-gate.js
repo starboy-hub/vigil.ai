@@ -75,7 +75,7 @@ const gates = [
 ];
 
 console.log('=====================================================');
-console.log('🛡️  VIGIL AI: EXECUTING 10/10 SECURITY RELEASE GATE');
+console.log(`🛡️  VIGIL AI: EXECUTING ${gates.length}-GATE SECURITY RELEASE PIPELINE`);
 console.log('=====================================================\n');
 
 let failed = 0;
@@ -94,7 +94,7 @@ if (failed > 0) {
   console.error(`🚫 SECURITY RELEASE GATE FAILED (${failed} gates failed). Release blocked.`);
   process.exit(1);
 } else {
-  console.log('🎉 ALL 7 SECURITY RELEASE GATES PASSED! Distribution approved.');
+  console.log(`🎉 ALL ${gates.length} SECURITY RELEASE GATES PASSED! Distribution approved.`);
   process.exit(0);
 }
 

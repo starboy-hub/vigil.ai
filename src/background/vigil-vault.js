@@ -550,17 +550,37 @@
         ['decrypt']
       );
 
-      const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, importKey, ciphertext);
-      const restored = JSON.parse(new TextDecoderCls().decode(decrypted));
+      let decrypted;
+      try {
+        decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, importKey, ciphertext);
+      } catch (_) {
+        throw new Error('Decryption failed: incorrect passphrase or corrupted backup');
+      }
+
+      let restored;
+      try {
+        restored = JSON.parse(new TextDecoderCls().decode(decrypted));
+      } catch (_) {
+        throw new Error('Corrupted decrypted backup payload');
+      }
+
+      if (!restored || typeof restored !== 'object' || !Array.isArray(restored.entries)) {
+        throw new Error('Invalid vault backup contents');
+      }
 
       // Merge into current vault
       const vlt = await loadVault();
       const existingIds = new Set(vlt.entries.map(e => e.id));
       const newEntries = [...vlt.entries];
 
-      for (const ent of (restored.entries || [])) {
-        if (!existingIds.has(ent.id)) {
-          newEntries.push(ent);
+      for (const ent of restored.entries) {
+        if (ent && typeof ent.id === 'string' && typeof ent.value === 'string' && !existingIds.has(ent.id)) {
+          newEntries.push({
+            id: ent.id,
+            kind: typeof ent.kind === 'string' ? ent.kind : 'custom',
+            value: ent.value,
+            createdAt: ent.createdAt || Date.now()
+          });
           existingIds.add(ent.id);
         }
       }

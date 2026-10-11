@@ -1,688 +1,682 @@
-VIGIL AI: SECURITY AND ENGINEERING BLUEPRINT
-Repository: https://github.com/starboy-hub/vigil.ai
-Review date: 11 October 2026
+VIGIL AI — MASTER SECURITY, VERIFICATION & IMPLEMENTATION SPECIFICATION
+0. MISSION
+
+You are the principal security engineer, AI systems architect, red-team engineer, and test engineer responsible for improving Vigil AI.
 
-PURPOSE
+Your mission is to inspect the existing repository, verify its actual implementation against its README and architectural claims, identify gaps, and implement carefully validated improvements.
+
+Vigil is intended to be a powerful, privacy-first, AI-versus-AI security system. It is not merely a keyword filter or a conventional browser extension.
+
+The goal is to strengthen the existing system, NOT replace it with a simpler architecture.
+
+You must preserve working features, existing interfaces, model integrations, training pipelines, privacy guarantees, and user workflows unless a specific change is necessary and justified.
+
+You must never claim that a feature is implemented, tested, secure, private, or functional without evidence.
+
+1. ABSOLUTE RULES
+Inspect the repository before proposing or applying architectural changes.
+Read README.md, architecture documentation, security documentation, package manifests, lockfiles, source code, tests, build scripts, CI workflows, installers, and configuration files.
+Identify the actual entry points and runtime data flows before editing.
+Establish a baseline of existing behavior before changing code.
+Never delete a feature merely because it is difficult to understand or test.
+Never replace a sophisticated feature with a mock, placeholder, heuristic, or simplified implementation while claiming equivalence.
+Never silently disable a security control to make tests pass.
+Never remove AI-versus-AI adversarial competition, self-play, semantic abstraction, response rehydration, honeytokens, multi-turn detection, local inference, adaptive routing, or personalization without explicit authorization.
+Never hardcode secrets, weaken encryption, disable certificate validation, or introduce unauthenticated privileged interfaces.
+Do not upgrade, downgrade, or replace dependencies without understanding compatibility and security implications.
+Do not introduce cloud inference, external telemetry, or external training data flows without explicit authorization.
+Never send real user prompts, secrets, credentials, private files, or identity mappings to an external service for testing.
+Preserve backward compatibility unless a documented migration is necessary.
+Do not run destructive migrations, delete user data, overwrite user configuration, or replace existing model artifacts without explicit authorization.
+Do not make unrelated formatting or refactoring changes that obscure the security patch.
+When uncertain, investigate and document the uncertainty rather than inventing an answer.
+Keep the repository buildable and testable after each implementation phase.
+Do not report a security improvement based solely on the presence of a new function or configuration option. Prove that the function is connected to the real execution path.
+2. PHASE ZERO — REPOSITORY DISCOVERY
+
+Before making any code changes:
+
+A. Determine the current Git branch, commit, working-tree status, and repository structure.
 
-The goal is to make Vigil AI as secure, reliable, and useful as possible without breaking its core functionality.
+B. Identify:
 
-The wrong approach would be to remove broad website support, disable important scanning features, or add so many security checks that the extension becomes slow and frustrating. The right approach is to preserve the tool's intended behavior while making its security boundaries explicit, its failures predictable, and its detection results more trustworthy.
+Browser extension entry points.
+Content scripts and injected scripts.
+Background/service-worker code.
+Popup, settings, and user-interface code.
+Local inference engines and model-loading code.
+Red-team and blue-team agents.
+Consensus firewall and policy engine.
+Adaptive inference router.
+Semantic abstraction and surrogate mapping.
+Identity vault and encryption/key management.
+Response rehydration.
+Honeytoken and canary generation.
+Multi-turn context and drift detection.
+Desktop/native companion.
+Local HTTP, WebSocket, and proxy listeners.
+Training, LoRA, DPO, self-play, and personalization pipelines.
+Relay, SIEM, federation, and telemetry components.
+CI workflows, installers, packaging, and release processes.
+Tests, fixtures, evaluation datasets, and security documentation.
 
-The review should validate each finding against actual code paths, data flows, configuration, and runtime behavior before assigning a final severity.
+C. Create a component inventory containing:
 
-Four priorities:
-1. Preserve the user experience and existing functionality.
-2. Fix vulnerabilities at their root cause instead of adding superficial patches.
-3. Measure whether each change improves security without creating false positives, missed detections, or performance regressions.
-4. Verify the result through reproducible tests, adversarial testing, and realistic browser workflows.
+Component name.
+File paths.
+Responsibilities.
+Inputs and outputs.
+Trust boundaries.
+Dependencies.
+Existing tests.
+Missing tests.
+Implementation status.
 
-PART I. SECURITY REMEDIATION BLUEPRINTS
+D. Read the README and compare each advertised capability with the actual implementation.
 
-BLUEPRINT 01. MAKE THE NATIVE BRIDGE FAIL CLOSED
-Priority: P0
-Files: src/background/native-bridge.js
+Classify every capability as:
 
-Current evidence:
-The bridge catches a failed cryptographic handshake and retries with an unkeyed handshake in two request paths. It also permits a successfully authenticated session to remain active without establishing the encrypted channel.
-
-Why this matters:
-The native companion can access capabilities beyond those of an ordinary content script. Depending on its implementation, those capabilities may include local files, OS keychain access, IDE traffic, or local AI services.
-
-If encryption is intended to protect this channel, a cryptographic failure must not silently change the security properties of the session.
+IMPLEMENTED AND VERIFIED.
+IMPLEMENTED BUT NOT VERIFIED.
+PARTIALLY IMPLEMENTED.
+DOCUMENTED BUT NOT FOUND.
+BROKEN.
+UNKNOWN.
 
-Authentication and encryption serve different purposes. A valid session token does not, by itself, prove that all subsequent traffic is encrypted or protected against replay.
-
-Blueprint:
-- Remove the automatic unkeyed retry.
-- Treat failed key import, ECDH derivation, or authentication as a failed session.
-- Keep non-sensitive status checks available through a clearly separate, explicitly unauthenticated path if needed.
-- Require encryption for every operation classified as sensitive.
-- Validate message types, sequence numbers, and response schemas.
-- Reject encrypted frames that lack a valid sequence number.
-- Clear pending requests, tokens, keys, and session state on disconnect.
-- Do not log tokens, prompts, decrypted frames, or other sensitive payloads.
+Do not mark a feature verified merely because its name appears in source code.
 
-Acceptance tests:
-- Failed ECDH negotiation never permits a keychain operation.
-- Invalid session tokens are rejected.
-- Replayed encrypted frames are rejected.
-- Missing or malformed sequence numbers are rejected.
-- A daemon restart cannot reuse the previous session.
-- Normal successful sessions still support all intended native features.
+E. Build a dependency graph and trace the real data flows from browser input to outbound requests and from external AI responses back to the user.
 
-Success criterion:
-Every privileged operation has a documented authentication and encryption requirement, and no failure path bypasses it.
-
-BLUEPRINT 02. CORRECT CRYPTOGRAPHIC KEY HANDLING
-Priority: P0
-Files: src/background/native-bridge.js, src/background/vigil-vault.js
-
-Current evidence:
-The source creates an ECDH key pair with extractable: true and derives an AES key with extractable: true. The vault also stores its AES key in browser-local storage and imports it as extractable.
-
-Why this matters:
-Extractability does not mean an attacker can automatically retrieve a key. It does mean the application permits key export through Web Crypto APIs if code with access to that key invokes the appropriate operation.
-
-The vault's storage design also places the encrypted data and the material needed to decrypt it within the same local trust boundary.
-
-Blueprint:
-- Make derived AES session keys non-extractable.
-- Minimize private-key exportability while retaining the ability to send the ECDH public key.
-- Never export a private key for routine communication.
-- Use a fresh session key for each authenticated session.
-- Use cryptographically secure randomness exclusively.
-- Authenticate handshake context, protocol version, and peer identity.
-- Use explicit protocol versioning instead of silently downgrading encryption.
-
-For the vault:
-- Use the OS credential store through the native companion where available.
-- Offer a passphrase-derived encryption key as a portable alternative.
-- Keep a device-local mode for users who prioritize convenience.
-- Clearly explain the different threat models.
-
-The existing vault code contains a PBKDF2-SHA-256 derivation function with 600,000 iterations. This is a useful starting point, but it is not sufficient by itself. The derivation must be integrated into a complete key lifecycle, with random salts, correct key verification, migration, and recovery behavior.
-
-Do not change encryption formats without a migration plan. Existing vault data must remain recoverable.
-
-Acceptance tests:
-- Key export attempts fail for non-extractable keys.
-- Existing vaults migrate successfully.
-- Wrong passphrases never overwrite stored data.
-- New sessions use new key material.
-
-BLUEPRINT 03. REMOVE INSECURE RANDOMNESS FALLBACK
-Priority: P0
-File: src/background/native-bridge.js
-
-Current evidence:
-The bridge's getRandomValues() helper falls back to Math.random() if the Web Crypto and Node cryptographic APIs are unavailable.
-
-Why this matters:
-Math.random() is not designed for cryptographic security. This fallback should not exist in a security-sensitive implementation.
-
-Blueprint:
-Replace the fallback with a hard failure. Adapt this pattern to the project's supported browser and Node runtimes.
-
-Example:
-function getRandomValues(arr) {
-  const cryptoApi =
-    globalThis.crypto?.getRandomValues
-      ? globalThis.crypto
-      : globalThis.crypto?.webcrypto;
-
-  if (!cryptoApi?.getRandomValues) {
-    throw new Error("Cryptographically secure randomness unavailable");
-  }
-
-  return cryptoApi.getRandomValues(arr);
-}
-
-Use the same rule for:
-- Session nonces.
-- AES-GCM IVs.
-- Vault encryption keys.
-- Pseudonym identifiers.
-- Authentication tokens.
-- Honeytoken generation.
-
-Acceptance tests:
-- Simulating unavailable cryptographic randomness stops sensitive operations.
-- No insecure fallback can generate session keys, tokens, or encryption IVs.
-
-BLUEPRINT 04. PREVENT SILENT VAULT CORRUPTION AND DATA LOSS
-Priority: P0
-File: src/background/vigil-vault.js
-
-Current evidence:
-The vault's decryptJson() function catches decryption errors and returns an error object. The subsequent loading code defaults missing entries and trusted arrays to empty arrays. This can make corrupted or undecryptable data appear to be an empty vault. A later write could overwrite the original encrypted data.
-
-Why this matters:
-This is primarily a data-integrity and recoverability concern. It becomes a security concern when users depend on the vault to preserve sensitive identity mappings.
-
-Blueprint:
-Implement explicit vault states:
-- EMPTY: no vault has been created.
-- LOCKED: valid vault exists but the key is unavailable.
-- READY: vault decrypted and validated successfully.
-- CORRUPT: decryption or integrity validation failed.
-- MIGRATION_REQUIRED: vault format is old but potentially recoverable.
-
-Never treat CORRUPT as EMPTY.
-
-Required changes:
-- Preserve the original encrypted blob on decryption failure.
-- Block writes until the user resolves corruption.
-- Offer recovery from an authenticated backup.
-- Validate schema versions and entry types after decryption.
-- Write new vault data atomically where the storage mechanism permits.
-- Keep a recoverable previous version during migration.
-- Explain what the user can do without displaying sensitive contents.
-
-Review clearAll() as well. It removes vault data and pseudonym mappings but leaves the stored vault key behind. Decide whether this means "delete entries" or "reset the vault," and implement the user-visible behavior accordingly.
-
-Acceptance tests:
-- Corrupted vault data is never silently replaced with an empty vault.
-- Users can recover from a backup.
-- Explicit reset removes all intended data and key material.
-
-BLUEPRINT 05. ELIMINATE UNSAFE HTML RENDERING
-Priority: P0
-File: src/content/content.js
-
-Current evidence:
-The consensus modal inserts dynamic values into innerHTML, including details and style-related strings. The vote display also interpolates classifier names and vote values into HTML.
-
-Why this matters:
-This does not establish a working XSS exploit. The risk depends on whether the interpolated values can be controlled by untrusted page content, model output, or another external source. However, it is unnecessary to rely on that trust assumption for most of these fields.
-
-Blueprint:
-- Build the modal with document.createElement().
-- Insert plain text with textContent.
-- Set CSS properties through validated values.
-- Allow-list classifier names and vote values.
-- Avoid interpolating external values into HTML or CSS.
-- If rich text is essential, use a maintained sanitizer with a strict allow-list.
-
-Example:
-const detailElement = document.createElement("div");
-detailElement.textContent = details;
-modal.appendChild(detailElement);
-
-This preserves displayed content without parsing it as HTML. OWASP recommends safe DOM APIs and warns against passing untrusted data to innerHTML.
-
-Acceptance tests:
-- Inject HTML payloads into every dynamic modal field.
-- Payloads display as text and do not create executable elements or event handlers.
-
-BLUEPRINT 06. PRESERVE BROAD WEBSITE COVERAGE WHILE REDUCING PERMISSION RISK
-Priority: P1
-File: src/manifest.json
-
-Current evidence:
-The manifest requests <all_urls> host permissions and injects a large set of content scripts into all matching frames.
-
-Why this matters:
-Vigil's purpose is broad protection, so removing universal website support outright would damage its value. Broad access also increases the amount of sensitive page data the extension may encounter and the potential impact of an extension compromise.
-
-Chrome supports optional host permissions and runtime permission requests. OWASP recommends limiting extension permissions to what the feature actually needs.
-
-Blueprint:
-Use three access modes:
-
-Mode A. On demand
-The user activates Vigil on the current site. Best for minimal permissions and privacy-conscious users.
-
-Mode B. Protected sites
-Continuous monitoring on user-selected AI platforms, webmail services, and other supported sites.
-
-Mode C. All-site protection
-The existing broad-coverage experience, enabled through explicit permission and a clear explanation.
-
-Implementation requirements:
-- Keep all-site protection available.
-- Use optional host permissions where feasible.
-- Separate detection logic from permission acquisition.
-- Apply sensitive-site exclusions consistently.
-- Do not run expensive AI inference on unrelated pages.
-- Test nested frames and supported embedded AI interfaces.
-- Provide a clear status indicator when Vigil cannot access a site.
-
-Acceptance tests:
-- All three modes work.
-- Permission denial does not crash the extension.
-- Users can enable broad access later without losing settings.
-
-BLUEPRINT 07. MAKE DOM-BASED SCANNING SAFE AND PREDICTABLE
-Priority: P1
-
-Why this matters:
-Vigil needs to inspect page content to identify sensitive prompts, phishing content, and injection attempts. But the page is controlled by a website, not by Vigil.
-
-Content scripts normally execute in an isolated JavaScript world, but they interact with the same page DOM. Chrome's extension guidance makes the distinction between isolated and main execution worlds explicit.
-
-Blueprint:
-- Keep sensitive data and cryptographic keys in the extension's privileged contexts.
-- Treat all DOM content as untrusted.
-- Never rely on page-provided data as proof of authorization.
-- Validate every message sent from a content script to the background worker.
-- Validate sender identity, allowed action names, and input schemas.
-- Do not place real secrets in page DOM attributes, hidden elements, or custom events.
-- Render sensitive diagnostics in extension-owned UI, not in the website's DOM.
-
-Page scripts may inspect data rendered into their DOM, even when the extension uses a Shadow DOM for styling. OWASP recommends extension-controlled popups, options pages, or side panels for sensitive UI.
-
-Acceptance tests:
-- A hostile page cannot invoke privileged background operations, read vault contents, or obtain sensitive diagnostic data by manipulating DOM elements or sending malformed messages.
-
-BLUEPRINT 08. REDESIGN HONEYTOKENS WITHOUT DISCARDING THE DETECTION FEATURE
-Priority: P1
-Feature: Agent Honeytoken System
-
-Current evidence:
-The README describes planting invisible decoy credentials in the DOM of every page and alerting when they are echoed back.
-
-Why this matters:
-A decoy can help detect unauthorized data access. But placing it in a page DOM means scripts on that page may be able to read it. It may also be picked up by accessibility tools, crawlers, browser extensions, or unrelated page logic.
-
-A detected canary can be useful evidence, but it does not automatically establish which component accessed it or whether an actual secret was stolen.
-
-Blueprint:
-- Make honeytokens opt-in initially, with a clear explanation.
-- Use synthetic, non-functional identifiers. Never create real-looking credentials that could be mistaken for valid secrets.
-- Scope each token to a session and origin.
-- Avoid placing tokens on unrelated websites.
-- Record only the minimum event metadata needed for diagnosis.
-- Distinguish "canary observed" from "confirmed exfiltration."
-- Measure false alarms caused by page scripts and benign automation.
-- Provide a kill switch and a per-site exclusion.
-
-Acceptance tests:
-Test against ordinary page scripts, screen readers, browser automation, and controlled scraping scenarios. Verify that canary events do not reveal real identity data.
-
-BLUEPRINT 09. MAKE PRIVACY CLAIMS MATCH ACTUAL DATA FLOWS
-Priority: P1
-
-Current evidence:
-The README states that all detection and inference happen locally and that no data leaves the device. It also documents optional SIEM telemetry and a self-hosted threat exchange.
-
-Why this matters:
-These features can coexist, but the privacy statement needs to distinguish local default behavior from explicitly enabled integrations.
-
-Blueprint:
-Create a data-flow inventory covering:
-
-- Raw prompts: Local by default. Never transmit without an explicit, documented feature requiring it.
-- PII and credentials: Never include in routine diagnostics or telemetry.
-- Detection events: Store locally with configurable retention.
-- Threat signatures: Share only when the user enables the feature.
-- Model updates: Validate source, version, and integrity before activation.
-- SIEM events: Require explicit configuration and disclose which fields are sent.
-- Vault contents: Never include in logs, crash reports, or analytics.
-
-Add automated network-egress tests that monitor the extension and companion during ordinary workflows. Test every optional integration separately.
-
-Acceptance tests:
-- A default installation produces no unauthorized external data transfers.
-- Optional integrations transmit only documented fields after activation.
-- Users can disable integrations and remove locally retained event data.
-
-BLUEPRINT 10. ESTABLISH A SAFE PSEUDONYMIZATION AND REHYDRATION BOUNDARY
-Priority: P0
-Files: src/content/modules/semantic-abstractor.js, src/content/modules/rehydration-engine.js, src/background/vigil-vault.js
-
-Current evidence:
-Vigil's design replaces real identities with surrogates before sending prompts to an AI platform, then restores real identities in responses. The README describes this as a way to preserve reasoning utility without exposing real context to the remote model.
-
-Why this matters:
-Rehydration creates a second sensitive-data boundary. If the replacement engine restores a real identity in the wrong location, the original secret could reappear in content that the user later shares or submits.
-
-Blueprint:
-- Use opaque, unpredictable placeholders rather than realistic surrogate strings where possible.
-- Scope each mapping to a site, session, and specific replacement operation.
-- Restore only exact known placeholders.
-- Restore only in approved AI response text nodes.
-- Never restore inside links, URLs, attributes, scripts, form controls, or unrelated page content.
-- Do not rehydrate responses from untrusted origins or unrelated frames.
-- Validate the mapping and session before restoring any value.
-- Provide a preview of restored output when the context is ambiguous.
-- Clear mappings according to an explicit retention policy.
-
-Preserve consistency across conversations by keeping mappings stable within the authorized session. Do not require users to manually reconstruct every redacted entity.
-
-Acceptance tests:
-- A model cannot trigger rehydration by merely mentioning a real name or secret.
-- Placeholder collisions do not reveal unrelated identities.
-- Rehydration cannot modify URLs, script contexts, or user-authored messages.
-
-PART II. DETECTION QUALITY AND AI DEFENSE BLUEPRINTS
-
-BLUEPRINT 11. REPLACE THE HEADLINE SECURITY SCORE WITH A REAL EVALUATION PROGRAM
-Priority: P0
-File: SECURITY_SCORE.md
-
-Current evidence:
-The published score reports 160 out of 160 mutated attacks detected and zero false positives among 20 benign examples. The documented process starts from seed attacks and applies a limited set of transformations.
-
-Why this matters:
-A 100% result on a small, generated test set does not establish 100% real-world detection. The system may recognize the mutation patterns used by the test generator while missing different attacks or incorrectly flagging legitimate content.
-
-Research published on 2 October 2026 found that prompt-injection detector rankings transferred poorly between benchmarks. In that study, some detectors had false-positive rates exceeding 90% on certain agent-style outputs. This is a preprint, not a universal estimate of production performance, but it shows why benchmark selection matters.
-
-Blueprint:
-Build four independent datasets:
-- Training: Used to develop rules and models.
-- Validation: Used to choose thresholds.
-- Held-out test: Used only for final performance estimates.
-- Live regression corpus: Sanitized, reproducible cases from confirmed bugs and user-reported mistakes.
-
-Measure these separately:
-- Recall: How many real threats are detected.
-- Precision: How many alerts actually correspond to threats.
-- False-positive rate: How often benign content is incorrectly flagged.
-- False-negative rate: How often threats pass undetected.
-- Latency: How much delay the user experiences.
-- Utility preservation: Whether masking and rewriting preserve the intended task.
-- Coverage: Which websites, input types, languages, and threat classes are actually tested.
-
-Report results by threat class and by operating mode. Measure the false-positive rate at the thresholds used in production, not only at the best threshold on a test set.
-
-Use held-out, previously unseen attacks. Include realistic benign text such as security documentation, fictional examples, code snippets, and discussions of prompt injection itself.
-
-Acceptance criteria:
-Release decisions require pre-agreed recall, precision, latency, and utility targets. A single headline score cannot override a failure in a critical threat category.
-
-BLUEPRINT 12. TREAT PROMPT INJECTION AS A LAYERED SECURITY PROBLEM
-Priority: P0
-Feature: Prompt Injection Firewall
-
-Current evidence:
-The README lists direct instruction patterns, delimiter attacks, encoded payloads, and invisible Unicode characters.
-
-Why this matters:
-Prompt injection is a problem of instruction hierarchy, context, and permitted actions. A malicious instruction can be phrased naturally, embedded in otherwise useful content, or adapted to bypass known patterns.
-
-A browser extension can reduce exposure before submission. It cannot guarantee that every downstream AI model or agent will correctly distinguish trusted instructions from untrusted content.
-
-Research such as PromptArmor reports promising detection and sanitization results on specific benchmarks, while later work emphasizes that performance may not transfer to other environments. The correct lesson is to evaluate multiple defense layers, not to assume one classifier solves the problem.
-
-Blueprint:
-1. Normalize Unicode and common encodings without destroying the original text.
-2. Apply fast deterministic rules for known patterns.
-3. Use a local classifier for ambiguous content when enabled.
-4. Use deeper local analysis only when the expected benefit justifies the latency.
-5. Distinguish suspicious quoted material from instructions the user is actually following.
-6. Explain why a prompt was flagged and show the exact affected region.
-7. Let users review, edit, mask, or proceed according to policy.
-8. Keep hard blocks for clearly defined, high-confidence policy violations.
-9. Re-evaluate the final prompt after masking or paraphrasing.
-
-Do not let the detection model's output directly execute an action. A classifier should produce a structured verdict, confidence, evidence, and reason. A separate policy layer should decide what happens next.
-
-Acceptance tests:
-Test direct and indirect injection, multilingual instructions, obfuscated content, benign security research, quoted attacks, and adaptive attacks from held-out sources.
-
-BLUEPRINT 13. IMPROVE PII AND SECRET DETECTION WITHOUT DESTROYING PROMPT MEANING
-Priority: P1
-Files: src/content/modules/detection-engine.js, src/content/modules/secret-engine.js, src/content/modules/semantic-abstractor.js
-
-Current evidence:
-The README describes regex, entropy, pattern matching, semantic analysis, and pseudonymization.
-
-Why this matters:
-Overly aggressive masking makes an AI assistant less useful. Under-masking allows private information to escape.
-
-For example, a medical prompt may need to preserve the relationship between a symptom, duration, medication, and age range while replacing the patient's identity. Replacing every potentially sensitive term can destroy the clinical meaning.
-
-Blueprint:
-Use a typed detection pipeline:
-- Exact high-confidence patterns for known secret formats.
-- Validation rules for structured identifiers.
-- Context-aware detection for names, health information, and financial disclosures.
-- Entropy as supporting evidence, not a standalone secret detector.
-- User-managed identity entries with explicit controls.
-- Type-preserving replacement for fields whose meaning must remain intact.
-
-Separate detection from the masking policy. A detection engine identifies a candidate. A policy engine decides whether to mask, warn, or allow.
-
-For pseudonymization:
-- Preserve relationships between entities.
-- Use consistent mappings within the intended scope.
-- Do not claim perfect semantic equivalence.
-- Show users when paraphrasing changes meaning.
-- Re-scan the transformed prompt before submission.
-
-Acceptance tests:
-Evaluate precision and recall by PII category, including realistic synthetic examples, multilingual content, code, medical text, financial discussions, and ordinary text that resembles a secret.
-
-BLUEPRINT 14. PREVENT UNSAFE ONLINE LEARNING AND FEEDBACK POISONING
-Priority: P1
-Feature: Local LoRA, DPO, and self-play
-
-Current evidence:
-The README states that Mask and Allow actions provide training signals and that idle self-play generates adversarial mutations for further training.
-
-Why this matters:
-A user choosing Allow does not necessarily mean the content is objectively safe. A user choosing Mask may be expressing a privacy preference rather than identifying an attack.
-
-If those actions directly update a live detector, the model can learn noisy labels. Synthetic self-play can also improve performance on generated mutations while reducing performance on real attacks.
-
-Blueprint:
-- Make adaptive training opt-in.
-- Separate the baseline model from the experimental adapter.
-- Collect minimal feedback and provide a clear deletion option.
-- Train candidate versions offline or in a controlled background job.
-- Evaluate candidates on a frozen regression corpus.
-- Promote only candidates that pass security and utility gates.
-- Roll back automatically if performance degrades.
-- Never let a candidate model weaken mandatory policy enforcement.
-- Track model version, dataset version, and evaluation results.
-
-Acceptance tests:
-A stream of incorrect Allow labels cannot disable core secret detection. Training on synthetic attacks cannot ship a model that fails the held-out regression suite.
-
-BLUEPRINT 15. RE-SCOPE VISION AND PROVENANCE CLAIMS
-Priority: P1
-Feature: Multimodal Vision Firewall
-
-Current evidence:
-The README describes perceptual hashing, spatial-frequency analysis, alpha-channel analysis, and C2PA metadata inspection.
-
-Why this matters:
-These methods answer different questions:
-- Perceptual hashing can identify visual similarity.
-- Frequency analysis can identify unusual image characteristics.
-- Alpha-channel analysis can inspect one possible hiding mechanism.
-- C2PA inspection can verify supported provenance assertions.
-
-None of these methods alone establishes that an image is AI-generated or malicious. Missing provenance metadata is not proof of manipulation, and a known perceptual hash cannot cover every altered version of an image.
-
-Blueprint:
-- Report the evidence type for each finding.
-- Distinguish provenance verification from AI-image classification.
-- Use calibrated confidence levels.
-- Do not hard-block ordinary images solely because they have unusual frequency characteristics.
-- Test resized, compressed, cropped, recompressed, and otherwise transformed images.
-- Add representative non-AI images that naturally contain high-frequency detail.
-- Keep image inspection optional when it has a material performance cost.
-
-Acceptance tests:
-Evaluate false positives on photographs, screenshots, diagrams, scanned documents, and generated images. Publish separate metrics for each technique rather than combining them into a single "AI detection" score.
-
-PART III. RELIABILITY, PERFORMANCE, AND MAINTAINABILITY
-
-BLUEPRINT 16. REDUCE THE COST OF UNIVERSAL MONITORING
-Priority: P1
-Files: src/manifest.json, src/background/background.js
-
-Current evidence:
-The manifest injects a long list of scripts into all matching frames. The background service worker also imports numerous engines at startup.
-
-Why this matters:
-Universal coverage is useful, but running every engine on every page can increase memory use, CPU consumption, startup time, and interference with websites.
-
-It can also create more places where untrusted page content interacts with complex logic.
-
-Blueprint:
-1. A lightweight bootstrap identifies whether the page has a supported input or relevant content.
-2. Cheap deterministic checks run first.
-3. More expensive scanning starts only when relevant content changes.
-4. Local inference runs only when the first stages need it.
-5. Deep scans run asynchronously and use bounded workloads.
-6. The extension reports when a scan is incomplete rather than implying full protection.
-
-Use incremental scanning and debounce rapid input events. Avoid rescanning the full page after every keystroke.
-
-Preserve universal support as an option. The optimization should reduce unnecessary work, not remove protection from users who need broad coverage.
+F. Identify all places where a security decision can be bypassed, overridden, skipped, or silently fail open.
 
-Acceptance tests:
-Measure CPU, memory, input latency, startup time, and scan completion across representative pages and embedded frames. Verify that optimization does not reduce detection recall.
-
-BLUEPRINT 17. AUDIT DEPENDENCIES AND THE RELEASE SUPPLY CHAIN
-Priority: P1
-File: package.json
-
-Current evidence:
-The manifest pins Playwright 1.44.1, ONNX Runtime Web 1.19.2, ESLint 8.57.1, and other dependencies. These versions justify a current vulnerability and maintenance review, but their presence alone does not prove that the project has an exploitable dependency vulnerability.
-
-Blueprint:
-- Run npm audit and a second vulnerability scanner such as OSV-Scanner.
-- Review direct and transitive dependencies.
-- Update vulnerable dependencies through controlled, tested changes.
-- Add automated dependency update pull requests.
-- Generate a software bill of materials for releases.
-- Pin and verify downloaded model artifacts.
-- Produce reproducible builds where practical.
-- Ensure release checks run on the exact artifact users receive.
-- Add secret scanning and code scanning to CI.
-- Document the supported browser and companion versions.
-
-NIST's Secure Software Development Framework provides a useful basis for making these practices part of the development lifecycle instead of treating them as one-off cleanup. NIST SP 800-218 Version 1.1 is the finalized baseline. Check the NIST site for the current status of later revisions.
+G. Save the initial repository state and test results. Do not overwrite existing user work.
 
-Acceptance tests:
-The release gate rejects known high-risk vulnerabilities unless an explicit, documented exception is approved. Model and extension artifacts are versioned and verifiable.
-
-BLUEPRINT 18. BUILD A REPEATABLE SECURITY TESTING SYSTEM
+Deliverable: docs/audit/BASELINE.md and docs/audit/FEATURE_VERIFICATION.md.
 
-Current evidence:
-The repository defines commands for unit tests, end-to-end tests, adversarial benchmarks, latency benchmarks, and release gates.
+If these documents already exist, update them without destroying useful historical evidence.
 
-The next step is to make those checks evidence of actual behavior.
+3. PHASE ONE — THREAT MODEL
 
-Required release pipeline:
-1. Static analysis: lint, type/schema checks, secret scanning, unsafe DOM sinks.
-2. Unit tests: cryptography, vault recovery, policy decisions, normalization.
-3. Browser tests: supported websites, frames, contenteditable fields, dynamic DOM changes.
-4. Adversarial tests: prompt injection, PII evasion, malicious DOM values, replay attempts.
-5. Performance tests: latency, CPU, memory, large prompts, long sessions.
-6. Release gate: dependency status, reproducible artifact, regression results, version metadata.
-
-A passing test suite should mean that the tested scenarios passed. It should not be presented as proof that the tool is universally secure.
-
-PART IV. IMPLEMENTATION ROADMAP
-
-Phase 1. Eliminate critical failure paths
-- Remove cryptographic downgrade retries.
-- Remove insecure randomness fallback.
-- Make vault corruption fail safely.
-- Fix unsafe HTML interpolation.
-- Write regression tests before modifying the affected code.
+Create a threat model specific to Vigil.
 
-Phase 2. Prove detection quality
-- Build held-out attack and benign datasets.
-- Measure precision, recall, false positives, and latency.
-- Validate the masking and rehydration pipeline end to end.
-- Test realistic website interactions and failure modes.
+Include these adversaries:
 
-Phase 3. Reduce unnecessary risk and resource use
-- Add optional site permissions while retaining all-site mode.
-- Restrict expensive analysis to relevant inputs.
-- Make honeytokens and adaptive learning opt-in.
-- Document local-only behavior and optional integrations precisely.
+Malicious webpages.
+Prompt-injection attempts embedded in user content or retrieved material.
+Adaptive attackers that change payloads after observing defenses.
+Malicious or compromised AI responses.
+Poisoned training examples and adversarial feedback.
+Malicious local webpages attempting to contact companion services.
+Compromised dependencies, installers, build actions, or release artifacts.
+Accidental user disclosure and re-identification.
+Compromised model weights or malicious model output.
+Misconfigured enterprise integrations and optional relay components.
 
-Phase 4. Establish release discipline
-- Automate dependency and supply-chain checks.
-- Require a complete release-gate report.
-- Publish reproducible evaluation results and known limitations.
-- Review the threat model after each major feature change.
+Identify:
 
-PART V. WHAT SHOULD NOT BE SACRIFICED
+Assets to protect.
+Trust boundaries.
+Entry points.
+Attacker capabilities.
+Security assumptions.
+Attack paths.
+Existing mitigations.
+Residual risks.
+Detection and recovery mechanisms.
 
-Universal protection:
-Keep all-site mode, but make access explicit and configurable.
+For each threat, describe a realistic attack scenario and the control that prevents or detects it.
 
-Low-latency scanning:
-Run cheap rules first and use heavier analysis only when justified.
+Deliverable: docs/audit/THREAT_MODEL.md.
 
-Local inference:
-Keep local models as the default. Do not require a cloud service to use core protections.
+4. PHASE TWO — AI-VERSUS-AI DEFENSE ARCHITECTURE
 
-Consistent pseudonyms:
-Keep session-scoped mappings and validate rehydration carefully.
+Preserve and improve the existing multi-agent architecture.
 
-Custom user preferences:
-Preserve Allow, Mask, and site-specific policies while preventing unsafe learning updates.
+4.1 Red team
 
-Phishing and injection detection:
-Combine deterministic rules, context-aware models, and explicit policy enforcement.
+The red team generates adversarial test cases and challenges the blue team.
 
-Native companion:
-Preserve native features, but require secure session establishment for privileged operations.
+Where supported by the existing architecture, cover:
 
-Privacy:
-Keep integrations optional and verify actual network behavior.
+Unicode and homoglyph obfuscation.
+Zero-width and control characters.
+Encoding and nested encoding.
+Delimiter confusion.
+Role-play and instruction hierarchy attacks.
+Context manipulation.
+Multi-turn persuasion.
+Indirect prompt injection.
+Malformed and ambiguous inputs.
+Cross-modal inputs when the application supports them.
+Attempts to expose protected secrets.
+Attempts to manipulate the detector or training process.
 
-PART VI. RESEARCH AND ENGINEERING REFERENCES
+The red team must operate within an explicit testing scope.
 
-1. OWASP Browser Extension Vulnerabilities Cheat Sheet
-https://cheatsheetseries.owasp.org/cheatsheets/Browser_Extension_Vulnerabilities_Cheat_Sheet.html
-Relevant to excessive permissions, message validation, DOM data exposure, XSS, and dependency management.
+It must not gain authority to rewrite security policies, access unrelated user data, or execute arbitrary actions.
 
-2. OWASP DOM-based XSS Prevention Cheat Sheet
-https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html
-Relevant to safe DOM APIs and avoiding untrusted data in innerHTML.
+4.2 Blue team
 
-3. NIST Secure Software Development Framework
-https://csrc.nist.gov/projects/ssdf
-A structured way to incorporate vulnerability prevention, verification, and release controls into development.
+The blue team identifies:
 
-4. NIST SP 800-218
-https://csrc.nist.gov/pubs/sp/800/218/final
-Secure software development practices.
+Sensitive information.
+Direct and indirect prompt injection.
+Attempts to override trusted instructions.
+Data exfiltration risks.
+Suspicious context changes.
+Malicious response content.
+Attempts to exploit semantic substitution or rehydration.
 
-5. PromptArmor research paper
-https://arxiv.org/abs/2507.15219
-Studies detection and removal of injected instructions before an agent processes its input. Results are benchmark-specific and should be independently reproduced for Vigil's local environment.
+Use diverse detection strategies when feasible.
 
-6. Prompt-injection detector benchmark generalization preprint, cited as October 2026
-https://arxiv.org/abs/2610.03448
-Examines whether detector performance transfers to real agent-style outputs. Verify the paper's current publication status and findings before using it as a formal basis for product claims.
+Do not assume that multiple similar models provide independent evidence.
 
-7. Chrome extension permissions documentation
-https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions
-Official guidance for optional host permissions.
+4.3 Independent referee
 
-8. Chrome content scripts documentation
-https://developer.chrome.com/docs/extensions/reference/manifest/content-scripts
-Official guidance on content-script execution contexts and behavior.
+Implement or strengthen an independent decision component that evaluates:
 
-PART VII. FINAL ASSESSMENT
+Detector results.
+Confidence and calibration.
+Evidence supporting each decision.
+Detector availability.
+Policy violations.
+Uncertainty.
+Resource limits.
+Applicable hard security rules.
 
-The most important change is to move from feature claims to verifiable guarantees.
+The referee must not simply repeat a majority vote.
 
-Vigil should be able to demonstrate that:
-- Sensitive data does not leave the device through undocumented paths.
-- A failed security handshake cannot enable privileged operations.
-- Vault failures do not silently destroy data.
-- Untrusted page content cannot execute through the extension's UI.
-- Prompt-injection defenses work on unseen examples without blocking ordinary work excessively.
-- Pseudonymization preserves task utility without accidentally restoring sensitive values in unsafe contexts.
-- Every release passes security, performance, and functional regression tests.
+It must not permit model consensus to override mandatory security controls.
 
-The existing architecture can support these goals. The recommended approach is incremental hardening, explicit policy boundaries, measured detection quality, and controlled rollout. It does not require removing Vigil's core features.
+4.4 Deterministic security invariants
 
-SCOPE LIMITATION
+Define non-negotiable rules outside trainable model parameters.
 
-This is a repository-source and public-research review, not a completed dynamic penetration test. The code was not executed, the extension was not installed, the test suite was not run, and the native companion's runtime behavior was not verified. Findings that depend on those behaviors should remain open until reproduced.
+Examples:
 
-RECOMMENDED VALIDATION COMMANDS
+Protected credentials must not leave the approved trust boundary.
+Unauthorized surrogate mappings must never be restored.
+Untrusted content must not acquire privileged instruction status.
+Invalid authentication must never be accepted.
+Security policy must not be disabled by model output.
+Training must not silently modify mandatory security rules.
 
-Run these in a disposable development environment:
+Implement these invariants in the actual request and response paths.
 
-git clone https://github.com/starboy-hub/vigil.ai.git
-cd vigil.ai
-npm ci
-npm audit
-npm test
-npm run lint
-npm run release:gate
+4.5 Risk-based decisions
 
-If the Rust companion is part of the build, run its Cargo tests from the appropriate project directory.
+Support explicit outcomes such as:
 
-For the native bridge, test failed ECDH setup, failed key derivation, missing session tokens, malformed encrypted frames, and replayed sequence numbers. Confirm that no privileged request succeeds through an unintended fallback.
+ALLOW.
+ALLOWAFTERTRANSFORMATION.
+REQUIREADDITIONALANALYSIS.
+QUARANTINE.
+BLOCK.
 
-For DOM injection, trace every dynamic innerHTML value and test with controlled HTML payloads in a disposable browser.
+Define which component may select each outcome and which invariants must pass before an allow decision is honored.
 
-These commands are validation steps, not test results. They have not been run as part of this document.
+When a detector times out, crashes, disagrees, or returns malformed output, apply an explicit policy based on the risk and the operation being attempted.
 
-END OF BLUEPRINT
+Do not automatically block every ordinary request because an optional model is unavailable. Conversely, do not permit mandatory secret-protection checks to be bypassed.
 
+Add tests for every transition and failure mode.
+
+5. PHASE THREE — END-TO-END PRIVACY PIPELINE
+
+Trace and validate the actual lifecycle of user data.
+
+Expected conceptual pipeline:
+
+Input → Canonicalization → Sensitive-data detection → Prompt-injection analysis → Red-team/blue-team analysis → Policy decision → Semantic abstraction or masking → Outbound-data validation → External AI request → Response inspection → Authorized rehydration → Final output validation → User.
+
+Adapt this pipeline to the existing implementation rather than blindly duplicating components.
+
+5.1 Canonicalization
+
+Investigate normalization of Unicode, control characters, encoding, and malformed input.
+
+Ensure normalization cannot silently alter legitimate meaning or create an unsafe discrepancy between what is inspected and what is transmitted.
+
+The security checks must cover the representation that actually reaches the external service.
+
+5.2 Sensitive-data detection
+
+Preserve existing detectors and improve coverage where evidence shows a gap.
+
+Evaluate credentials, API keys, tokens, personal identifiers, confidential business data, and combinations of attributes that may identify an individual.
+
+Use synthetic fixtures.
+
+Measure both detection failures and false positives.
+
+5.3 Semantic abstraction
+
+Preserve the ability to replace sensitive entities with consistent synthetic surrogates.
+
+Verify:
+
+Consistency across related references.
+Preservation of relevant relationships and constraints.
+Isolation between users and sessions.
+Resistance to accidental re-identification.
+Correct handling of nested and overlapping entities.
+Safe behavior when the transformation fails.
+
+Do not assume pseudonymization guarantees anonymity.
+
+5.4 Outbound-data validation
+
+Immediately before an external request, validate the final serialized request, including relevant headers, payloads, and attachments.
+
+Use the actual request boundary rather than a parallel test-only implementation.
+
+Mandatory protected-data checks must not be bypassable through alternate request paths.
+
+5.5 Response inspection and rehydration
+
+Treat external AI responses as untrusted data.
+
+Only restore values through explicit, authorized mappings created by Vigil.
+
+Verify:
+
+Session and user isolation.
+Exact surrogate matching.
+No arbitrary restoration from model-generated text.
+Safe handling of malformed responses.
+No unauthorized nested substitutions.
+Output validation after restoration.
+
+Rehydration must not execute code or grant the response authority to invoke privileged operations.
+
+5.6 Data-flow evidence
+
+Add tests or instrumentation that demonstrate whether protected synthetic test values cross the outbound boundary.
+
+The test harness must never transmit actual user secrets.
+
+Document all external network destinations and optional telemetry paths.
+
+6. PHASE FOUR — VAULT AND CRYPTOGRAPHY
+
+Inspect the actual cryptographic implementation before changing it.
+
+Verify:
+
+Correct use of authenticated encryption.
+Unique nonces for each encryption under a given key.
+Secure key generation and lifecycle.
+Appropriate key derivation when passwords are involved.
+Safe key storage and platform-specific protections.
+Authentication-tag validation.
+Tamper rejection.
+Secure session and user isolation.
+Safe handling of corrupted or unavailable vault data.
+Appropriate storage of blind indexes and metadata.
+Avoidance of plaintext secrets in logs, errors, crash reports, and telemetry.
+
+Do not invent a custom cryptographic algorithm.
+
+Prefer maintained, well-reviewed libraries and documented platform primitives.
+
+Do not log plaintext keys, real identities, decrypted vault contents, or complete sensitive prompts.
+
+Add negative tests for tampering, wrong keys, nonce misuse, corrupted records, and cross-session access.
+
+Do not migrate existing vault data until backward compatibility and recovery procedures have been tested.
+
+7. PHASE FIVE — ADVERSARIAL SELF-PLAY AND ADAPTIVE LEARNING
+
+Preserve existing training features while preventing feedback loops from weakening security.
+
+7.1 Separate evaluation from training
+
+Maintain:
+
+Training dataset.
+Development dataset.
+Held-out evaluation dataset.
+Regression suite.
+Optional restricted red-team challenge set.
+
+The held-out evaluation set must not be fed directly into training.
+
+Record dataset provenance and versions.
+
+7.2 Verify feedback
+
+Distinguish:
+
+User preference.
+Detector disagreement.
+Confirmed attack.
+Confirmed false positive.
+Confirmed false negative.
+Unknown outcome.
+
+Do not treat every user override as a ground-truth security label.
+
+7.3 Adapter promotion
+
+Before activating a newly trained model or adapter:
+
+Validate its format and provenance.
+Evaluate it against the regression suite.
+Compare it with the currently deployed version.
+Check security, false positives, semantic fidelity, and performance.
+Reject it if mandatory safety metrics regress.
+Preserve the previous known-good version.
+Record the promotion decision and supporting evidence.
+
+Use atomic promotion and rollback where supported.
+
+7.4 Poisoning resistance
+
+Prevent untrusted prompts or model outputs from directly changing policy or automatically becoming trusted training examples.
+
+Limit training resource consumption and define a recovery process if a dataset or adapter is found to be poisoned.
+
+8. PHASE SIX — HONEYTOKENS AND MULTI-TURN DETECTION
+
+Preserve existing canary and drift-detection features.
+
+Verify:
+
+Canary values are synthetic and cannot function as real credentials.
+Canary values do not collide with actual user secrets.
+Alerts distinguish suspicious access from confirmed outbound disclosure.
+Canary events have enough context for investigation.
+Multi-turn context is scoped to the correct session.
+Context expiration and deletion work as documented.
+Drift detection does not automatically treat every unusual user request as malicious.
+False positives are measured.
+Honeytokens cannot silently change the meaning of legitimate page content.
+
+Test against realistic benign workflows and adversarial sequences.
+
+9. PHASE SEVEN — BROWSER EXTENSION AND LOCAL COMPANION
+9.1 Browser permissions
+
+Inventory every permission and content-script match pattern.
+
+For each permission, document its purpose and the feature that requires it.
+
+Reduce unnecessary privileges where possible, but preserve supported functionality.
+
+Use optional host permissions when compatible with the product design.
+
+Verify that untrusted page content cannot directly invoke privileged extension operations.
+
+Review message validation between content scripts, background workers, popups, and companion services.
+
+9.2 Local HTTP and WebSocket services
+
+Inspect every listener and endpoint.
+
+Verify:
+
+Loopback-only binding where appropriate.
+Authentication for privileged operations.
+Strict message schemas.
+Origin and browser-context checks where applicable.
+Rejection of unexpected HTTP methods and content types.
+Protection against cross-origin requests and DNS rebinding.
+Rate limits and resource bounds.
+Strict destination allowlists for proxy operations.
+Safe error handling.
+No secrets in logs.
+No unauthenticated administrative commands.
+
+Do not rely solely on CORS, an unpredictable port, or a localhost address as authentication.
+
+9.3 Native messaging
+
+Verify caller validation, allowed origins, message sizes, serialization, process lifecycle, and privilege separation.
+
+9.4 Companion and installer security
+
+Review shell commands, downloaded artifacts, archive extraction, filesystem writes, path handling, environment variables, and OS permissions.
+
+Never execute untrusted downloaded code without appropriate verification.
+
+Add security tests without damaging the user's environment.
+
+10. PHASE EIGHT — DEPENDENCIES, CI, AND RELEASE INTEGRITY
+
+Inspect JavaScript and Rust dependencies, lockfiles, GitHub Actions, installer scripts, and release workflows.
+
+Where supported:
+
+Run dependency vulnerability audits.
+Generate and validate an SBOM.
+Verify release artifacts against the reviewed source.
+Pin critical third-party CI actions to immutable revisions.
+Apply least-privilege CI permissions.
+Fail required security checks when the tool cannot run.
+Avoid silently swallowing mandatory audit failures.
+Protect release credentials.
+Prevent untrusted pull requests from accessing privileged secrets.
+Verify artifact provenance and integrity.
+Keep security tooling reproducible.
+
+Distinguish exploitable vulnerabilities from informational advisories and development-only dependencies.
+
+Do not automatically upgrade every dependency.
+
+For every recommended upgrade, check compatibility and run regression tests.
+
+11. PHASE NINE — TESTING AND VERIFICATION
+
+Create a test matrix that covers the actual product behavior.
+
+Required categories:
+
+A. Unit tests:
+
+Normalization.
+Secret detection.
+Policy evaluation.
+Surrogate generation.
+Vault operations.
+Rehydration.
+Detector result parsing.
+Training data validation.
+
+B. Integration tests:
+
+Browser message flow.
+Red-team/blue-team coordination.
+Local inference.
+Adaptive routing.
+Companion communication.
+Outbound request interception.
+Response processing.
+
+C. Security tests:
+
+Secret exfiltration attempts.
+Indirect prompt injection.
+Detector disagreement.
+Model timeouts.
+Malformed model responses.
+Session-isolation violations.
+Rehydration abuse.
+Vault tampering.
+Training-data poisoning.
+Unauthorized local-service access.
+Unexpected proxy destinations.
+Dependency and artifact integrity.
+
+D. Regression tests:
+
+Existing supported websites.
+Existing user workflows.
+Valid prompts previously accepted.
+Existing surrogate semantics.
+Model initialization and recovery.
+Settings and persistence.
+Performance and memory limits.
+
+E. Failure injection:
+
+Model unavailable.
+Worker restarted.
+Local service disconnected.
+Corrupt local data.
+Missing model files.
+Insufficient memory.
+Malformed input.
+Partial training failure.
+Failed artifact generation.
+
+Use synthetic data, local test fixtures, controlled mocks, and isolated test services.
+
+Do not claim a test passed if it was skipped, mocked beyond its intended scope, or never executed.
+
+12. PHASE TEN — MEASUREMENT AND PERFORMANCE
+
+Establish a baseline before optimization.
+
+Track:
+
+Attack success rate on held-out tests.
+False-positive rate.
+Sensitive-data leakage rate at the actual outbound boundary.
+Semantic preservation.
+Rehydration correctness.
+Model timeout and error rates.
+P50, P95, and P99 latency where sample sizes support them.
+Peak memory consumption.
+CPU/GPU utilization where relevant.
+Training resource usage.
+Rollback frequency.
+Regression rate after model updates.
+
+Report sample sizes and evaluation conditions.
+
+Do not claim zero risk from zero failures in a small test suite.
+
+Do not improve benchmark scores by removing difficult test cases or changing the metric without disclosure.
+
+13. IMPLEMENTATION RULES
+
+Work incrementally.
+
+For each proposed change:
+
+Identify the exact existing behavior.
+Explain the threat or defect.
+Identify the affected files and dependencies.
+Design the smallest compatible fix.
+Add or update tests.
+Implement the fix.
+Run relevant tests.
+Run the build or type checker where applicable.
+Inspect the diff for unrelated changes and regressions.
+Document the result and remaining uncertainty.
+
+Before changing shared interfaces, identify all callers.
+
+Before changing encryption or persisted data formats, create and test a migration and recovery strategy.
+
+Before changing model training, preserve the existing adapter and evaluation baseline.
+
+Before changing browser permissions, verify which supported features depend on them.
+
+If a test fails:
+
+Determine whether the failure existed before the change.
+Identify the actual cause.
+Do not delete or weaken the test simply to obtain a green build.
+Fix the cause or document a justified limitation.
+
+Do not modify unrelated files.
+
+Do not make irreversible changes without authorization.
+
+14. REQUIRED DELIVERABLES
+
+Produce the following documentation, adapting paths to existing repository conventions:
+
+docs/audit/BASELINE.md
+docs/audit/FEATURE_VERIFICATION.md
+docs/audit/THREAT_MODEL.md
+docs/audit/FINDINGS.md
+docs/audit/DATA_FLOW.md
+docs/audit/TEST_MATRIX.md
+docs/audit/IMPLEMENTATION_LOG.md
+
+For every finding, include:
+
+Unique identifier.
+Severity and confidence.
+Exact file path and line numbers.
+Evidence.
+Attack prerequisites.
+Reproducible test or proof of concept when safe.
+Impact.
+Recommended remediation.
+Actual implementation status.
+Regression tests.
+Residual risk.
+
+Use separate labels for:
+
+Confirmed vulnerability.
+Confirmed architectural weakness.
+Potential vulnerability requiring verification.
+Best-practice recommendation.
+Not reproducible.
+Not applicable.
+
+Do not assign a CVSS score without sufficient information to justify the vector.
+
+15. FINAL ACCEPTANCE CRITERIA
+
+The work is complete only when:
+
+README claims have been checked against implementation.
+The core architecture and existing features are preserved.
+Mandatory security invariants are enforced on real execution paths.
+Outbound-data checks cover all identified external request paths.
+Response rehydration is authorized and session-scoped.
+Model failure behavior is explicitly tested.
+Training cannot silently weaken mandatory security rules.
+New adapters are evaluated before promotion.
+Companion endpoints enforce appropriate authentication and validation.
+Required dependency and build-integrity checks run reliably.
+Existing supported workflows pass regression tests.
+New security tests pass in the environment in which they are claimed to have run.
+The final diff contains no unexplained destructive changes.
+Documentation accurately describes implemented behavior.
+Remaining risks, skipped tests, and unverified features are explicitly documented.
+
+A successful build alone does not establish security.
+
+A passing benchmark alone does not establish security.
+
+A README description alone does not establish implementation.
+
+16. REQUIRED FINAL REPORT
+
+At completion, report:
+
+A. What was inspected. B. What was actually implemented. C. Files changed and why. D. Tests executed and their actual results. E. Confirmed vulnerabilities found and fixed. F. Architectural weaknesses improved. G. Features preserved. H. Performance changes measured. I. Remaining vulnerabilities and uncertainty. J. Tests not executed and why. K. Required manual steps. L. Recommended next phase.
+
+Use evidence and exact file references.
+
+Never fabricate test output, coverage, benchmark results, or security guarantees.
+
+17. STARTING INSTRUCTION
+
+Begin with Phase Zero only.
+
+Do not immediately rewrite the architecture or modify security-critical code.
+
+Inspect the repository, establish the baseline, map the real implementation, and return the completed discovery report with a prioritized implementation plan.
+
+After the report, proceed with the smallest safe, testable improvements that are within the authorized scope. If the environment requires approval before modifying files, request that approval before implementation.
+
+Your objective is not to make Vigil smaller or less capable.
+
+Your objective is to make Vigil more powerful against adaptive attacks, more reliable under failure, more resistant to poisoning, and more demonstrably protective of user data—without destroying working functionality.

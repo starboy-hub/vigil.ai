@@ -166,7 +166,7 @@ describe('Blueprint #1: Fail-Closed Byzantine Consensus Firewall', () => {
       expect(mockLlm).toHaveBeenCalledTimes(1);
     });
 
-    test('distinct prompts sharing a long prefix never inherit each other\u2019s verdict', async () => {
+    test('distinct prompts sharing a long prefix never inherit each other’s verdict', async () => {
       const neuralCalls = [];
       mockNeural.mockImplementation(async (text) => {
         neuralCalls.push(text);
@@ -181,6 +181,102 @@ describe('Blueprint #1: Fail-Closed Byzantine Consensus Firewall', () => {
       expect(ra.verdict).toBe('allowed');
       expect(rb.verdict).toBe('blocked');
       expect(neuralCalls.length).toBe(2);
+    });
+  });
+
+  describe('4. Strict Mode Quorum Defense (F-04 Mitigation)', () => {
+    test('strict mode converts 2-abstain pass into SOFT BLOCK requiring user override', async () => {
+      mockNeural.mockRejectedValue(new Error('WebGPU offline'));
+      mockLlm.mockResolvedValue({ vote: 'unclear', confidence: 0 }); // abstain
+
+      const benignText = 'Explain how to write a quicksort algorithm in Python.';
+      // Standard mode allows:
+      const stdRes = await firewall.evaluate(benignText, 'injection', { strict: false });
+      expect(stdRes.verdict).toBe('allowed');
+      expect(stdRes.abstainVotes).toBe(2);
+
+      // Strict mode requires corroboration when 2+ classifiers abstain:
+      const strictFirewall = new VIGIL_CONSENSUS.ConsensusFirewall({
+        strict: true,
+        runners: { neural: mockNeural, llm: mockLlm }
+      });
+      const strictRes = await strictFirewall.evaluate(benignText, 'injection');
+      expect(strictRes.verdict).toBe('soft_block');
+      expect(strictRes.agreement).toBe('strict_quorum_unmet');
+      expect(strictRes.requiresUserOverride).toBe(true);
+      expect(strictRes.details).toContain('Strict consensus');
+    });
+
+    test('strict mode permits send when at least 2 classifiers actively vote ALLOW', async () => {
+      mockNeural.mockResolvedValue({ vote: 'allow', confidence: 90 });
+      mockLlm.mockRejectedValue(new Error('Ollama offline')); // 1 abstain
+
+      const text = 'What is the speed of light?';
+      const strictFirewall = new VIGIL_CONSENSUS.ConsensusFirewall({
+        strict: true,
+        runners: { neural: mockNeural, llm: mockLlm }
+      });
+      const res = await strictFirewall.evaluate(text, 'injection');
+      expect(res.verdict).toBe('allowed');
+      expect(res.agreement).toBe('allow_majority');
+      expect(res.allowVotes).toBe(2); // heuristics + neural
+      expect(res.abstainVotes).toBe(1);
+      expect(res.requiresUserOverride).toBe(false);
+    });
+
+    test('cache key separates strict and standard verdicts for identical text', async () => {
+      mockNeural.mockRejectedValue(new Error('Offline'));
+      mockLlm.mockResolvedValue({ vote: 'unclear' });
+
+      const text = 'Identical prompt evaluated under different policies';
+      const rStandard = await firewall.evaluate(text, 'injection', { strict: false });
+      const rStrict = await firewall.evaluate(text, 'injection', { strict: true });
+
+      expect(rStandard.verdict).toBe('allowed');
+      expect(rStrict.verdict).toBe('soft_block');
+      expect(rStrict.requiresUserOverride).toBe(true);
+    });
+  });
+
+  describe('5. Defensive Classifier Sanitization & Malformed Input', () => {
+    test('sanitizes runner returning malformed non-object or unknown vote', async () => {
+      mockNeural.mockResolvedValue('corrupted string response');
+      mockLlm.mockResolvedValue({ vote: 'unknown_alien_status', confidence: 'not-a-number' });
+
+      const text = 'Test text with malformed runner responses';
+      const res = await firewall.evaluate(text, 'injection');
+
+      const neuralVote = res.votes.find(v => v.classifier === 'neural_webgpu');
+      const llmVote = res.votes.find(v => v.classifier === 'local_llm');
+      expect(neuralVote.vote).toBe('abstain');
+      expect(llmVote.vote).toBe('abstain');
+      expect(llmVote.confidence).toBe(0);
+    });
+
+    test('clamps out-of-range confidence values to [0, 100]', async () => {
+      mockNeural.mockResolvedValue({ vote: 'allow', confidence: 9999 });
+      mockLlm.mockResolvedValue({ vote: 'allow', confidence: -50 });
+
+      const text = 'Test text with confidence bounding';
+      const res = await firewall.evaluate(text, 'injection');
+
+      const neuralVote = res.votes.find(v => v.classifier === 'neural_webgpu');
+      const llmVote = res.votes.find(v => v.classifier === 'local_llm');
+      expect(neuralVote.confidence).toBe(100);
+      expect(llmVote.confidence).toBe(0);
+    });
+
+    test('safely handles non-Error thrown by runner without crashing', async () => {
+      mockNeural.mockRejectedValue('string rejection reason');
+      mockLlm.mockRejectedValue({ code: 500, custom: 'failure' });
+
+      const text = 'Test text with non-Error rejection';
+      const res = await firewall.evaluate(text, 'injection');
+
+      expect(res.verdict).toBe('allowed');
+      const neuralVote = res.votes.find(v => v.classifier === 'neural_webgpu');
+      expect(neuralVote.vote).toBe('abstain');
+      expect(neuralVote.reason).toContain('string rejection reason');
     });
   });
 });

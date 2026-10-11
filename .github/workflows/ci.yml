@@ -24,16 +24,15 @@ jobs:
 
       - name: Dependency audit (cargo)
         run: |
-          if cargo audit --version >/dev/null 2>&1; then
-            cargo audit --dir desktop
-          else
-            echo "cargo-audit is not pre-installed on runner image, skipping"
+          if ! command -v cargo-audit >/dev/null 2>&1; then
+            cargo install --locked cargo-audit
           fi
+          cargo audit --dir desktop
 
       - name: Generate CycloneDX SBOM (Software Bill of Materials)
         run: |
           mkdir -p dist
-          npx --yes @cyclonedx/cyclonedx-npm --output-file dist/sbom.json --output-format JSON || true
+          npx --yes @cyclonedx/cyclonedx-npm --output-file dist/sbom.json --output-format JSON
 
       - name: Upload SBOM Artifact
         if: always()
@@ -41,7 +40,7 @@ jobs:
         with:
           name: software-bill-of-materials
           path: dist/sbom.json
-          if-no-files-found: ignore
+          if-no-files-found: error
 
       - name: Lint
         run: npm run lint
@@ -68,6 +67,9 @@ jobs:
 
       - name: Verify dist is complete
         run: node scripts/verify-dist.js
+
+      - name: Security Release Gate Pipeline
+        run: npm run release:gate
 
   e2e:
     runs-on: ubuntu-22.04

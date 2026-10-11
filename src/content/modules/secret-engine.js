@@ -11,7 +11,7 @@
     { type: 'API_KEY', label: 'OpenAI / Anthropic API Key', pattern: /\b(sk-(?:proj-)?[A-Za-z0-9_-]{32,64}|sk-ant-[A-Za-z0-9_-]{32,64})\b/g },
     { type: 'API_KEY', label: 'Stripe Secret Key', pattern: /\b(sk_live_[0-9a-zA-Z]{24,34})\b/g },
     { type: 'CREDENTIALS', label: 'JWT Bearer Token', pattern: /\b(eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b/g },
-    { type: 'PRIVATE_KEY', label: 'Private RSA / SSH Key', pattern: /-----BEGIN\s+(?:RSA|OPENSSH|EC|DSA|PGP)\s+PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:RSA|OPENSSH|EC|DSA|PGP)\s+PRIVATE\s+KEY-----/gi },
+    { type: 'PRIVATE_KEY', label: 'Private RSA / SSH / PKCS#8 Key', pattern: /-----BEGIN\s+(?:(?:RSA|OPENSSH|EC|DSA|PGP|ENCRYPTED)\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:(?:RSA|OPENSSH|EC|DSA|PGP|ENCRYPTED)\s+)?PRIVATE\s+KEY-----/gi },
     { type: 'DATABASE_URI', label: 'Database Connection String', pattern: /\b((?:mongodb(?:\+srv)?|postgres|postgresql|mysql|redis):\/\/[^\s"'<>]+)\b/gi }
   ];
 

@@ -89,6 +89,19 @@ describe('Blueprint 11: Contextual Precision Engine (CPE) Verification Contract'
       expect(res.redactions.length).toBeGreaterThan(0);
     });
 
+    test('PKCS#8 and RSA private keys trigger critical private key alert', () => {
+      const pkcs8 = 'My secret server key:\n-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC3\n-----END PRIVATE KEY-----\nkeep safe';
+      const rsa = 'deploy key:\n-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0m...\n-----END RSA PRIVATE KEY-----';
+      
+      const resPkcs8 = secrets.scanSecrets(pkcs8);
+      const resRsa = secrets.scanSecrets(rsa);
+
+      expect(resPkcs8.alerts.some(a => a.type === 'PRIVATE_KEY')).toBe(true);
+      expect(resPkcs8.redactions.length).toBeGreaterThan(0);
+      expect(resRsa.alerts.some(a => a.type === 'PRIVATE_KEY')).toBe(true);
+      expect(resRsa.redactions.length).toBeGreaterThan(0);
+    });
+
     test('first-person lawsuit action triggers legal context alert', () => {
       const text = 'I am suing my former employer for breach of contract';
       const res = engine.scanWithContext(text);

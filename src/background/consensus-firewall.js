@@ -36,6 +36,7 @@
     constructor(options = {}) {
       this.threshold = options.threshold || 2; // 2-of-3 majority
       this.timeoutMs = options.timeoutMs || CLASSIFIER_TIMEOUT_MS;
+      this.strict = Boolean(options.strict);
       this.cache = new Map();
       this.maxCacheSize = 500;
       this.runners = options.runners || {};
@@ -138,7 +139,8 @@
             reason: res.reason || 'Neural model evaluation'
           };
         } catch (e) {
-          return { classifier: 'neural_webgpu', vote: VOTE_ABSTAIN, confidence: 0, reason: `Neural classifier offline: ${e.message}` };
+          const msg = e && e.message ? e.message : String(e);
+          return { classifier: 'neural_webgpu', vote: VOTE_ABSTAIN, confidence: 0, reason: `Neural classifier offline: ${msg}` };
         }
       }
 
@@ -195,7 +197,8 @@
             reason: res.reason || 'LLM few-shot reasoning'
           };
         } catch (e) {
-          return { classifier: 'local_llm', vote: VOTE_ABSTAIN, confidence: 0, reason: `LLM offline: ${e.message}` };
+          const msg = e && e.message ? e.message : String(e);
+          return { classifier: 'local_llm', vote: VOTE_ABSTAIN, confidence: 0, reason: `LLM offline: ${msg}` };
         }
       }
 
@@ -228,7 +231,8 @@
      *   - 1 BLOCK + 2 ALLOW         → allowed (unanimous 3-voter suppression)
      *   - no BLOCK (any ABSTAINs)   → allowed
      */
-    arbitrate(votes) {
+    arbitrate(votes, options = {}) {
+      const strict = options.strict !== undefined ? Boolean(options.strict) : this.strict;
       let blockCount = 0;
       let allowCount = 0;
       let abstainCount = 0;
@@ -300,7 +304,25 @@
         };
       }
 
-      // 4. Pass: no block votes — allows and abstentions never fabricate a
+      // 4. Strict Mode Quorum Defense (F-04 Mitigation):
+      // When strict mode is active and 2 or more classifiers abstained,
+      // an uncorroborated single allow (or all abstentions) must NOT pass silently.
+      if (strict && abstainCount >= 2) {
+        return {
+          verdict: 'soft_block',
+          agreement: 'strict_quorum_unmet',
+          unanimous: false,
+          blockVotes: 0,
+          allowVotes: allowCount,
+          abstainVotes: abstainCount,
+          confidence: 70,
+          requiresUserOverride: true,
+          details: `Strict consensus: ${abstainCount} of ${total} classifiers abstained or were offline. User confirmation required before transmission.`,
+          votes
+        };
+      }
+
+      // 5. Pass: no block votes — allows and abstentions never fabricate a
       // threat, and the deterministic Tier-0 gate has already run upstream.
       return {
         verdict: 'allowed',
@@ -321,15 +343,15 @@
     /**
      * Evaluates prompt in parallel across all 3 classifiers and arbitrates consensus.
      */
-    async evaluate(text, kind = 'injection') {
+    async evaluate(text, kind = 'injection', options = {}) {
       if (!text || typeof text !== 'string') {
         return { verdict: 'allowed', agreement: 'empty', blockVotes: 0, allowVotes: 0, votes: [] };
       }
 
-      // Check cache. Keyed on a full-text 64-bit FNV-1a hash (never a prefix
-      // slice): two prompts sharing a leading substring must not inherit
-      // each other's verdict.
-      const cacheKey = kind + ':' + text.length + ':' + fnv1a64(text);
+      const strict = options.strict !== undefined ? Boolean(options.strict) : this.strict;
+      // Check cache. Keyed on a full-text 64-bit FNV-1a hash with strict prefix:
+      // two prompts sharing a leading substring must not inherit each other's verdict.
+      const cacheKey = kind + ':' + (strict ? 'strict:' : '') + text.length + ':' + fnv1a64(text);
       if (this.cache.has(cacheKey)) {
         return this.cache.get(cacheKey);
       }
@@ -341,14 +363,26 @@
         this.evaluateLlm(text, kind)
       ]);
 
+      const names = ['heuristics', 'neural_webgpu', 'local_llm'];
       const votes = results.map((r, i) => {
-        if (r.status === 'fulfilled') return r.value;
-        const names = ['heuristics', 'neural_webgpu', 'local_llm'];
-        // Fail-closed: a classifier that throws ABSTAINS
-        return { classifier: names[i], vote: VOTE_ABSTAIN, confidence: 0, reason: r.reason ? r.reason.message : 'failed' };
+        if (r.status === 'fulfilled' && r.value && typeof r.value === 'object') {
+          const v = r.value;
+          const vote = v.vote === VOTE_BLOCK ? VOTE_BLOCK : (v.vote === VOTE_ALLOW ? VOTE_ALLOW : VOTE_ABSTAIN);
+          const rawConf = typeof v.confidence === 'number' && !isNaN(v.confidence) ? v.confidence : 0;
+          const confidence = Math.min(100, Math.max(0, Math.round(rawConf)));
+          return {
+            classifier: v.classifier || names[i],
+            vote,
+            confidence,
+            reason: typeof v.reason === 'string' ? v.reason.slice(0, 200) : ''
+          };
+        }
+        // Fail-closed: a classifier that throws or resolves invalid value ABSTAINS
+        const errReason = r.reason ? String(r.reason.message || r.reason).slice(0, 200) : 'failed';
+        return { classifier: names[i], vote: VOTE_ABSTAIN, confidence: 0, reason: errReason };
       });
 
-      const outcome = this.arbitrate(votes);
+      const outcome = this.arbitrate(votes, { strict });
 
       // Cache outcome
       if (this.cache.size >= this.maxCacheSize) {

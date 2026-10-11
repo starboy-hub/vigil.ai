@@ -321,7 +321,7 @@ A hardened companion app for power users and enterprise environments:
 | Component | Function |
 |---|---|
 | **IDE Proxy** (port 8383) | High-throughput forward proxy protecting Cursor, GitHub Copilot, and Ollama. Strips credentials before egress, enforces token budgets. |
-| **Agent Firewall** (port 8765) | Intercepts autonomous agent CLI/tool calls (`HTTP_PROXY=127.0.0.1:8765`) with live SSE streaming token reconstitution. |
+| **Agent Firewall** (port 8765) | Intercepts autonomous agent CLI/tool calls (`HTTP_PROXY=127.0.0.1:8765`). Full DLP inspection for plain HTTP; HTTPS `CONNECT` tunnels enforce destination safety and are audited as `tunnel_uninspected` (no TLS MITM). |
 | **OS Keychain Integration** | Vault entries bound to Vigil-namespaced OS keychain services. |
 | **Audio Spectral Canary** | Detects ultrasonic and high-frequency covert audio channels used by acoustic data exfiltration attacks. |
 | **Ephemeral ECDH Handshake** | AES-256-GCM native messaging channel with P-256 key agreement — the native bridge cannot be impersonated. |

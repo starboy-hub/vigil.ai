@@ -14,24 +14,40 @@
   let streamingObserver = null;
   let isMutatingInternally = false;
   const processedNodes = new WeakSet();
+  const MAX_SUBSTITUTIONS = 500;
+  const SUBSTITUTION_TTL_MS = 60 * 60 * 1000; // 60 minutes TTL
+
+  function getCurrentOrigin() {
+    try {
+      if (typeof window !== 'undefined' && window.location && window.location.origin) {
+        return window.location.origin;
+      }
+    } catch (_) {}
+    return null;
+  }
 
   /**
    * Registers a surrogate-to-real mapping for the current browsing session
    */
-  function recordSubstitution(surrogate, original, category = 'GENERAL') {
-    if (!surrogate || !original || surrogate === original) return false;
-    sessionSubstitutions.set(surrogate, { original, category, timestamp: Date.now() });
+  function recordSubstitution(surrogate, original, category = 'GENERAL', origin = null) {
+    if (!surrogate || !original || typeof surrogate !== 'string' || typeof original !== 'string' || surrogate === original) return false;
+    if (sessionSubstitutions.size >= MAX_SUBSTITUTIONS) {
+      const oldest = sessionSubstitutions.keys().next().value;
+      sessionSubstitutions.delete(oldest);
+    }
+    const boundOrigin = origin !== null ? origin : getCurrentOrigin();
+    sessionSubstitutions.set(surrogate, { original, category, origin: boundOrigin, timestamp: Date.now() });
     return true;
   }
 
   /**
    * Bulk registers mappings from a substitution tree
    */
-  function recordSubstitutionTree(reverseTree) {
+  function recordSubstitutionTree(reverseTree, origin = null) {
     if (!reverseTree || typeof reverseTree !== 'object') return 0;
     let count = 0;
     for (const [surrogate, original] of Object.entries(reverseTree)) {
-      if (recordSubstitution(surrogate, original)) count++;
+      if (recordSubstitution(surrogate, original, 'GENERAL', origin)) count++;
     }
     return count;
   }
@@ -53,18 +69,26 @@
   /**
    * Pure text rehydration: replaces all known surrogates with original values
    */
-  function rehydrateText(text) {
+  function rehydrateText(text, targetOrigin = null) {
     if (!text || typeof text !== 'string' || sessionSubstitutions.size === 0) return text || '';
+    const now = Date.now();
+    const effectiveOrigin = targetOrigin !== null ? targetOrigin : getCurrentOrigin();
     let result = text;
     // Sort surrogates longest first to prevent partial collision
     const keys = Array.from(sessionSubstitutions.keys()).sort((a, b) => b.length - a.length);
 
     keys.forEach((surrogate) => {
       const entry = sessionSubstitutions.get(surrogate);
-      if (entry && entry.original) {
-        const escaped = surrogate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        result = result.replace(new RegExp(escaped, 'g'), entry.original);
+      if (!entry || !entry.original) return;
+      if (now - entry.timestamp > SUBSTITUTION_TTL_MS) {
+        sessionSubstitutions.delete(surrogate);
+        return;
       }
+      if (entry.origin && effectiveOrigin && entry.origin !== effectiveOrigin) {
+        return; // Isolate cross-origin substitutions
+      }
+      const escaped = surrogate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result = result.replace(new RegExp(escaped, 'g'), entry.original);
     });
 
     return result;

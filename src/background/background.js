@@ -508,6 +508,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ error: 'invalid_message' });
       return false;
     }
+
+    // Privileged commands must only originate from internal extension contexts (popup, options),
+    // never from untrusted webpage content script tabs.
+    const PRIVILEGED_MESSAGES = new Set([
+      'VAULT_LIST', 'VAULT_CORPUS', 'VAULT_CLEAR', 'VAULT_ROTATE_KEY',
+      'VAULT_ADD', 'VAULT_REMOVE', 'SAVE_TRUSTED_SITES', 'INTEGRITY_DAEMON_RESTORE'
+    ]);
+    if (PRIVILEGED_MESSAGES.has(request.type) && sender && sender.tab) {
+      sendResponse({ error: 'unauthorized_sender_context', detail: 'Privileged operations prohibited from web content script' });
+      return false;
+    }
     if (request.type === 'GET_SETTINGS') {
       chrome.storage.sync.get(['settings'], (result) => {
         const settings = result.settings ? { ...DEFAULT_SETTINGS, ...result.settings } : DEFAULT_SETTINGS;
@@ -798,11 +809,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.type === 'CONSENSUS_EVALUATE') {
       const kind = request.kind === 'scam' ? 'scam' : 'injection';
+      const isStrict = Boolean(request.strict);
       if (!consensusFirewall) {
-        sendResponse({ verdict: 'unclear', details: 'Consensus firewall unavailable' });
+        sendResponse({ verdict: isStrict ? 'soft_block' : 'unclear', details: 'Consensus firewall unavailable', requiresUserOverride: isStrict });
         return false;
       }
-      consensusFirewall.evaluate(request.text, kind)
+      consensusFirewall.evaluate(request.text, kind, { strict: isStrict })
         .then((result) => {
           if (result.verdict === 'blocked' || result.verdict === 'soft_block') {
             try {
@@ -820,7 +832,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
           sendResponse(result);
         })
-        .catch((err) => sendResponse({ verdict: 'allowed', agreement: 'firewall_unavailable', abstainVotes: 3, error: err.message }));
+        .catch((err) => sendResponse({
+          verdict: isStrict ? 'soft_block' : 'allowed',
+          agreement: 'firewall_unavailable',
+          abstainVotes: 3,
+          requiresUserOverride: isStrict,
+          error: err.message
+        }));
       return true;
     }
 

@@ -123,6 +123,8 @@
     const sorted = [...redactions].sort((a, b) => b.text.length - a.text.length);
     const seenReal = new Set();
 
+    const usedSurrogates = new Set();
+    let secretCounter = 0;
     let working = text;
 
     sorted.forEach((r) => {
@@ -136,8 +138,19 @@
       else if (r.type === 'LEGAL') surrogateCategory = 'REGULATION';
       else if (r.type === 'IP' || r.type === 'SECRET' || r.type === 'API_KEY' || r.type === 'TOKEN') surrogateCategory = 'INFRASTRUCTURE';
 
-      let surrogate = pickSurrogate(surrogateCategory, real);
-      if (r.type === 'SECRET' || r.type === 'API_KEY' || r.type === 'TOKEN') surrogate = '<ENTERPRISE_API_CREDENTIAL>';
+      let surrogate;
+      if (r.type === 'SECRET' || r.type === 'API_KEY' || r.type === 'TOKEN') {
+        secretCounter++;
+        surrogate = secretCounter === 1 ? '<ENTERPRISE_API_CREDENTIAL>' : `<ENTERPRISE_API_CREDENTIAL_${secretCounter}>`;
+      } else {
+        surrogate = pickSurrogate(surrogateCategory, real);
+        if (usedSurrogates.has(surrogate)) {
+          const list = SURROGATES[surrogateCategory] || SURROGATES.COMPANY;
+          let candidate = list.find(s => !usedSurrogates.has(s));
+          surrogate = candidate || `${surrogate} (${seenReal.size})`;
+        }
+      }
+      usedSurrogates.add(surrogate);
 
       substitutionMap[real] = surrogate;
       reverseTree[surrogate] = real;

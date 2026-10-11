@@ -3,7 +3,8 @@
  * and the voice canary generator.
  */
 const http = require('http');
-const { inspectBody, decide, createFirewallServer } = require('../companion/vigil-agent-firewall.js');
+const net = require('net');
+const { inspectBody, decide, createFirewallServer, isProhibitedDestination } = require('../companion/vigil-agent-firewall.js');
 const { generateChallenge, renderGuide, loadConfig } = require('../companion/vigil-canary.js');
 
 describe('agent firewall — inspectBody (pure)', () => {
@@ -106,6 +107,101 @@ describe('agent firewall — live proxy roundtrip', () => {
       }, (res) => resolve(res.statusCode)).on('error', reject);
     });
     expect(rebindRes).toBe(403);
+
+    // 3. Unexpected HTTP method rejection (405 Method Not Allowed)
+    const methodRes = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: '/vigil-mode',
+        method: 'POST'
+      }, (res) => resolve(res.statusCode));
+      req.on('error', reject);
+      req.end();
+    });
+    expect(methodRes).toBe(405);
+
+    // 4. Recursive proxy loop prevention
+    const loopRes = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: `http://127.0.0.1:${port}/test`,
+        method: 'GET'
+      }, (res) => resolve(res.statusCode));
+      req.on('error', reject);
+      req.end();
+    });
+    expect(loopRes).toBe(400);
+
+    // 5. Cloud metadata IMDS rejection (403 Forbidden)
+    const imdsRes = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: 'http://169.254.169.254/latest/meta-data',
+        method: 'GET'
+      }, (res) => resolve(res.statusCode));
+      req.on('error', reject);
+      req.end();
+    });
+    expect(imdsRes).toBe(403);
+
+    // 6. CONNECT to recursive loopback port rejected with 403
+    const connectLoopRes = await new Promise((resolve, reject) => {
+      const client = net.connect({ host: '127.0.0.1', port }, () => {
+        client.write(`CONNECT 127.0.0.1:${port} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n\r\n`);
+      });
+      client.on('data', (data) => {
+        const str = data.toString('utf8');
+        client.destroy();
+        resolve(str);
+      });
+      client.on('error', reject);
+    });
+    expect(connectLoopRes).toContain('403 Forbidden');
+
+    // 7. CONNECT to cloud metadata IMDS rejected with 403
+    const connectImdsRes = await new Promise((resolve, reject) => {
+      const client = net.connect({ host: '127.0.0.1', port }, () => {
+        client.write('CONNECT 169.254.169.254:80 HTTP/1.1\r\nHost: 169.254.169.254:80\r\n\r\n');
+      });
+      client.on('data', (data) => {
+        const str = data.toString('utf8');
+        client.destroy();
+        resolve(str);
+      });
+      client.on('error', reject);
+    });
+    expect(connectImdsRes).toContain('403 Forbidden');
+  });
+
+  test('CONNECT tunnel forwards to permitted upstream and audits uninspected TLS status', async () => {
+    const port = firewall.address().port;
+    const upPort = upstream.address().port;
+    const connectRes = await new Promise((resolve, reject) => {
+      const client = net.connect({ host: '127.0.0.1', port }, () => {
+        client.write(`CONNECT 127.0.0.1:${upPort} HTTP/1.1\r\nHost: 127.0.0.1:${upPort}\r\n\r\n`);
+      });
+      client.once('data', (data) => {
+        const str = data.toString('utf8');
+        client.destroy();
+        resolve(str);
+      });
+      client.on('error', reject);
+    });
+    expect(connectRes).toContain('200 Connection Established');
+
+    // Inspect dashboard status: CONNECT must be recorded as tunnel_uninspected
+    const status = await new Promise((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port, path: '/vigil-status' }, (res) => {
+        let data = '';
+        res.on('data', c => { data += c; });
+        res.on('end', () => resolve(JSON.parse(data)));
+      }).on('error', reject);
+    });
+    const connectFinding = status.findings.find(f => f.method === 'CONNECT' && f.action === 'tunnel_uninspected');
+    expect(connectFinding).toBeTruthy();
   });
 
   test('companion dashboard serves the canary challenge', async () => {
@@ -335,3 +431,313 @@ describe('agent firewall — live SSE roundtrip', () => {
     expect(collected).toContain('data: [DONE]');
   });
 });
+
+describe('agent firewall — destination validation (pure)', () => {
+  test('blocks loopback on firewall listening port', () => {
+    expect(isProhibitedDestination('127.0.0.1', 8765, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('localhost', 8765, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('[::1]', 8765, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('0.0.0.0', 8765, 8765).prohibited).toBe(true);
+  });
+
+  test('permits loopback on different ports (e.g. mock upstreams or local models)', () => {
+    expect(isProhibitedDestination('127.0.0.1', 11434, 8765).prohibited).toBe(false);
+    expect(isProhibitedDestination('localhost', 8000, 8765).prohibited).toBe(false);
+  });
+
+  test('blocks cloud metadata IMDS IPv4, IPv6, and hostnames', () => {
+    expect(isProhibitedDestination('169.254.169.254', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('instance-data', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('fd00:ec2::254', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('fe80::1', 80, 8765).prohibited).toBe(true);
+  });
+
+  test('blocks IPv4-mapped IPv6 cloud metadata and loopback destinations', () => {
+    expect(isProhibitedDestination('::ffff:169.254.169.254', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('::ffff:a9fe:a9fe', 80, 8765).prohibited).toBe(true); // 169.254.169.254 in hex
+    expect(isProhibitedDestination('::ffff:127.0.0.1', 8765, 8765).prohibited).toBe(true); // recursive loop
+    expect(isProhibitedDestination('::ffff:7f00:1', 8765, 8765).prohibited).toBe(true); // hex 127.0.0.1 on proxy port
+  });
+
+  test('blocks private network IP destinations when private blocking is active', () => {
+    expect(isProhibitedDestination('10.0.0.1', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('172.16.5.10', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('192.168.1.1', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('100.64.0.1', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('fc00::1', 80, 8765).prohibited).toBe(true);
+    expect(isProhibitedDestination('::ffff:192.168.1.1', 80, 8765).prohibited).toBe(true);
+  });
+
+  test('permits valid external AI endpoints', () => {
+    expect(isProhibitedDestination('api.openai.com', 443, 8765).prohibited).toBe(false);
+    expect(isProhibitedDestination('api.anthropic.com', 443, 8765).prohibited).toBe(false);
+  });
+});
+
+describe('control endpoint safety (/vigil-toggle & mutations)', () => {
+  let firewall;
+  beforeAll((done) => {
+    firewall = createFirewallServer({ mode: 'guard', protect: [] });
+    firewall.listen(0, '127.0.0.1', done);
+  });
+  afterAll((done) => { firewall.close(done); });
+
+  test('GET /vigil-toggle is strictly read-only and does not mutate state', async () => {
+    const port = firewall.address().port;
+    const res = await new Promise((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port, path: '/vigil-toggle' }, (r) => {
+        let d = '';
+        r.on('data', c => { d += c; });
+        r.on('end', () => resolve({ status: r.statusCode, data: JSON.parse(d) }));
+      }).on('error', reject);
+    });
+    expect(res.status).toBe(200);
+    expect(res.data.enabled).toBe(true);
+    expect(res.data.mode).toBe('guard');
+    expect(res.data.mutableViaGet).toBe(false);
+  });
+
+  test('GET /vigil-toggle rejects query-parameter mutation attempts with 405', async () => {
+    const port = firewall.address().port;
+    const res = await new Promise((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port, path: '/vigil-toggle?toggle=true' }, (r) => {
+        let d = '';
+        r.on('data', c => { d += c; });
+        r.on('end', () => resolve({ status: r.statusCode, data: JSON.parse(d) }));
+      }).on('error', reject);
+    });
+    expect(res.status).toBe(405);
+    expect(res.data.error).toBe('STATE_MUTATION_VIA_GET_PROHIBITED');
+  });
+
+  test('POST /vigil-toggle safely toggles mode when authorized from loopback', async () => {
+    const port = firewall.address().port;
+    const postRes = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: '/vigil-toggle',
+        method: 'POST'
+      }, (r) => {
+        let d = '';
+        r.on('data', c => { d += c; });
+        r.on('end', () => resolve({ status: r.statusCode, data: JSON.parse(d) }));
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    expect(postRes.status).toBe(200);
+    expect(postRes.data.success).toBe(true);
+    expect(postRes.data.mode).toBe('monitor'); // toggled from guard to monitor
+
+    // Toggle back
+    const restoreRes = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: '/vigil-toggle',
+        method: 'POST'
+      }, (r) => {
+        let d = '';
+        r.on('data', c => { d += c; });
+        r.on('end', () => resolve(JSON.parse(d)));
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    expect(restoreRes.mode).toBe('guard');
+  });
+});
+
+describe('streaming DLP: request & response chunking and redirect safety', () => {
+  let upstream, firewall;
+  let lastReceivedBody = '';
+  beforeAll((done) => {
+    upstream = http.createServer((req, res) => {
+      if (req.url === '/redirect-ssrf') {
+        res.writeHead(302, { location: 'http://169.254.169.254/latest/meta-data' });
+        res.end();
+        return;
+      }
+      let body = '';
+      req.on('data', c => { body += c; });
+      req.on('end', () => {
+        lastReceivedBody = body;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', sawHeader: req.headers['x-vigil-firewall'] }));
+      });
+    });
+    upstream.listen(0, '127.0.0.1', () => {
+      firewall = createFirewallServer({ mode: 'guard', protect: ['synthetic-secret-token-xyz'] });
+      firewall.listen(0, '127.0.0.1', done);
+    });
+  });
+  afterAll((done) => {
+    firewall.close(() => upstream.close(done));
+  });
+
+  test('synthetic secret split across multiple request chunks cannot bypass redaction', async () => {
+    const upPort = upstream.address().port;
+    const fwPort = firewall.address().port;
+    const result = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port: fwPort,
+        method: 'POST',
+        path: `http://127.0.0.1:${upPort}/v1/chat`,
+        headers: { host: `127.0.0.1:${upPort}`, 'content-type': 'application/json' }
+      }, (res) => {
+        let d = '';
+        res.on('data', c => { d += c; });
+        res.on('end', () => resolve(JSON.parse(d)));
+      });
+      req.on('error', reject);
+      // Write across arbitrary chunk boundaries
+      req.write('{"prompt": "deploy key is ');
+      setTimeout(() => {
+        req.write('synthetic-secret');
+        setTimeout(() => {
+          req.write('-token-xyz and finish"}');
+          req.end();
+        }, 10);
+      }, 10);
+    });
+    expect(result.status).toBe('ok');
+    // Upstream received the tokenized prompt — secret never left in cleartext
+    expect(lastReceivedBody).toContain('[VIGIL-1]');
+    expect(lastReceivedBody).not.toContain('synthetic-secret-token-xyz');
+  });
+
+  test('upstream redirect targeting prohibited metadata destination is blocked with 403', async () => {
+    const upPort = upstream.address().port;
+    const fwPort = firewall.address().port;
+    const res = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port: fwPort,
+        method: 'GET',
+        path: `http://127.0.0.1:${upPort}/redirect-ssrf`,
+        headers: { host: `127.0.0.1:${upPort}` }
+      }, (r) => {
+        let d = '';
+        r.on('data', c => { d += c; });
+        r.on('end', () => resolve({ status: r.statusCode, data: JSON.parse(d) }));
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    expect(res.status).toBe(403);
+    expect(res.data.error).toBe('PROHIBITED_REDIRECT_DESTINATION');
+  });
+
+  test('synthetic secret split across SSE chunks: rehydrates and ensures absence of token', () => {
+    const { createSseRewriter } = require('../companion/sse-rewrite.js');
+    const rw = createSseRewriter({
+      mappings: [{ token: '[VIGIL-SECRET-KEY]', original: 'SYNTHETIC_PLAINTEXT_SECRET' }]
+    });
+    const chunk1 = 'event: message\ndata: {"content":"prefix [VIGIL-SEC';
+    const chunk2 = 'RET-KEY] suffix"}\n\n';
+    const out1 = rw.push(chunk1);
+    const out2 = rw.push(chunk2);
+    const full = out1 + out2 + rw.flush();
+    expect(full).toContain('SYNTHETIC_PLAINTEXT_SECRET');
+    expect(full).not.toContain('[VIGIL-SEC');
+    expect(full).not.toContain('[VIGIL-SECRET-KEY]');
+  });
+
+  test('event larger than configured buffer: fail-closed policy emits error frame and zero raw leakage', () => {
+    const { createSseRewriter } = require('../companion/sse-rewrite.js');
+    const rw = createSseRewriter({
+      mappings: [{ token: '[VIGIL-1]', original: 'CONFIDENTIAL' }],
+      maxBuffer: 256
+    });
+    const bigUnterminatedEvent = 'data: ' + 'x'.repeat(300) + ' [VIGIL-1] trailing';
+    const out = rw.push(bigUnterminatedEvent);
+    expect(rw.isFaulted()).toBe(true);
+    expect(out).toContain('FRAME_EXCEEDED_BUFFER_LIMIT');
+    expect(out).not.toContain('x'.repeat(50));
+    expect(out).not.toContain('trailing');
+    expect(rw.flush()).toBe('');
+  });
+
+  test('unterminated event: safely inspected and emitted on flush within buffer limit', () => {
+    const { createSseRewriter } = require('../companion/sse-rewrite.js');
+    const rw = createSseRewriter({
+      mappings: [{ token: '[VIGIL-1]', original: 'REHYDRATED_SECRET' }],
+      maxBuffer: 1024
+    });
+    const incomplete = 'event: message\ndata: Hello [VIGIL-1] world';
+    const outPush = rw.push(incomplete);
+    expect(outPush).toBe('');
+    const outFlush = rw.flush();
+    expect(outFlush).toContain('REHYDRATED_SECRET');
+    expect(outFlush).not.toContain('[VIGIL-1]');
+    expect(rw.isFaulted()).toBe(false);
+  });
+
+  test('secret split exactly at overflow boundary: fail-closed purge ensures raw secret never emitted', () => {
+    const { createSseRewriter } = require('../companion/sse-rewrite.js');
+    const rw = createSseRewriter({
+      mappings: [{ token: '[VIGIL-TOKEN-99]', original: 'SUPER_SECRET_PAYLOAD' }],
+      maxBuffer: 128
+    });
+    const pad = 'data: ' + 'z'.repeat(120);
+    rw.push(pad);
+    const splitChunk = '[VIGIL-TOKEN-99] remaining data';
+    const out = rw.push(splitChunk);
+    expect(rw.isFaulted()).toBe(true);
+    expect(out).toContain('FRAME_EXCEEDED_BUFFER_LIMIT');
+    expect(out).not.toContain('SUPER_SECRET_PAYLOAD');
+    expect(out).not.toContain('[VIGIL-TOKEN-99]');
+    expect(out).not.toContain('remaining data');
+    expect(rw.flush()).toBe('');
+  });
+
+  test('request data holdback: prohibited destination receives zero request bytes', async () => {
+    const fwPort = firewall.address().port;
+    const res = await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: '127.0.0.1',
+        port: fwPort,
+        method: 'POST',
+        path: 'http://169.254.169.254/latest/meta-data/',
+        headers: {
+          host: '169.254.169.254',
+          'content-type': 'application/json'
+        }
+      }, (r) => {
+        let d = '';
+        r.on('data', c => { d += c; });
+        r.on('end', () => resolve({ status: r.statusCode, data: JSON.parse(d) }));
+      });
+      req.on('error', reject);
+      req.write(JSON.stringify({ secretPayload: 'SUPER_CONFIDENTIAL_KEY_123' }));
+      req.end();
+    });
+    expect(res.status).toBe(403);
+    expect(res.data.error).toBe('PROHIBITED_CLOUD_METADATA_DESTINATION');
+  });
+
+  test('enterprise --allow-private flag allows private IPs while keeping cloud metadata blocked', () => {
+    const { parseArgs, isProhibitedDestination } = require('../companion/vigil-agent-firewall.js');
+    const args1 = parseArgs(['node', 'script.js', '--allow-private']);
+    expect(args1.allowPrivate).toBe(true);
+    const args2 = parseArgs(['node', 'script.js', '--block-private=false']);
+    expect(args2.allowPrivate).toBe(true);
+    const args3 = parseArgs(['node', 'script.js', '--allow-internal']);
+    expect(args3.allowPrivate).toBe(true);
+
+    const optsAllowed = { blockPrivate: false };
+    expect(isProhibitedDestination('10.0.0.1', 8080, 8765, optsAllowed).prohibited).toBe(false);
+    expect(isProhibitedDestination('192.168.1.100', 8080, 8765, optsAllowed).prohibited).toBe(false);
+    expect(isProhibitedDestination('172.16.5.10', 8080, 8765, optsAllowed).prohibited).toBe(false);
+
+    expect(isProhibitedDestination('169.254.169.254', 80, 8765, optsAllowed).prohibited).toBe(true);
+    expect(isProhibitedDestination('169.254.169.254', 80, 8765, optsAllowed).reason).toBe('PROHIBITED_CLOUD_METADATA_DESTINATION');
+    expect(isProhibitedDestination('metadata.google.internal', 80, 8765, optsAllowed).prohibited).toBe(true);
+
+    expect(isProhibitedDestination('127.0.0.1', 8765, 8765, optsAllowed).prohibited).toBe(true);
+    expect(isProhibitedDestination('127.0.0.1', 8765, 8765, optsAllowed).reason).toBe('RECURSIVE_PROXY_LOOP_PREVENTED');
+  });
+});
+

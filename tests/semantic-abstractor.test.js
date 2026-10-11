@@ -74,6 +74,20 @@ describe('VIGIL Semantic Scenario Abstraction Engine', () => {
       expect(res.abstractedText).toContain('<ENTERPRISE_API_CREDENTIAL>');
     });
 
+    test('disambiguates multiple secrets with distinct surrogate indices to prevent collisions', () => {
+      const prompt = 'Key 1: AKIAIOSFODNN7EXAMPLE and Key 2: AKIAI44QH8DHBEXAMPLE';
+      const res = abstractor.abstractPrompt(prompt);
+
+      expect(res.abstractedText).toContain('<ENTERPRISE_API_CREDENTIAL>');
+      expect(res.abstractedText).toContain('<ENTERPRISE_API_CREDENTIAL_2>');
+      expect(res.reverseTree['<ENTERPRISE_API_CREDENTIAL>']).toBe('AKIAIOSFODNN7EXAMPLE');
+      expect(res.reverseTree['<ENTERPRISE_API_CREDENTIAL_2>']).toBe('AKIAI44QH8DHBEXAMPLE');
+
+      const cloudReply = 'Processed <ENTERPRISE_API_CREDENTIAL> and <ENTERPRISE_API_CREDENTIAL_2>';
+      const restored = abstractor.rehydrateResponse(cloudReply, res.reverseTree);
+      expect(restored).toBe('Processed AKIAIOSFODNN7EXAMPLE and AKIAI44QH8DHBEXAMPLE');
+    });
+
     test('handles empty or non-string inputs safely without throwing', () => {
       expect(abstractor.abstractPrompt('').abstractedText).toBe('');
       expect(abstractor.abstractPrompt(null).abstractedText).toBe('');

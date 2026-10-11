@@ -208,6 +208,9 @@ lazy_static::lazy_static! {
     static ref RE_AWS: regex::Regex = regex::Regex::new(r"AKIA[0-9A-Z]{16}").unwrap();
     static ref RE_GH: regex::Regex = regex::Regex::new(r"ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{20,}").unwrap();
     static ref RE_API: regex::Regex = regex::Regex::new(r"sk-[a-zA-Z0-9_-]{20,}").unwrap();
+    static ref RE_PRIVATE_KEY: regex::Regex = regex::Regex::new(
+        r"-----BEGIN\s+(?:[A-Z0-9_-]+\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:[A-Z0-9_-]+\s+)?PRIVATE\s+KEY-----"
+    ).unwrap();
 }
 
         // AWS Access Key ID
@@ -228,6 +231,13 @@ lazy_static::lazy_static! {
         if prompt.contains("sk-") && RE_API.is_match(&sanitized) {
             sanitized = RE_API.replace_all(&sanitized, "[VIGIL-API-KEY-REDACTED]").to_string();
             detected_types.push("AI_API_KEY".to_string());
+            has_leak = true;
+        }
+
+        // Private RSA / SSH / EC / PKCS#8 Keys
+        if prompt.contains("PRIVATE KEY") && RE_PRIVATE_KEY.is_match(&sanitized) {
+            sanitized = RE_PRIVATE_KEY.replace_all(&sanitized, "[VIGIL-PRIVATE-KEY-REDACTED]").to_string();
+            detected_types.push("PRIVATE_KEY".to_string());
             has_leak = true;
         }
 
@@ -275,5 +285,24 @@ mod tests {
         assert!(has_leak2);
         assert!(types2.contains(&"GITHUB_PAT".to_string()));
         assert_eq!(sanitized_fg, "pushing using [VIGIL-GITHUB-PAT-REDACTED] to main");
+    }
+
+    #[test]
+    fn test_inspect_prompt_redacts_private_keys_rsa_and_pkcs8() {
+        let engine = IdeProxyEngine::new(8383);
+
+        // RSA private key
+        let rsa_key = "deploy key:\n-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0m...\n-----END RSA PRIVATE KEY-----\nfor server";
+        let (sanitized_rsa, has_leak_rsa, types_rsa) = engine.inspect_prompt(rsa_key);
+        assert!(has_leak_rsa);
+        assert!(types_rsa.contains(&"PRIVATE_KEY".to_string()));
+        assert_eq!(sanitized_rsa, "deploy key:\n[VIGIL-PRIVATE-KEY-REDACTED]\nfor server");
+
+        // PKCS#8 private key
+        let pkcs8_key = "my secret:\n-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC3\n-----END PRIVATE KEY-----";
+        let (sanitized_pk8, has_leak_pk8, types_pk8) = engine.inspect_prompt(pkcs8_key);
+        assert!(has_leak_pk8);
+        assert!(types_pk8.contains(&"PRIVATE_KEY".to_string()));
+        assert_eq!(sanitized_pk8, "my secret:\n[VIGIL-PRIVATE-KEY-REDACTED]");
     }
 }

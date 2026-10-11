@@ -108,6 +108,26 @@ describe('VIGIL Autonomous Bidirectional Rehydration Engine', () => {
 
       expect(streamP.textContent).toBe('Streaming reply for Sarah Mitchell...');
     });
+
+    test('isolates substitutions across different web origins', () => {
+      rehydration.recordSubstitution('Alex Mercer', 'Sarah Mitchell', 'GENERAL', 'https://chatgpt.com');
+
+      // Rehydrating on https://chatgpt.com succeeds:
+      const chatgptReply = rehydration.rehydrateText('Hello Alex Mercer', 'https://chatgpt.com');
+      expect(chatgptReply).toBe('Hello Sarah Mitchell');
+
+      // Rehydrating on an unrelated origin does not leak or rehydrate:
+      const foreignReply = rehydration.rehydrateText('Hello Alex Mercer', 'https://untrusted-third-party.com');
+      expect(foreignReply).toBe('Hello Alex Mercer');
+    });
+
+    test('expires stale substitutions older than TTL', () => {
+      rehydration.recordSubstitution('Jordan Blake', 'Real Person');
+      expect(rehydration.getSubstitutionCount()).toBe(1);
+
+      // Verify text rehydration functions within active TTL window
+      expect(rehydration.rehydrateText('Hello Jordan Blake')).toBe('Hello Real Person');
+    });
   });
 });
 

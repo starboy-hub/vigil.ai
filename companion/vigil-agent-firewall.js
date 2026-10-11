@@ -28,15 +28,18 @@ const fs = require('fs');
 
 const VIGIL_ENGINE = require('../src/content/modules/detection-engine.js');
 const VIGIL_INJECTION = require('../src/content/modules/injection-engine.js');
+const VIGIL_SECRETS = require('../src/content/modules/secret-engine.js');
 const canary = require('./vigil-canary.js');
 const { createSseRewriter, createTextRewriter } = require('./sse-rewrite.js');
 
 const DEFAULT_PORT = 8765;
 
 function parseArgs(argv) {
-  const args = { mode: 'monitor', port: DEFAULT_PORT, protect: [], openGui: false };
+  const args = { mode: 'monitor', port: DEFAULT_PORT, protect: [], openGui: false, allowPrivate: false };
   for (const arg of argv.slice(2)) {
     if (arg === '--gui' || arg === '--open') args.openGui = true;
+    else if (arg === '--allow-private' || arg === '--allow-internal') args.allowPrivate = true;
+    else if (arg.startsWith('--block-private=')) args.allowPrivate = arg.split('=')[1] === 'false';
     else if (arg.startsWith('--mode=')) args.mode = arg.split('=')[1];
     else if (arg.startsWith('--port=')) args.port = parseInt(arg.split('=')[1], 10) || DEFAULT_PORT;
     else if (arg.startsWith('--protect=')) {
@@ -69,6 +72,19 @@ function inspectBody(body, protect) {
   const det = VIGIL_ENGINE.scanWithRegex(text);
   det.redactions.forEach(r => findings.pii.push(r.type));
 
+  if (VIGIL_SECRETS && typeof VIGIL_SECRETS.scanSecrets === 'function') {
+    const secResult = VIGIL_SECRETS.scanSecrets(text);
+    const secRedactions = (secResult && secResult.redactions) || [];
+    secRedactions.forEach(s => {
+      findings.pii.push(s.type);
+      findings.reasons.push('secret:' + s.type);
+      if (s.text && findings.transformed.includes(s.text)) {
+        findings.transformed = findings.transformed.split(s.text).join('[REDACTED_SECRET_' + s.type + ']');
+        findings.protectedHits.push({ token: '[REDACTED_SECRET_' + s.type + ']', original: s.text });
+      }
+    });
+  }
+
   const inj = VIGIL_INJECTION.analyzeInjection(text);
   if (inj.level === 'dangerous' || inj.level === 'suspicious') {
     findings.injection = inj.level;
@@ -88,7 +104,7 @@ function inspectBody(body, protect) {
     }
   });
 
-  // Lock policy: dangerous injection or un-tokenized PII still present
+  // Lock policy: dangerous injection, un-tokenized PII, or raw secrets present
   if (findings.injection === 'dangerous') findings.blocked = true;
   if (findings.pii.length && findings.transformed === text && findings.pii.length) {
     // PII present and not substituted (monitor keeps flowing; lock blocks)
@@ -477,7 +493,7 @@ function isAuthorizedControlRequest(req) {
   // 1. Host header validation (prevent DNS rebinding attacks)
   const host = String(req.headers.host || '').toLowerCase();
   const hostName = host.split(':')[0];
-  if (hostName !== '127.0.0.1' && hostName !== 'localhost') {
+  if (hostName !== '127.0.0.1' && hostName !== 'localhost' && hostName !== '[::1]' && hostName !== '::1') {
     return false;
   }
 
@@ -507,15 +523,110 @@ function isAuthorizedControlRequest(req) {
   return true;
 }
 
+function normalizeIp(ipStr) {
+  if (!ipStr) return '';
+  let s = String(ipStr).toLowerCase().trim();
+  if (s.startsWith('[') && s.endsWith(']')) {
+    s = s.slice(1, -1);
+  }
+  // Hex notation IPv4-mapped IPv6: ::ffff:a9fe:a9fe or ::ffff:7f00:1
+  const hexMapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(s);
+  if (hexMapped) {
+    const p1 = parseInt(hexMapped[1], 16);
+    const p2 = parseInt(hexMapped[2], 16);
+    s = `${(p1 >> 8) & 0xff}.${p1 & 0xff}.${(p2 >> 8) & 0xff}.${p2 & 0xff}`;
+  } else if (s.startsWith('::ffff:')) {
+    s = s.slice(7);
+  }
+  return s;
+}
+
+function isPrivateNetworkIp(h) {
+  // 10.0.0.0/8
+  if (/^10\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(h)) return true;
+  // 172.16.0.0/12
+  if (/^172\.(?:1[6-9]|2[0-9]|3[0-1])\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(h)) return true;
+  // 192.168.0.0/16
+  if (/^192\.168\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(h)) return true;
+  // 100.64.0.0/10 (CGNAT)
+  if (/^100\.(?:6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(h)) return true;
+  // IPv6 ULA (fc00::/7)
+  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return true;
+  return false;
+}
+
+function isLoopbackHost(h) {
+  return h === '127.0.0.1' || h === 'localhost' || h.endsWith('.localhost') ||
+         h === '::1' || h === '0:0:0:0:0:0:0:1' || h === '0.0.0.0' || h === '::' ||
+         /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/.test(h) ||
+         h === '2130706433' || h === '0x7f000001' || h === '017700000001';
+}
+
+function isCloudMetadataHost(h) {
+  return h === '169.254.169.254' ||
+         h.startsWith('169.254.') ||
+         h === 'instance-data' ||
+         h === 'metadata.google.internal' ||
+         h.endsWith('.metadata.google.internal') ||
+         h === 'fd00:ec2::254' ||
+         /^fe80:/i.test(h);
+}
+
+function isProhibitedDestination(hostname, port, listeningPort, opts = {}) {
+  if (!hostname) return { prohibited: true, reason: 'INVALID_HOST' };
+  const h = normalizeIp(hostname);
+
+  // Prevent recursive proxy loops targeting the firewall port itself
+  if (isLoopbackHost(h) && port === listeningPort) {
+    return { prohibited: true, reason: 'RECURSIVE_PROXY_LOOP_PREVENTED' };
+  }
+
+  // Cloud Instance Metadata Service (IMDS) SSRF protection (AWS/GCP/Azure/OpenStack)
+  if (isCloudMetadataHost(h)) {
+    return { prohibited: true, reason: 'PROHIBITED_CLOUD_METADATA_DESTINATION' };
+  }
+
+  // Private address blocking (RFC 1918 / RFC 4193)
+  if (opts.blockPrivate !== false && isPrivateNetworkIp(h)) {
+    return { prohibited: true, reason: 'PROHIBITED_PRIVATE_NETWORK_DESTINATION' };
+  }
+
+  return { prohibited: false };
+}
+
 function createFirewallServer(opts) {
+  opts = opts || {};
+  const allowPrivate = Boolean(opts.allowPrivate || opts.blockPrivate === false);
+  const destinationOpts = { blockPrivate: !allowPrivate };
   const state = { mode: opts.mode, protect: opts.protect || [], canaryConfig: opts.canaryConfig || { personals: [] }, requests: 0, findingsLog: [] };
   // Stable bidirectional map used to re-hydrate tokens in AI responses
   state.tokenMap = state.protect.map((value, idx) => ({ token: '[VIGIL-' + (idx + 1) + ']', original: String(value) }));
-  const server = http.createServer((req, res) => {
-    const url = new URL(req.url, 'http://127.0.0.1');
+  const MAX_REQ_BODY_BYTES = 10 * 1024 * 1024; // 10MB resource limit
 
-    // ---- Companion dashboard endpoints (before proxying) ----
-    if (url.pathname.startsWith('/vigil-')) {
+  const server = http.createServer((req, res) => {
+    let url;
+    try {
+      url = new URL(req.url, 'http://127.0.0.1');
+    } catch (_e) {
+      res.writeHead(400, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'BAD_REQUEST_MALFORMED_URL' }));
+      return;
+    }
+
+    const listeningPort = (server.address() && server.address().port) || opts.port || DEFAULT_PORT;
+    const isDirectControlPath = req.url.startsWith('/vigil-') || (
+      req.url.startsWith('/') && !req.url.startsWith('//') && url.pathname.startsWith('/vigil-')
+    );
+
+    // ---- Companion dashboard endpoints (direct local control calls only) ----
+    if (isDirectControlPath) {
+      const isPostToggle = req.method === 'POST' && url.pathname === '/vigil-toggle';
+      if (req.method !== 'GET' && !isPostToggle) {
+        res.writeHead(405, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'METHOD_NOT_ALLOWED', allowed: ['GET'] }));
+        return;
+      }
+
       if (!isAuthorizedControlRequest(req)) {
         res.writeHead(403, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ error: 'FORBIDDEN_CROSS_ORIGIN_OR_REBINDING' }));
@@ -547,6 +658,37 @@ function createFirewallServer(opts) {
         res.end(JSON.stringify({ mode: state.mode }));
         return;
       }
+      if (url.pathname === '/vigil-toggle') {
+        if (req.method === 'GET') {
+          // Reject state-mutating attempts via GET query parameters
+          if (url.searchParams.has('toggle') || url.searchParams.has('mode') || url.searchParams.has('state')) {
+            res.writeHead(405, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({
+              error: 'STATE_MUTATION_VIA_GET_PROHIBITED',
+              message: '/vigil-toggle cannot mutate state via GET. State changes require authorized POST.'
+            }));
+            return;
+          }
+          // Read-only query of toggle status: safe and idempotent
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({
+            enabled: state.mode !== 'monitor',
+            mode: state.mode,
+            mutableViaGet: false
+          }));
+          return;
+        } else if (req.method === 'POST') {
+          // Safe state toggle via authorized loopback POST
+          state.mode = state.mode === 'monitor' ? 'guard' : 'monitor';
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            enabled: state.mode !== 'monitor',
+            mode: state.mode
+          }));
+          return;
+        }
+      }
       if (url.pathname === '/vigil-canary') {
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify(canary.generateChallenge(state.canaryConfig)));
@@ -555,11 +697,62 @@ function createFirewallServer(opts) {
     }
 
     state.requests++;
+    let totalBytes = 0;
+    let exceeded = false;
     const chunks = [];
-    req.on('data', (c) => chunks.push(c));
+
+    req.on('data', (c) => {
+      if (exceeded) return;
+      totalBytes += c.length;
+      if (totalBytes > MAX_REQ_BODY_BYTES) {
+        exceeded = true;
+        req.pause();
+        req.destroy();
+        if (!res.headersSent) {
+          res.writeHead(413, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: 'PAYLOAD_TOO_LARGE', limitBytes: MAX_REQ_BODY_BYTES }));
+        }
+        return;
+      }
+      chunks.push(c);
+    });
+
     req.on('end', () => {
+      if (exceeded) return;
+
+      let dest;
+      try {
+        dest = new URL(req.url, 'http://' + (req.headers.host || 'example.com'));
+      } catch (_err) {
+        res.writeHead(400, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'BAD_REQUEST_DESTINATION' }));
+        return;
+      }
+
+      // Check destination safety before inspection and forwarding
+      const destHost = (dest.hostname || '').toLowerCase();
+      const destPort = parseInt(dest.port || (dest.protocol === 'https:' ? '443' : '80'), 10);
+      const destCheck = isProhibitedDestination(destHost, destPort, listeningPort, destinationOpts);
+      if (destCheck.prohibited) {
+        state.findingsLog.push({
+          time: new Date().toISOString(),
+          method: req.method,
+          url: req.url,
+          pii: '-',
+          inj: '-',
+          hits: 0,
+          action: 'blocked:' + destCheck.reason
+        });
+        if (state.findingsLog.length > 50) state.findingsLog.shift();
+        const status = destCheck.reason === 'RECURSIVE_PROXY_LOOP_PREVENTED' ? 400 : 403;
+        res.writeHead(status, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: destCheck.reason }));
+        return;
+      }
+
       const raw = Buffer.concat(chunks);
-      const hasBody = raw.length > 0 && /text|json|form|xml/i.test(req.headers['content-type'] || 'text/plain');
+      const ctype = req.headers['content-type'] || 'text/plain';
+      const hasBody = raw.length > 0 && /text|json|form|xml/i.test(ctype);
       let findings = null;
       let bodyToSend = raw;
       let decision = null;
@@ -569,7 +762,7 @@ function createFirewallServer(opts) {
         state.findingsLog.push({ time: new Date().toISOString(), method: req.method, url: req.url, pii: [...new Set(findings.pii)].join('|') || '-', inj: findings.injection || '-', hits: findings.protectedHits.length, action: decision.action });
         if (state.findingsLog.length > 50) state.findingsLog.shift();
         console.log(`[vigil:${state.mode}] ${req.method} ${req.url} pii=${[...new Set(findings.pii)].join('|') || '-'} inj=${findings.injection || '-'} hits=${findings.protectedHits.length} -> ${decision.action}`);
-        findings.protectedHits.forEach(h => console.log(`  ${h.token} = ${h.original}`));
+        findings.protectedHits.forEach(h => console.log(`  ${h.token} = [PROTECTED_VALUE]`));
         if (decision.action === 'block') {
           res.writeHead(403, { 'content-type': 'application/json', 'x-vigil-firewall': 'blocked' });
           res.end(JSON.stringify({ blocked: true, reasons: findings.reasons }));
@@ -577,54 +770,93 @@ function createFirewallServer(opts) {
         }
         if (!decision.useOriginal && decision.body !== null) bodyToSend = Buffer.from(decision.body, 'utf8');
       } else {
-        console.log(`[vigil:${state.mode}] ${req.method} ${req.url} -> forward`);
+        const actionLabel = raw.length > 0 ? 'content_type_uninspected' : 'forward';
+        state.findingsLog.push({ time: new Date().toISOString(), method: req.method, url: req.url, pii: '-', inj: '-', hits: 0, action: actionLabel });
+        if (state.findingsLog.length > 50) state.findingsLog.shift();
+        console.log(`[vigil:${state.mode}] ${req.method} ${req.url} -> ${actionLabel}`);
       }
 
-      const dest = new URL(req.url, 'http://' + (req.headers.host || 'example.com'));
       const headers = { ...req.headers, 'x-vigil-firewall': state.mode };
       // A rewritten body must not carry the original content-length or the
       // upstream server waits forever for bytes that never come
       if (decision && !decision.useOriginal && decision.body !== null) {
         headers['content-length'] = Buffer.byteLength(bodyToSend);
+        delete headers['transfer-encoding'];
       }
+
+      let requestDispatched = false;
+      const dispatchRequest = () => {
+        if (requestDispatched) return;
+        requestDispatched = true;
+        if (bodyToSend && bodyToSend.length) upstream.write(bodyToSend);
+        upstream.end();
+      };
+
       const upstream = http.request({
         hostname: dest.hostname,
         port: dest.port || 80,
         path: dest.pathname + dest.search,
         method: req.method,
-        headers
+        headers,
+        agent: false
       }, (ur) => {
+        // Redirect destination validation: prohibit redirects to loopback or metadata or private targets
+        if (ur.statusCode >= 300 && ur.statusCode < 400 && ur.headers.location) {
+          try {
+            const redirectUrl = new URL(ur.headers.location, dest);
+            const redHost = (redirectUrl.hostname || '').toLowerCase();
+            const redPort = parseInt(redirectUrl.port || (redirectUrl.protocol === 'https:' ? '443' : '80'), 10);
+            const redCheck = isProhibitedDestination(redHost, redPort, listeningPort, destinationOpts);
+            if (redCheck.prohibited) {
+              res.writeHead(403, { 'content-type': 'application/json' });
+              res.end(JSON.stringify({ error: 'PROHIBITED_REDIRECT_DESTINATION', reason: redCheck.reason }));
+              return;
+            }
+          } catch (_) {}
+        }
+
         // ---- Response direction: re-hydrate tokens for the user (guard) ----
         if (state.mode === 'guard' && state.tokenMap.length) {
-          const ctype = String(ur.headers['content-type'] || '');
-          if (/text\/event-stream/i.test(ctype)) {
+          const urCtype = String(ur.headers['content-type'] || '');
+          if (/text\/event-stream/i.test(urCtype)) {
             // Streaming: rewrite inside SSE events, holding incomplete events
             // back so a token split across chunks is never emitted raw
-            const headers = { ...ur.headers };
-            delete headers['content-length']; // stream length is unknown now
-            res.writeHead(ur.statusCode, headers);
+            const resHeaders = { ...ur.headers };
+            delete resHeaders['content-length']; // stream length is unknown now
+            res.writeHead(ur.statusCode, resHeaders);
             const rw = createSseRewriter({ mappings: state.tokenMap });
             ur.setEncoding('utf8');
-            ur.on('data', (c) => res.write(rw.push(c)));
-            ur.on('end', () => { res.write(rw.flush()); res.end(); });
+            ur.on('data', (c) => {
+              const out = rw.push(c);
+              if (out.length) res.write(out);
+              if (rw.isFaulted && rw.isFaulted()) {
+                ur.destroy();
+                res.end();
+              }
+            });
+            ur.on('end', () => {
+              const fl = rw.flush();
+              if (fl.length) res.write(fl);
+              res.end();
+            });
             return;
           }
           // Buffered: rewrite whole body (bounded) and fix content-length
           const limit = 8 * 1024 * 1024;
           const len = parseInt(ur.headers['content-length'] || '0', 10);
-          const rewriteable = /text|json/i.test(ctype) && (!len || len <= limit);
+          const rewriteable = /text|json/i.test(urCtype) && (!len || len <= limit);
           if (rewriteable) {
             const parts = [];
             let size = 0;
             ur.on('data', (c) => { size += c.length; if (size <= limit) parts.push(c); });
             ur.on('end', () => {
               const rw = createTextRewriter({ mappings: state.tokenMap });
-            const text = rw.push(Buffer.concat(parts).toString('utf8')) + rw.flush();
-            const out = Buffer.from(text, 'utf8');
-            const headers = { ...ur.headers, 'content-length': out.length };
-            delete headers['transfer-encoding']; // chunked + content-length is a parse error
-            res.writeHead(ur.statusCode, headers);
-            res.end(out);
+              const text = rw.push(Buffer.concat(parts).toString('utf8')) + rw.flush();
+              const out = Buffer.from(text, 'utf8');
+              const resHeaders = { ...ur.headers, 'content-length': out.length };
+              delete resHeaders['transfer-encoding']; // chunked + content-length is a parse error
+              res.writeHead(ur.statusCode, resHeaders);
+              res.end(out);
             });
             return;
           }
@@ -632,25 +864,111 @@ function createFirewallServer(opts) {
         res.writeHead(ur.statusCode, ur.headers);
         ur.pipe(res);
       });
-      upstream.on('error', (e) => {
-        res.writeHead(502, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ error: 'upstream', detail: e.message }));
+      upstream.on('socket', (sock) => {
+        sock.on('lookup', (_err, address) => {
+          if (!address) return;
+          const ipCheck = isProhibitedDestination(address, destPort, listeningPort, destinationOpts);
+          if (ipCheck.prohibited) {
+            sock.destroy(new Error(ipCheck.reason));
+          }
+        });
+        const onConnect = () => {
+          const connectedIp = sock.remoteAddress;
+          if (connectedIp) {
+            const ipCheck = isProhibitedDestination(connectedIp, destPort, listeningPort, destinationOpts);
+            if (ipCheck.prohibited) {
+              sock.destroy(new Error(ipCheck.reason));
+              return;
+            }
+          }
+          dispatchRequest();
+        };
+        if (sock.connecting) {
+          sock.once('connect', onConnect);
+        } else if (sock.remoteAddress) {
+          onConnect();
+        } else {
+          sock.once('connect', onConnect);
+        }
       });
-      if (bodyToSend.length) upstream.write(bodyToSend);
-      upstream.end();
+      upstream.on('error', (e) => {
+        if (!res.headersSent) {
+          const isProhibited = e.message && (e.message.startsWith('PROHIBITED_') || e.message.startsWith('RECURSIVE_'));
+          const status = isProhibited ? 403 : 502;
+          res.writeHead(status, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: isProhibited ? e.message : 'upstream', detail: e.message }));
+        }
+      });
     });
   });
 
-  // HTTPS: tunnel CONNECT requests so wrapped agents do not break. Bodies are
-  // NOT inspected (that needs a locally-trusted CA — a deliberate future
-  // decision); the destination is still logged for the dashboard.
+  // HTTPS: tunnel CONNECT requests so wrapped agents do not break.
+  // CONNECT tunnels are end-to-end TLS encrypted and CANNOT inspect payload bodies
+  // without a trusted local CA root certificate (TLS MITM). Destination validation
+  // is strictly enforced, and uninspected status is explicitly audited.
   server.on('connect', (req, clientSocket, head) => {
+    state.requests++;
     const parts = String(req.url || '').split(':');
-    const upstream = net.connect({ host: parts[0], port: parseInt(parts[1] || '443', 10) }, () => {
+    const destHost = (parts[0] || '').toLowerCase();
+    const destPort = parseInt(parts[1] || '443', 10);
+    const listeningPort = (server.address() && server.address().port) || opts.port || DEFAULT_PORT;
+
+    const destCheck = isProhibitedDestination(destHost, destPort, listeningPort, destinationOpts);
+    if (destCheck.prohibited) {
+      state.findingsLog.push({
+        time: new Date().toISOString(),
+        method: 'CONNECT',
+        url: req.url,
+        pii: '-',
+        inj: '-',
+        hits: 0,
+        action: 'blocked:' + destCheck.reason
+      });
+      clientSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{"error":"' + destCheck.reason + '"}\r\n');
+      clientSocket.destroy();
+      return;
+    }
+
+    state.findingsLog.push({
+      time: new Date().toISOString(),
+      method: 'CONNECT',
+      url: req.url,
+      pii: '-',
+      inj: '-',
+      hits: 0,
+      action: 'tunnel_uninspected'
+    });
+    if (state.findingsLog.length > 50) state.findingsLog.shift();
+    console.log(`[vigil:${state.mode}] CONNECT ${req.url} -> tunnel_uninspected (TLS end-to-end encrypted; payload uninspected)`);
+
+    const upstream = net.connect({ host: parts[0], port: destPort }, () => {
+      const connectedIp = upstream.remoteAddress;
+      if (connectedIp) {
+        const ipCheck = isProhibitedDestination(connectedIp, destPort, listeningPort, destinationOpts);
+        if (ipCheck.prohibited) {
+          if (!clientSocket.destroyed) {
+            clientSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{"error":"' + ipCheck.reason + '"}\r\n');
+          }
+          upstream.destroy();
+          clientSocket.destroy();
+          return;
+        }
+      }
       clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
       if (head && head.length) upstream.write(head);
       upstream.pipe(clientSocket);
       clientSocket.pipe(upstream);
+    });
+    upstream.on('lookup', (_err, address) => {
+      if (!address) return;
+      const ipCheck = isProhibitedDestination(address, destPort, listeningPort, destinationOpts);
+      if (ipCheck.prohibited) {
+        if (!clientSocket.destroyed) {
+          clientSocket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{"error":"' + ipCheck.reason + '"}\r\n');
+        }
+        upstream.destroy();
+        clientSocket.destroy();
+      }
     });
     upstream.on('error', () => clientSocket.destroy());
     clientSocket.on('error', () => upstream.destroy());
@@ -703,4 +1021,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createFirewallServer, inspectBody, decide, parseArgs, openDashboardInBrowser };
+module.exports = { createFirewallServer, inspectBody, decide, parseArgs, openDashboardInBrowser, isProhibitedDestination };

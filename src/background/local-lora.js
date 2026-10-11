@@ -221,15 +221,29 @@
         for (let k = 0; k < gradA.length; k++) gradA[k] /= n;
         for (let k = 0; k < gradB.length; k++) gradB[k] /= n;
 
+        // Gradient clipping (max norm 5.0) to prevent adversarial gradient explosion
+        let normSq = 0;
+        for (let k = 0; k < gradA.length; k++) normSq += gradA[k] * gradA[k];
+        for (let k = 0; k < gradB.length; k++) normSq += gradB[k] * gradB[k];
+        const norm = Math.sqrt(normSq);
+        const MAX_GRAD_NORM = 5.0;
+        if (norm > MAX_GRAD_NORM) {
+          const clip = MAX_GRAD_NORM / norm;
+          for (let k = 0; k < gradA.length; k++) gradA[k] *= clip;
+          for (let k = 0; k < gradB.length; k++) gradB[k] *= clip;
+        }
+
         // SGD with momentum + weight decay on A
         for (let k = 0; k < this.A.length; k++) {
           this.mA[k] = MOMENTUM * this.mA[k] + LR * (gradA[k] + WEIGHT_DECAY * this.A[k]);
           this.A[k] -= this.mA[k];
+          if (!isFinite(this.A[k])) this.A[k] = 0;
         }
         // SGD with momentum on B (no weight-decay: B starts at 0, keep sparse)
         for (let k = 0; k < this.B.length; k++) {
           this.mB[k] = MOMENTUM * this.mB[k] + LR * gradB[k];
           this.B[k] -= this.mB[k];
+          if (!isFinite(this.B[k])) this.B[k] = 0;
         }
 
         steps++;
