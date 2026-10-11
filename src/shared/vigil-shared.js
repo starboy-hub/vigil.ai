@@ -47,6 +47,8 @@
     sensitivity: 'medium',
     customPatterns: '',
     trustedSites: [],
+    protectionMode: 'all', // 'all' (Mode C) | 'protected_only' (Mode B) | 'on_demand' (Mode A)
+    protectedSites: ['chat.openai.com', 'chatgpt.com', 'claude.ai', 'gemini.google.com', 'mail.google.com', 'outlook.live.com', 'huggingface.co', 'copilot.microsoft.com'],
     monitorClipboard: true,
     honeytokens: true,
     preset: 'standard',

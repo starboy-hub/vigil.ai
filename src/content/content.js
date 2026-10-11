@@ -219,6 +219,21 @@ chrome.storage.onChanged.addListener((changes, ns) => {
   }
 });
 
+function isSiteProtected(hostname, currentSettings) {
+  if (isWhitelisted) return false;
+  const mode = (currentSettings && currentSettings.protectionMode) || 'all';
+  if (mode === 'all') return true;
+  if (mode === 'on_demand') {
+    return Boolean(window.vigilSessionActivated);
+  }
+  if (mode === 'protected_only') {
+    const list = (currentSettings && currentSettings.protectedSites) || [];
+    const host = (hostname || '').toLowerCase();
+    return list.some(s => host === s.toLowerCase() || host.endsWith('.' + s.toLowerCase()));
+  }
+  return true;
+}
+
 class HistoryStore {
   constructor() { this.MAX_ITEMS = 500; this.STORAGE_KEY = VIGIL.KEYS.HISTORY; this.SUMMARY_KEY = VIGIL.KEYS.HISTORY_SUMMARY; }
   async load() { return new Promise((resolve) => { chrome.storage.local.get([this.STORAGE_KEY, this.SUMMARY_KEY], (result) => { protectionHistory = result[this.STORAGE_KEY] || []; const summary = result[this.SUMMARY_KEY] || { allTime: 0 }; allTimeProtected = summary.allTime || 0; this.totalProtected = protectionHistory.filter(h => new Date(h.timestamp).toDateString() === new Date().toDateString()).length; resolve(); }); }); }
@@ -2218,7 +2233,7 @@ function removeComposerPill() {
 }
 
 async function performScan(target) {
-  if (isWhitelisted || isPaused || isThreadPaused()) return;
+  if (isWhitelisted || isPaused || isThreadPaused() || !isSiteProtected(window.location.hostname, settings)) return;
   const element = (target && (document.contains(target) || (target.getRootNode && target.getRootNode() instanceof ShadowRoot))) ? target : getActiveInputElement();
   if (!element) return;
   const text = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' ? (element.value || '') : (element.innerText || '');
@@ -3081,13 +3096,13 @@ async function init() {
   // keyup listeners above (300ms debounce).
   let pagePassPending = false, lastPagePass = 0;
   function runPagePasses() {
-    if (document.hidden) return;
+    if (document.hidden || !isSiteProtected(window.location.hostname, settings)) return;
     restoreVaultInResponses(); webmailPass(); sentinelPass(); injectionPass(); honeytokenPass(); leakagePass(); visionPass();
     try { chrome.storage.local.set({ vigil_last_scan: { nodes: (sentinelAnalyzed.size + injectionSeen.size), at: Date.now() } }); } catch (e) {}
     lastPagePass = Date.now();
   }
   const pageObserver = new MutationObserver((mutations) => {
-    if (isWhitelisted || isPaused || pagePassPending) return;
+    if (isWhitelisted || isPaused || pagePassPending || !isSiteProtected(window.location.hostname, settings)) return;
     let pageChanged = false;
     for (const m of mutations) {
       if ((m.type === 'childList' && m.addedNodes.length) || m.type === 'characterData') { pageChanged = true; break; }

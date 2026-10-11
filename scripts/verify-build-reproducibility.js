@@ -22,7 +22,7 @@ function computeDistFingerprint() {
   function scan(dir, relPrefix = '') {
     const entries = fs.readdirSync(dir).sort();
     for (const entry of entries) {
-      if (entry === '.DS_Store' || entry.endsWith('.tmp') || entry === 'release-manifest.json') continue;
+      if (entry === '.DS_Store' || entry.endsWith('.tmp') || entry === 'release-manifest.json' || entry === 'audit-dossier.json' || entry === 'sbom.json') continue;
       const full = path.join(dir, entry);
       const rel = relPrefix ? `${relPrefix}/${entry}` : entry;
       const stat = fs.statSync(full);
