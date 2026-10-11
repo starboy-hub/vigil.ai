@@ -8,7 +8,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-6366f1?style=flat-square)](https://github.com/starboy-hub/vigil.ai)
 [![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-709%20unit%20%7C%20105%20e2e%20passing-10b981?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/tests-746%20unit%20%7C%20105%20e2e%20passing-10b981?style=flat-square)](#testing)
 [![Adversarial Catch Rate](https://img.shields.io/badge/adversarial%20catch%20rate-100%25-10b981?style=flat-square)](#security-score)
 [![False Positives](https://img.shields.io/badge/false%20positive%20rate-0.00%25-10b981?style=flat-square)](#security-score)
 [![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
@@ -320,11 +320,17 @@ A hardened companion app for power users and enterprise environments:
 
 | Component | Function |
 |---|---|
-| **IDE Proxy** (port 8383) | High-throughput forward proxy protecting Cursor, GitHub Copilot, and Ollama. Strips credentials before egress, enforces token budgets. |
-| **Agent Firewall** (port 8765) | Intercepts autonomous agent CLI/tool calls (`HTTP_PROXY=127.0.0.1:8765`). Full DLP inspection for plain HTTP; HTTPS `CONNECT` tunnels enforce destination safety and are audited as `tunnel_uninspected` (no TLS MITM). |
+| **IDE Proxy** (port 8383) | High-throughput forward proxy protecting Cursor, GitHub Copilot, and Ollama. Strips credentials (AWS keys, classic and fine-grained GitHub PATs, RSA and PKCS#8 private keys) before egress, enforces token budgets. |
+| **Agent Firewall** (port 8765) | Intercepts autonomous agent CLI/tool calls (`HTTP_PROXY=127.0.0.1:8765`). Full streaming DLP inspection for plain HTTP with fail-closed bounded SSE parsing and pre-dispatch connected IP validation; HTTPS `CONNECT` tunnels enforce destination safety and are audited as `tunnel_uninspected` (no TLS MITM). Supports `--allow-private` for enterprise local LLMs. |
 | **OS Keychain Integration** | Vault entries bound to Vigil-namespaced OS keychain services. |
 | **Audio Spectral Canary** | Detects ultrasonic and high-frequency covert audio channels used by acoustic data exfiltration attacks. |
 | **Ephemeral ECDH Handshake** | AES-256-GCM native messaging channel with P-256 key agreement — the native bridge cannot be impersonated. |
+
+#### 🚦 Traffic Inspection & Coverage Matrix
+For detailed cryptographic boundaries and inspection scope across protocols, see [SECURITY.md](SECURITY.md#integration-coverage--traffic-inspection-matrix).
+- **Web AI Interfaces (ChatGPT, Claude, Gemini, etc.)**: Full pre-submission DOM inspection, token masking, and real-time response rehydration.
+- **Agent Firewall Plain HTTP**: Bounded streaming DLP inspection, stable token substitution, and fail-closed SSE parsing.
+- **Agent Firewall HTTPS CONNECT**: Destination host and connected IP validated (prohibiting cloud metadata IMDS SSRF and recursive loops). TLS payload is end-to-end encrypted between agent and server; audited as `tunnel_uninspected` without local root CA MITM.
 
 ---
 
@@ -429,14 +435,17 @@ npm run benchmark:adversarial
 - ✅ **Hardened CSP:** Strict `default-src 'none'`, `object-src 'none'`, with connections locked strictly to localhost IPC.
 - ✅ **Storage Audit Logging:** Tamper-evident in-memory ring buffer tracking storage operations with compliant JSON export in Options.
 - ✅ **RFC 9116 Vulnerability Disclosure:** Published [SECURITY.md](SECURITY.md) and [/.well-known/security.txt](.well-known/security.txt) with defined 48-hour SLAs.
+- ✅ **Bounded Streaming DLP Parser:** Bounded-memory SSE parser with fail-closed semantics (`companion/sse-rewrite.js`), ensuring split secrets are never emitted raw and buffer exhaustion purges cleanly with active upstream socket termination.
+- ✅ **Pre-Dispatch Connected IP Ordering:** Loopback proxy holds outbound requests until connected IP is verified, blocking cloud metadata IMDS, IPv4-mapped IPv6, DNS rebinding, and recursive proxy loops with configurable enterprise private network support (`--allow-private`).
+- ✅ **Security Audit Baseline & Dossier:** Complete audit documentation, data flows, threat models, and verified test matrices in [`docs/audit/`](docs/audit/).
 
 ---
 
 ## Testing
 
 ```bash
-npm test                    # 709 Jest unit tests (55 test suites, 100% passing)
-cargo test --manifest-path desktop/Cargo.toml # 19 Rust companion security tests (100% passing)
+npm test                    # 746 Jest unit tests (56 test suites, 100% passing)
+cargo test --manifest-path desktop/Cargo.toml # 20 Rust companion security tests (100% passing)
 npx playwright test         # 105 end-to-end browser tests across real websites & cyber range
 npm run test:all-online     # Live online industry canaries & real website testbed
 npm run lint                # Zero ESLint warnings / errors
