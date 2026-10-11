@@ -498,6 +498,18 @@ Please open an issue before starting work on large features. Security vulnerabil
 
 ---
 
+## 💖 Sponsoring Vigil AI
+
+Vigil AI is built and maintained as an independent, local-first open-source security tool by a solo developer. We do not track users, monetize data, or lock essential protections behind commercial paywalls.
+
+If Vigil AI protects your personal workflows or helps your team safeguard sensitive data, please consider supporting ongoing development, cross-platform hardware testbeds, and maintenance:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20Vigil-orange?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/TAIMOORKHALID)
+
+Learn more about our independent development philosophy in [FUNDING.md](FUNDING.md).
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
