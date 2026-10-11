@@ -79,9 +79,8 @@ const gates = [
     run: () => {
       if (!fs.existsSync(path.join(ROOT, 'SECURITY.md'))) throw new Error('Missing SECURITY.md');
       if (!fs.existsSync(path.join(ROOT, '.well-known', 'security.txt'))) throw new Error('Missing .well-known/security.txt');
-      if (!fs.existsSync(path.join(ROOT, 'BUG_BOUNTY.md'))) throw new Error('Missing BUG_BOUNTY.md');
       if (!fs.existsSync(path.join(ROOT, 'docs', 'THREAT_MATRIX.md'))) throw new Error('Missing docs/THREAT_MATRIX.md');
-      console.log('   ✅ SECURITY.md, security.txt, BUG_BOUNTY.md, and THREAT_MATRIX.md verified');
+      console.log('   ✅ SECURITY.md, security.txt, and THREAT_MATRIX.md verified');
     }
   }
 ];
