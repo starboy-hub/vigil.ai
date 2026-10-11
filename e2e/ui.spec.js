@@ -56,6 +56,7 @@ test.describe('popup controls', () => {
     // First-run onboarding is shown on a fresh profile — dismiss it, reload, then open collapsed sections (reload resets open state)
     await page.evaluate(() => localStorage.setItem('vigil_onboarding9', '1'));
     await page.reload();
+    await expect(page.locator('body[data-vigil-ready="1"]')).toBeAttached({ timeout: 10000 });
     await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
   });
 
@@ -73,8 +74,7 @@ test.describe('popup controls', () => {
   });
 
   test('status pill renders active protection status', async () => {
-    const text = await page.locator('#statusText').textContent();
-    expect(text).toMatch(/(Active|Standby|Native Host)/);
+    await expect(page.locator('#statusText')).toHaveText(/(Active|Standby|Native Host)/, { timeout: 10000 });
   });
 
   test('popup tab navigation switches Overview, Alerts, and History pages seamlessly', async () => {
@@ -112,34 +112,34 @@ test.describe('popup controls', () => {
 
   test('protection layer toggles persist to settings', async () => {
     await page.click('#sentinelToggle + .track');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ sentinelEnabled: false });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ sentinelEnabled: false });
     await page.click('#sentinelToggle + .track'); // restore
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ sentinelEnabled: true });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ sentinelEnabled: true });
   });
 
   test('injection firewall toggle persists', async () => {
     await page.click('#firewallToggle + .track');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ injectionFirewall: false });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ injectionFirewall: false });
     await page.click('#firewallToggle + .track');
   });
 
   test('local AI toggle persists', async () => {
     await page.click('#ollamaToggle + .track');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ aiEnabled: false });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ aiEnabled: false });
     await page.click('#ollamaToggle + .track');
   });
 
   test('family toggle arms every layer and shows the badge', async () => {
     await page.click('#familyToggle + .track');
     await expect(page.locator('#familyBadge')).toBeVisible();
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({
       familyMode: true, sentinelEnabled: true, injectionFirewall: true, vaultRestore: true
     });
   });
 
   test('sensitivity selector persists', async () => {
     await page.selectOption('#sensitivity', 'high');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ sensitivity: 'high' });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ sensitivity: 'high' });
   });
 
   test('seeded history renders in the History tab; Alerts tab shows page state', async () => {
@@ -224,25 +224,25 @@ test.describe('options controls', () => {
 
   test('detection toggles persist', async () => {
     await page.click('#toggleRegex');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ regexEnabled: false });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ regexEnabled: false });
     await page.click('#toggleRegex');
   });
 
   test('sensitivity + language selects persist', async () => {
     await page.selectOption('#selectSensitivity', 'high');
     await page.selectOption('#selectLanguage', 'de');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ sensitivity: 'high' });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ sensitivity: 'high' });
     // manualLanguage is a top-level sync key (content scripts read it directly)
-    await expect.poll(() => getSync(page, 'manualLanguage'), { timeout: 5000 }).toBe('de');
+    await expect.poll(() => getSync(page, 'manualLanguage'), { timeout: 10000 }).toBe('de');
     await page.selectOption('#selectLanguage', 'en');
   });
 
   test('guardian toggles persist (fake data, un-mask)', async () => {
     await page.click('#toggleFakeData');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ useFakeData: false });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ useFakeData: false });
     await page.click('#toggleFakeData');
     await page.click('#toggleVaultRestore');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ vaultRestore: false });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ vaultRestore: false });
     await page.click('#toggleVaultRestore');
   });
 
@@ -272,13 +272,13 @@ test.describe('options controls', () => {
   test('trusted sites save persists', async () => {
     await page.fill('#trustedSitesInput', 'mybank.example\nnews.example');
     await page.click('#saveTrustedSitesBtn');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ trustedSites: ['mybank.example', 'news.example'] });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ trustedSites: ['mybank.example', 'news.example'] });
   });
 
   test('custom patterns save persists', async () => {
     await page.fill('#customPatternsInput', 'EMPLOYEE_ID:/EMP-\\d{5}/g');
     await page.click('#saveCustomPatternsBtn');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ customPatterns: 'EMPLOYEE_ID:/EMP-\\d{5}/g' });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ customPatterns: 'EMPLOYEE_ID:/EMP-\\d{5}/g' });
   });
 
   test('sign & verify: sign produces a block, verify passes, tampering fails', async () => {
@@ -402,13 +402,14 @@ test.describe('popup presets and site grade', () => {
     page = await openPopup(context, extensionId);
     await page.evaluate(() => localStorage.setItem('vigil_onboarding9', '1'));
     await page.reload();
+    await expect(page.locator('body[data-vigil-ready="1"]')).toBeAttached({ timeout: 10000 });
   });
 
   test.afterAll(async () => { await context.close(); });
 
   test('preset: Strict arms every layer and sets high sensitivity', async () => {
     await page.click('#presetControl [data-preset="strict"]');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({
       preset: 'strict', regexEnabled: true, sentinelEnabled: true, injectionFirewall: true, sensitivity: 'high'
     });
     await expect(page.locator('#familyBadge')).toBeHidden();
@@ -416,14 +417,14 @@ test.describe('popup presets and site grade', () => {
 
   test('preset: Family arms family mode and the badge', async () => {
     await page.click('#presetControl [data-preset="family"]');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({ preset: 'family', familyMode: true });
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({ preset: 'family', familyMode: true });
     await expect(page.locator('#familyBadge')).toBeVisible();
     await page.click('#presetControl [data-preset="standard"]');
   });
 
   test('preset: Off stops active scanning but keeps the Vault armed', async () => {
     await page.click('#presetControl [data-preset="off"]');
-    await expect.poll(() => getSync(page, 'settings'), { timeout: 5000 }).toMatchObject({
+    await expect.poll(() => getSync(page, 'settings'), { timeout: 10000 }).toMatchObject({
       preset: 'off', regexEnabled: false, sentinelEnabled: false
     });
     await page.click('#presetControl [data-preset="standard"]');

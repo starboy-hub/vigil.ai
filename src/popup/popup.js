@@ -3,17 +3,22 @@
 // stats, ask-local-AI, digest. All settings live in chrome.storage.sync under
 // VIGIL.KEYS.SETTINGS; stats and history come from the same keys the content
 // script writes.
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   const $ = (id) => document.getElementById(id);
 
   // Version from the manifest — the UI can never show a stale version again
   $('versionText').textContent = 'v' + chrome.runtime.getManifest().version;
+  $('statusText').textContent = 'Active (Protected)';
+
+  // In-memory working settings (fallback to defaults while storage sync resolves)
+  let settings = VIGIL.mergeSettings();
 
   async function updateSettings(patch) {
     try {
       const stored = await chrome.storage.sync.get(VIGIL.KEYS.SETTINGS);
       const merged = Object.assign(VIGIL.mergeSettings(stored[VIGIL.KEYS.SETTINGS]), patch);
       await chrome.storage.sync.set({ [VIGIL.KEYS.SETTINGS]: merged });
+      settings = merged;
       return merged;
     } catch (err) {
       console.error('VIGIL popup: error saving settings:', err);
@@ -21,58 +26,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // ---- Load state ----
-  let settings;
-  try {
-    const synced = await chrome.storage.sync.get([VIGIL.KEYS.THEME, VIGIL.KEYS.SETTINGS]);
-    settings = VIGIL.mergeSettings(synced[VIGIL.KEYS.SETTINGS]);
-    const theme = synced[VIGIL.KEYS.THEME] || settings.theme;
-    $('themeToggle').checked = theme === 'dark';
-    if (theme === 'dark') document.body.classList.add('dark-mode');
-
-    $('shieldToggle').checked = settings.regexEnabled !== false;
-    $('sentinelToggle').checked = settings.sentinelEnabled !== false;
-    $('firewallToggle').checked = settings.injectionFirewall !== false;
-    $('ollamaToggle').checked = settings.aiEnabled !== false;
-    $('familyToggle').checked = !!settings.familyMode;
-    $('clipboardToggle').checked = settings.monitorClipboard !== false;
-    $('sensitivity').value = settings.sensitivity || 'medium';
-    $('familyBadge').hidden = !settings.familyMode;
-    if ($('apexBadge')) {
-      chrome.runtime.sendMessage({ type: 'CHECK_OLLAMA' }, (res) => {
-        if (res && res.available && $('apexBadge')) {
-          $('apexBadge').hidden = false;
-          $('apexBadge').textContent = `⚡ Apex Guardian Active · ${res.model || 'Local AI'}`;
-        }
-      });
-    }
-  } catch (e) {
-    console.error('VIGIL popup: error loading settings:', e);
+  // ---- Protection presets UI ----
+  function syncPresetUI(s) {
+    const ctrl = $('presetControl');
+    if (!ctrl || !s) return;
+    ctrl.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === s.preset));
+    const notes = {
+      standard: 'Balanced protection for everyday browsing.',
+      strict: 'Highest sensitivity + every layer armed.',
+      family: 'Strictest protection — ideal for shared or loved ones\u2019 browsers.',
+      off: 'Active scanning paused. The Vault stays armed.',
+      custom: 'Custom — individual layers adjusted.'
+    };
+    $('presetNote').textContent = notes[s.preset] || notes.custom;
   }
 
-  // ---- Site status pill ----
-  try {
-    const nativeRes = await new Promise((res) => chrome.runtime.sendMessage({ type: 'GET_NATIVE_STATUS' }, (r) => res(r || null)));
-    const nativeConnected = !!(nativeRes && nativeRes.isConnected);
-
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab && tab.url && /^https?:/.test(tab.url)) {
-      const host = new URL(tab.url).hostname.toLowerCase();
-      const trusted = (settings.trustedSites || []).some(t => host === t || host.endsWith('.' + t));
-      if (trusted) {
-        $('statusPill').classList.add('trusted');
-        $('statusText').textContent = 'Trusted site — paused here';
-      } else {
-        $('statusText').textContent = nativeConnected ? 'Native Host: Active' : 'Active on this site';
-      }
-    } else {
-      $('statusText').textContent = nativeConnected ? 'Native Host: Active' : 'Active (Protected)';
-    }
-  } catch (e) {
-    $('statusText').textContent = 'Active (Protected)';
+  function syncLayerToggles(s) {
+    if (!s) return;
+    $('shieldToggle').checked = s.regexEnabled !== false;
+    $('sentinelToggle').checked = s.sentinelEnabled !== false;
+    $('firewallToggle').checked = s.injectionFirewall !== false;
+    $('ollamaToggle').checked = s.aiEnabled !== false;
+    $('clipboardToggle').checked = s.monitorClipboard !== false;
+    $('familyToggle').checked = !!s.familyMode;
+    $('familyBadge').hidden = !s.familyMode;
+    $('sensitivity').value = s.sensitivity || 'medium';
   }
 
-  // ---- Controls ----
+  // Synchronously initialize UI elements to baseline state
+  syncPresetUI(settings);
+  syncLayerToggles(settings);
+
+  // ---- Synchronous Event Listener Registration ----
+  // Attach all DOM listeners immediately so any clicks (user or test runner)
+  // are never dropped during async storage or service worker hydration.
+
   $('themeToggle').addEventListener('change', async (e) => {
     const isDark = e.target.checked;
     document.body.classList.toggle('dark-mode', isDark);
@@ -104,41 +92,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $('sensitivity').addEventListener('change', (e) => updateSettings({ sensitivity: e.target.value }));
 
-  // ---- Local AI status (shows the real detected model, or how to get one) ----
-  let ollamaConnected = false, ollamaModelName = null;
-  chrome.runtime.sendMessage({ type: 'CHECK_OLLAMA' }, (res) => {
-    ollamaConnected = !!(res && res.available);
-    ollamaModelName = (res && res.model) || null;
-    const desc = $('ollamaDesc');
-    if (desc) desc.textContent = ollamaConnected ? 'Connected · ' + ollamaModelName : 'Not detected — install Ollama for AI second opinions';
-  });
-
-  // ---- Popup-side AI router (Ollama first, in-browser model second) ----
-  function popupAiClassify(text) {
-    if (ollamaConnected && $('ollamaToggle').checked) {
-      return new Promise((res) => chrome.runtime.sendMessage({ type: 'SENTINEL_LLM', text }, (r) => res(r || null)));
-    }
-    if (settings && settings.webgpuAI) {
-      return new Promise((res) => chrome.runtime.sendMessage({ type: 'SENTINEL_WEBGPU', text }, (r) => res(r || null)));
-    }
-    return Promise.resolve(null);
-  }
-
-  // ---- Protection presets ----
-  function syncPresetUI(s) {
-    const ctrl = $('presetControl');
-    if (!ctrl) return;
-    ctrl.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === s.preset));
-    const notes = {
-      standard: 'Balanced protection for everyday browsing.',
-      strict: 'Highest sensitivity + every layer armed.',
-      family: 'Strictest protection — ideal for shared or loved ones\u2019 browsers.',
-      off: 'Active scanning paused. The Vault stays armed.',
-      custom: 'Custom — individual layers adjusted.'
-    };
-    $('presetNote').textContent = notes[s.preset] || notes.custom;
-  }
-
   document.querySelectorAll('#presetControl .preset-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       settings = await updateSettings(VIGIL.presetSettings(btn.dataset.preset)) || settings;
@@ -146,19 +99,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       syncLayerToggles(settings);
     });
   });
-
-  function syncLayerToggles(s) {
-    $('shieldToggle').checked = s.regexEnabled !== false;
-    $('sentinelToggle').checked = s.sentinelEnabled !== false;
-    $('firewallToggle').checked = s.injectionFirewall !== false;
-    $('ollamaToggle').checked = s.aiEnabled !== false;
-    $('clipboardToggle').checked = s.monitorClipboard !== false;
-    $('familyToggle').checked = !!s.familyMode;
-    $('familyBadge').hidden = !s.familyMode;
-    $('sensitivity').value = s.sensitivity || 'medium';
-  }
-  syncPresetUI(settings);
-  syncLayerToggles(settings);
 
   // ---- Tabs ----
   document.querySelectorAll('.tab').forEach(tab => {
@@ -169,6 +109,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tab.dataset.tab === 'history') renderHistory();
     });
   });
+
+  // ---- Local AI status & Popup-side AI router ----
+  let ollamaConnected = false, ollamaModelName = null;
+  function popupAiClassify(text) {
+    if (ollamaConnected && $('ollamaToggle').checked) {
+      return new Promise((res) => chrome.runtime.sendMessage({ type: 'SENTINEL_LLM', text }, (r) => res(r || null)));
+    }
+    if (settings && settings.webgpuAI) {
+      return new Promise((res) => chrome.runtime.sendMessage({ type: 'SENTINEL_WEBGPU', text }, (r) => res(r || null)));
+    }
+    return Promise.resolve(null);
+  }
 
   function loadAlerts() {
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -266,6 +218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  const TYPE_COLORS = { SENTINEL: '#f59e0b', INJECTION: '#8b5cf6', HONEYTOKEN: '#b91c1c', WEBMAIL: '#0ea5e9', 'Vault Name': '#667eea', 'Vault Email': '#667eea', 'Vault Phone': '#667eea', 'Vault Item': '#667eea' };
+
   function renderHistory() {
     chrome.storage.local.get([VIGIL.KEYS.HISTORY, 'vigil_analytics', 'vigil_last_scan'], (local) => {
       const history = (local[VIGIL.KEYS.HISTORY] || []).slice(-10).reverse();
@@ -308,13 +262,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // ---- Session Guard status ----
-  chrome.runtime.sendMessage({ type: 'GET_SESSION_GUARD' }, (res) => {
-    if (res && res.session) {
-      $('sessionGuardId').textContent = res.session.id.slice(0, 6);
-    }
-  });
-
   // ---- Site Safety Score ----
   async function renderGrade() {
     try {
@@ -333,7 +280,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       badge.title = g.label + ' (' + g.score + '/100)';
     } catch (e) { /* page without content script */ }
   }
-  renderGrade();
 
   // ---- Ask VIGIL (local explainer) ----
   $('askBtn').addEventListener('click', async () => {
@@ -365,8 +311,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ---- Stats (overview numbers) ----
-  const TYPE_COLORS = { SENTINEL: '#f59e0b', INJECTION: '#8b5cf6', HONEYTOKEN: '#b91c1c', WEBMAIL: '#0ea5e9', 'Vault Name': '#667eea', 'Vault Email': '#667eea', 'Vault Phone': '#667eea', 'Vault Item': '#667eea' };
-
   async function renderStats() {
     try {
       const local = await chrome.storage.local.get([VIGIL.KEYS.HISTORY, VIGIL.KEYS.HISTORY_SUMMARY]);
@@ -378,7 +322,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('VIGIL popup: error loading stats:', e);
     }
   }
-  await renderStats();
 
   // ---- Weekly digest (Overview card) ----
   function renderDigest() {
@@ -414,7 +357,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
   }
-  renderDigest();
 
   $('clearStats').addEventListener('click', async () => {
     try {
@@ -584,4 +526,78 @@ document.addEventListener('DOMContentLoaded', async () => {
     onboardFinish();
     chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
   });
+
+  // ---- Asynchronous Hydration ----
+  // Hydrate settings, connection statuses, session guard, and live dashboard counters
+  // in background without blocking immediate user interactions.
+  (async () => {
+    try {
+      const synced = await chrome.storage.sync.get([VIGIL.KEYS.THEME, VIGIL.KEYS.SETTINGS]);
+      settings = VIGIL.mergeSettings(synced[VIGIL.KEYS.SETTINGS]);
+      const theme = synced[VIGIL.KEYS.THEME] || settings.theme;
+      $('themeToggle').checked = theme === 'dark';
+      if (theme === 'dark') document.body.classList.add('dark-mode');
+
+      syncPresetUI(settings);
+      syncLayerToggles(settings);
+
+      if ($('apexBadge')) {
+        chrome.runtime.sendMessage({ type: 'CHECK_OLLAMA' }, (res) => {
+          if (res && res.available && $('apexBadge')) {
+            $('apexBadge').hidden = false;
+            $('apexBadge').textContent = `⚡ Apex Guardian Active · ${res.model || 'Local AI'}`;
+          }
+        });
+      }
+    } catch (e) {
+      console.error('VIGIL popup: error loading settings:', e);
+    }
+
+    // Site status pill
+    try {
+      const nativeRes = await new Promise((res) => chrome.runtime.sendMessage({ type: 'GET_NATIVE_STATUS' }, (r) => res(r || null)));
+      const nativeConnected = !!(nativeRes && nativeRes.isConnected);
+
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.url && /^https?:/.test(tab.url)) {
+        const host = new URL(tab.url).hostname.toLowerCase();
+        const trusted = (settings.trustedSites || []).some(t => host === t || host.endsWith('.' + t));
+        if (trusted) {
+          $('statusPill').classList.add('trusted');
+          $('statusText').textContent = 'Trusted site — paused here';
+        } else {
+          $('statusText').textContent = nativeConnected ? 'Native Host: Active' : 'Active on this site';
+        }
+      } else {
+        $('statusText').textContent = nativeConnected ? 'Native Host: Active' : 'Active (Protected)';
+      }
+    } catch (e) {
+      $('statusText').textContent = 'Active (Protected)';
+    }
+
+    // Local AI status (shows the real detected model, or how to get one)
+    chrome.runtime.sendMessage({ type: 'CHECK_OLLAMA' }, (res) => {
+      ollamaConnected = !!(res && res.available);
+      ollamaModelName = (res && res.model) || null;
+      const desc = $('ollamaDesc');
+      if (desc) desc.textContent = ollamaConnected ? 'Connected · ' + ollamaModelName : 'Not detected — install Ollama for AI second opinions';
+    });
+
+    // Session Guard status
+    chrome.runtime.sendMessage({ type: 'GET_SESSION_GUARD' }, (res) => {
+      if (res && res.session) {
+        $('sessionGuardId').textContent = res.session.id.slice(0, 6);
+      }
+    });
+
+    // Site Safety Score
+    await renderGrade();
+
+    // Stats & weekly digest
+    await renderStats();
+    renderDigest();
+
+    // Mark document ready for deterministic testing
+    document.body.dataset.vigilReady = '1';
+  })();
 });
