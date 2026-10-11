@@ -7,5 +7,5 @@ module.exports = {
   expect: { timeout: 15000 },
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: [['list']]
+  reporter: process.env.CI ? [['list'], ['github']] : [['list']]
 };

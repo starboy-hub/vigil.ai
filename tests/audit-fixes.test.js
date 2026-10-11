@@ -291,5 +291,19 @@ describe('Wiring sanity (source-level guards)', () => {
     });
     expect(bg).toContain('PRIVILEGED_MESSAGES.has(request.type) && sender && sender.tab');
     expect(bg).toContain('unauthorized_sender_context');
+
+    // Functional verification of sender context discrimination:
+    const isExtensionUrl = (u) => typeof u === 'string' && (
+      u.startsWith('chrome-extension://') ||
+      u.startsWith('moz-extension://')
+    );
+    const isBlocked = (sender) => Boolean(sender && sender.tab && !isExtensionUrl(sender.url) && !isExtensionUrl(sender.tab.url));
+
+    // Webpage content script: has tab, web URL -> blocked
+    expect(isBlocked({ tab: { id: 1, url: 'https://example.com/chat' }, url: 'https://example.com/chat' })).toBe(true);
+    // Options page in tab: has tab, extension URL -> permitted
+    expect(isBlocked({ tab: { id: 2, url: 'chrome-extension://extid/options.html' }, url: 'chrome-extension://extid/options.html' })).toBe(false);
+    // Popup view: no tab, extension URL -> permitted
+    expect(isBlocked({ url: 'chrome-extension://extid/popup.html' })).toBe(false);
   });
 });

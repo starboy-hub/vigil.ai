@@ -96,3 +96,12 @@ jobs:
 
       - name: Run E2E (headed Chromium under xvfb — extensions need headed mode)
         run: xvfb-run --auto-servernum npx playwright test
+
+      - name: Upload Playwright Test Results
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: playwright-test-results
+          path: test-results/
+          if-no-files-found: ignore
+

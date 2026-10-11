@@ -525,7 +525,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       'VAULT_EXPORT_BACKUP', 'VAULT_IMPORT_BACKUP',
       'SAVE_TRUSTED_SITES', 'INTEGRITY_DAEMON_RESTORE'
     ]);
-    if (PRIVILEGED_MESSAGES.has(request.type) && sender && sender.tab) {
+    const isExtensionUrl = (u) => typeof u === 'string' && (
+      u.startsWith('chrome-extension://') ||
+      u.startsWith('moz-extension://') ||
+      (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL && u.startsWith(chrome.runtime.getURL('')))
+    );
+    const isWebpageContentScript = Boolean(sender && sender.tab && !isExtensionUrl(sender.url) && !isExtensionUrl(sender.tab.url));
+    if (PRIVILEGED_MESSAGES.has(request.type) && sender && sender.tab && isWebpageContentScript) {
       sendResponse({ error: 'unauthorized_sender_context', detail: 'Privileged operations prohibited from web content script' });
       return false;
     }
