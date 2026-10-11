@@ -2,6 +2,6 @@ Contact: https://github.com/starboy-hub/vigil.ai/security/advisories/new
 Expires: 2027-12-31T23:59:59.000Z
 Preferred-Languages: en
 Policy: https://github.com/starboy-hub/vigil.ai/blob/main/SECURITY.md
-Acknowledgments: https://github.com/starboy-hub/vigil.ai/releases
+Acknowledgments: https://github.com/starboy-hub/vigil.ai/blob/main/HALL_OF_FAME.md
 Canonical: https://raw.githubusercontent.com/starboy-hub/vigil.ai/main/.well-known/security.txt
 

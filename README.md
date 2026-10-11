@@ -430,7 +430,7 @@ npm run benchmark:adversarial
 - ✅ **Automated 7-Gate Release Pipeline:** Hard release gate (`npm run release:gate`) enforcing cryptographic keys, package completeness, reproducible hashes, CSP lockdown, and injection policies.
 - ✅ **Third-Party Audit Dossier:** Automated generation of `dist/audit-dossier.json` and formal audit readiness package (`docs/AUDIT-READINESS.md`).
 - ✅ **STRIDE & PASTA Threat Model:** Comprehensive 8-surface threat matrix and 5 Security Decision Records (`docs/THREAT_MATRIX.md`).
-- ✅ **Bug Bounty & Coordinated Disclosure:** Published policy ([BUG_BOUNTY.md](BUG_BOUNTY.md), [SECURITY.md](SECURITY.md)) with CVSS v3.1 tiers and safe harbor.
+- ✅ **Coordinated Vulnerability Disclosure & Hall of Fame:** Published security policy ([SECURITY.md](SECURITY.md)), RFC 9116 security.txt, and researcher recognition ([HALL_OF_FAME.md](HALL_OF_FAME.md)).
 - ✅ **Zero DOM-Based XSS:** 100% pure DOM construction (`createElement`, `textContent`) across all alert UI, banners, toasts, and selection cards.
 - ✅ **Hardened CSP:** Strict `default-src 'none'`, `object-src 'none'`, with connections locked strictly to localhost IPC.
 - ✅ **Storage Audit Logging:** Tamper-evident in-memory ring buffer tracking storage operations with compliant JSON export in Options.

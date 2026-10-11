@@ -8,7 +8,7 @@ Report privately through GitHub's **Security Advisories** (Repository → Securi
 
 - **Acknowledgment SLA:** Within **48 hours**.
 - **Triage & Patch SLA:** Critical within **7 business days**; High within **14 business days**.
-- **Credit & Responsible Disclosure:** Valid vulnerability reports are credited in release advisories upon patch release.
+- **Credit & Responsible Disclosure:** Valid vulnerability reports are publicly credited in release advisories and enshrined in the [Security Hall of Fame](HALL_OF_FAME.md).
 
 ## Severity & Scope
 
