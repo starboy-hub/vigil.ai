@@ -16,7 +16,8 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
   let context, sw, extensionId;
 
   test.beforeAll(async () => {
-    const isHeadless = process.env.CI || !process.env.DISPLAY;
+    // When running under xvfb or with an active DISPLAY, run headed so extensions load service workers
+    const isHeadless = !process.env.DISPLAY;
     context = await chromium.launchPersistentContext('', {
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || (require('fs').existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' : undefined),
       headless: isHeadless,

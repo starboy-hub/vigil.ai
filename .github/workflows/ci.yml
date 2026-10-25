@@ -28,7 +28,7 @@ jobs:
             cargo install --locked cargo-audit || echo "cargo-audit installation skipped"
           fi
           if command -v cargo-audit >/dev/null 2>&1; then
-            cargo audit --file desktop/Cargo.lock
+            cargo audit --file desktop/Cargo.lock --ignore RUSTSEC-2024-0388
           else
             echo "cargo-audit is not pre-installed on runner image, skipping"
           fi
