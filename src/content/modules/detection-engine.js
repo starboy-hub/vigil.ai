@@ -13,7 +13,8 @@
     'SSN': /\b\d{3}-\d{2}-\d{4}\b/g,
     'Credit Card': /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
     'Email': /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
-    'Phone': /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
+    'Phone': /(?:\+?1[-.\s]?)?(?:\(\d{3}\)|\b\d{3})[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
+    'Street Address': /\b\d{1,5}\s+[A-Za-z0-9.,#-]+(?:\s+[A-Za-z0-9.,#-]+){0,4}\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Terrace|Ter|Place|Pl|Circle|Cir)\b(?:,?\s+[A-Za-z]+(?:\s+[A-Za-z]+){0,2},?\s+[A-Z]{2}\s+\d{5}(?:-\d{4})?)?/gi,
     'IP Address': /\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b/g,
     'Date of Birth': /\b(?:born on|DOB:|birthday:?|Date of Birth:?)\s*(?:is\s+)?:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b/gi,
     'Passport': /\b(?:passport|passport\s*#?)\s*:?\s*([A-Z]{1,2}\d{6,9})\b/gi,
@@ -298,10 +299,20 @@
 
   function findNamesHeuristic(text) {
     const names = new Set();
-    const skip = new Set(['The','This','That','What','When','Where','How','Why','Can','Could','Would','Should','ChatGPT','Chat','GPT','My','Your','His','Her','Our','Their','I','A','An','It','He','She','We','They','You','But','And','Or','If','Then','So','Not','Yes','No','Please','Thanks','Thank','Hello','Hi','Hey','Good','Morning','Afternoon','Evening','Today','Tomorrow','Yesterday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','January','February','March','April','May','June','July','August','September','October','November','December','Dr','Mr','Mrs','Ms','Miss','Prof','Senior','Software','Engineer','Manager','Director','Analyst','Developer','Coordinator','Specialist','Academy','University','College','School','Institute','Hospital','General','Terrace','Street','Avenue','Road','Lane','Drive','Court','Boulevard','Way','Place','Plaza','Park','Social','Security','Driver','License','Medical','Record','API','Key','Bank','Account','Credit','Card']);
-    const multi = /\b([A-Z][a-z]+(?:[\s-]+[A-Z][a-z]+){1,2})\b/g;
+    const skip = new Set([
+      'The','This','That','What','When','Where','How','Why','Can','Could','Would','Should','ChatGPT','Chat','GPT','My','Your','His','Her','Our','Their','I','A','An','It','He','She','We','They','You','But','And','Or','If','Then','So','Not','Yes','No','Please','Thanks','Thank','Hello','Hi','Hey','Good','Morning','Afternoon','Evening','Today','Tomorrow','Yesterday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','January','February','March','April','May','June','July','August','September','October','November','December','Dr','Mr','Mrs','Ms','Miss','Prof','Senior','Software','Engineer','Manager','Director','Analyst','Developer','Coordinator','Specialist','Academy','University','College','School','Institute','Hospital','General','Terrace','Street','Avenue','Road','Lane','Drive','Court','Boulevard','Way','Place','Plaza','Park','Social','Security','Driver','License','Medical','Record','API','Key','Bank','Account','Credit','Card',
+      'Full','Name','First','Last','Middle','Treating','Physician','Current','Prescription','Prescriptions','Dispute','Disputed','Charge','Charges','Internal','External','Case','Billing','Information','Incident','Diagnoses','Diagnosis','Condition','Conditions','Patient','Subject','Action','Reference','Details','Summary','Total','Due','Balance','Description','Item','Code','Policy','Group','Number','Status','Date','Birth','Phone','Email','Address','City','State','Zip','Country','Stage','Type','Diabetes','Mellitus','Hypertension','Asthma','Cancer','Depression','Anxiety','Allergy','Allergies','Infection','Syndrome','Disease','Disorder','Regional','Clinic','Center','Health','Healthcare'
+    ]);
+    const multi = /\b([A-Z][a-z]+(?:[ \t-]+[A-Z][a-z]+){1,2})\b/g;
     let m;
-    while ((m = multi.exec(text)) !== null) { const c = m[1]; if (c.split(/[\s-]+/).some(w => skip.has(w))) continue; if (c.split(/[\s-]+/).length >= 2) names.add(c); }
+    while ((m = multi.exec(text)) !== null) {
+      const c = m[1];
+      const matchEnd = m.index + m[0].length;
+      const rest = text.slice(matchEnd);
+      if (/^\s*:/.test(rest)) continue;
+      if (c.split(/[ \t-]+/).some(w => skip.has(w))) continue;
+      if (c.split(/[ \t-]+/).length >= 2) names.add(c);
+    }
     [/\b(?:I'm|I am)\s+([A-Z][a-z]+)\b/g,/\bmy name is\s+([A-Z][a-z]+)\b/gi,/\bcall me\s+([A-Z][a-z]+)\b/gi,/\bthis is\s+([A-Z][a-z]+)\b/g,/\bname:\s*([A-Z][a-z]+)\b/gi,/\b(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s+([A-Z][a-z]+)\b/g].forEach(p => {
       let mm; while ((mm = p.exec(text)) !== null) { const c = mm[1]; if (!skip.has(c) && c.length >= 2) names.add(c); }
     });

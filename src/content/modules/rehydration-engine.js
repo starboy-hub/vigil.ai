@@ -159,7 +159,10 @@
       // 3. Detect assistant response containers
       if (role === 'assistant' || role === 'model') isAssistant = true;
       if (curr.hasAttribute && curr.hasAttribute('data-message-model-slug')) isAssistant = true;
-      if (className.includes('font-claude-message') || className.includes('chat-message-assistant') || className.includes('assistant-container') || className.includes('ai-response')) {
+      if (className.includes('font-claude-message') || className.includes('chat-message-assistant') || className.includes('assistant-container') || className.includes('ai-response') || className.includes('agent-turn')) {
+        isAssistant = true;
+      }
+      if ((className.includes('markdown') || className.includes('prose')) && !className.includes('user')) {
         isAssistant = true;
       }
       if (curr.id === 'ai-stream-response') isAssistant = true;
@@ -183,7 +186,7 @@
    * In-place safe rehydration of a single DOM text node
    */
   function rehydrateTextNode(node) {
-    if (!node || node.nodeType !== Node.TEXT_NODE || processedNodes.has(node)) return false;
+    if (!node || node.nodeType !== 3 /* Node.TEXT_NODE */) return false;
     if (!isSafeToRehydrate(node)) return false;
 
     const val = node.nodeValue;
@@ -194,7 +197,6 @@
       isMutatingInternally = true;
       try {
         node.nodeValue = rehydrated;
-        processedNodes.add(node);
       } finally {
         isMutatingInternally = false;
       }

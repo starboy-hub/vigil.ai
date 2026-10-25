@@ -231,3 +231,59 @@ describe('VIGIL Conversational Mode: Multi-Turn Quasi-Identifier Longitudinal Au
     expect(turn2.cumulativeEntropy).toBeLessThan(turn1.cumulativeEntropy + 4.2);
   });
 });
+
+describe('VIGIL Conversational Mode: Heuristic Label Disambiguation & Pattern Precision', () => {
+  const DetectionEngine = require('../src/content/modules/detection-engine');
+
+  test('ignores prompt schema keys and field labels ending with colons', () => {
+    const complexPrompt = `
+      - Full Name: Arthur Pendelton
+      - Date of Birth: July 14, 1982
+      - Medical Record Number: MRN-847291
+      - Diagnoses: Type 1 Diabetes Mellitus and Stage 2 Hypertension
+      - Current Prescriptions: Metformin 500mg twice daily and Lisinopril 20mg
+      - Treating Physician: Dr. Marcus Vance at St. Jude Regional Hospital
+      - Disputed Charge: $1,450.00
+      - Dispute Information: None
+      - Internal Case API Key: case_token_fake_dummy_999
+    `;
+
+    const names = DetectionEngine.findNamesHeuristic(complexPrompt);
+    // Real names MUST be detected:
+    expect(names).toContain('Arthur Pendelton');
+    expect(names).toContain('Marcus Vance');
+
+    // Field labels and headings MUST NOT be detected as human names:
+    expect(names).not.toContain('Full Name');
+    expect(names).not.toContain('Current Prescriptions');
+    expect(names).not.toContain('Treating Physician');
+    expect(names).not.toContain('Disputed Charge');
+    expect(names).not.toContain('Dispute Information');
+    expect(names).not.toContain('Internal Case');
+    expect(names).not.toContain('Diabetes Mellitus');
+  });
+
+  test('detects US street address and formatted parenthesized phone number', () => {
+    const text = 'Contact: 742 Evergreen Terrace, Springfield, OR 97477 or call (541) 555-0198.';
+    const scan = DetectionEngine.scanWithRegex(text);
+
+    const addressMatch = scan.redactions.find(r => r.type === 'Street Address');
+    expect(addressMatch).toBeDefined();
+    expect(addressMatch.text).toBe('742 Evergreen Terrace, Springfield, OR 97477');
+
+    const phoneMatch = scan.redactions.find(r => r.type === 'Phone');
+    expect(phoneMatch).toBeDefined();
+    expect(phoneMatch.text).toBe('(541) 555-0198');
+  });
+
+  test('PolymorphicLexicon generates realistic surrogates for Street Address and formatted Phone', () => {
+    const addr = PolymorphicLexicon.generateSurrogate('742 Evergreen Terrace, Springfield, OR 97477', 'Street Address', 'thread_addr_1');
+    expect(addr.surrogate).toBeDefined();
+    expect(addr.surrogate).not.toBe('742 Evergreen Terrace, Springfield, OR 97477');
+    expect(addr.surrogate).toMatch(/\b(?:Street|Avenue|Road|Boulevard)\b/);
+
+    const phone = PolymorphicLexicon.generateSurrogate('(541) 555-0198', 'Phone', 'thread_phone_1');
+    expect(phone.surrogate).toBeDefined();
+    expect(phone.surrogate).toMatch(/^\(555\)\s*019-\d{4}$/);
+  });
+});

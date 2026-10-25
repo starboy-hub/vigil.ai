@@ -1990,6 +1990,9 @@ function performRedaction(element, redactions) {
           saveLearnedExemplar(r.original, r.fake, r.type);
         }
       });
+      if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION.startStreamingObserver) {
+        VIGIL_REHYDRATION.startStreamingObserver(document.body);
+      }
       recordLoraCorrection(reps.map(r => r.original || r.text), 1);
       return { originalText: orig, replacements: reps, sanitizedText: txt };
     }
@@ -3222,6 +3225,9 @@ function executeMaskAndSend(activeEl, pending, showToast = false) {
       sanitizedPrompt = redResult.sanitizedText || '';
       if (showToast && redResult.originalText) {
         showUndoToast('Masked & Sent with consistent pseudonyms', redResult.originalText, targetEl);
+      }
+      if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION.startStreamingObserver) {
+        VIGIL_REHYDRATION.startStreamingObserver(document.body);
       }
     }
     allowCurrentPrompt(targetEl);

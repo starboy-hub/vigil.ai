@@ -238,8 +238,16 @@
 
     if (category === 'Phone') {
       const num = 1000 + Math.floor(prng() * 9000);
-      const surr = `555-0199-${num}`;
+      const isParen = raw.trim().startsWith('(');
+      const surr = isParen ? `(555) 019-${num}` : `555-019-${num}`;
       return { original: raw, surrogate: surr, category: 'Phone', subEntities: [] };
+    }
+
+    if (category === 'Street Address' || category === 'Address') {
+      const streets = ['1042 Maple Street', '582 Oak Avenue', '321 Pine Road', '765 Cedar Boulevard'];
+      const cities = ['Springfield, OR 97477', 'Austin, TX 78701', 'Denver, CO 80202', 'Seattle, WA 98101'];
+      const surr = `${pick(streets)}, ${pick(cities)}`;
+      return { original: raw, surrogate: surr, category: 'Street Address', subEntities: [] };
     }
 
     if (category === 'SSN') {

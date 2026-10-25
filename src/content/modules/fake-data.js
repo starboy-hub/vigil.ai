@@ -28,7 +28,8 @@
     passports: ['A93847562', 'B10293847', 'C83746592', 'D92837465'],
     driverLicenses: ['DL-8374-9201', 'DL-1029-3847', 'DL-5647-3829', 'DL-9283-7465'],
     bankAccounts: ['9384756201', '1029384756', '8374659201', '9283746501'],
-    datesOfBirth: ['03/14/1988', '11/22/1992', '07/08/1985', '09/30/1995']
+    datesOfBirth: ['03/14/1988', '11/22/1992', '07/08/1985', '09/30/1995'],
+    addresses: ['1042 Maple Street, Springfield, OR 97477', '582 Oak Avenue, Austin, TX 78701', '321 Pine Road, Seattle, WA 98101', '765 Cedar Boulevard, Denver, CO 80202']
   };
 
   /**
@@ -47,6 +48,8 @@
       case 'SSN': return pick(FAKE_DATA.ssns);
       case 'Credit Card': return pick(FAKE_DATA.creditCards);
       case 'IP Address': return pick(FAKE_DATA.ips);
+      case 'Street Address':
+      case 'Address': return pick(FAKE_DATA.addresses);
       case 'FINANCIAL': {
         if (t.includes('₽') || t.includes('рублей') || t.includes('зарплата')) return pick(['₽150,000', '₽200,000']);
         if (t.includes('¥') || t.includes('元') || t.includes('工资')) return pick(['¥50,000', '¥80,000']);

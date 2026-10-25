@@ -111,6 +111,35 @@ describe('VIGIL Autonomous Bidirectional Rehydration Engine', () => {
       expect(streamP.textContent).toBe('Streaming reply for Sarah Mitchell...');
     });
 
+    test('continuous token streaming rehydrates multiple surrogates in the same paragraph', async () => {
+      rehydration.recordSubstitution('Cameron Pendelton', 'Arthur Pendelton');
+      rehydration.recordSubstitution('Dr. Avery Reed', 'Dr. Marcus Vance');
+
+      const chatContainer = document.createElement('div');
+      chatContainer.className = 'agent-turn markdown';
+      document.body.appendChild(chatContainer);
+
+      rehydration.startStreamingObserver(chatContainer);
+
+      const streamP = document.createElement('p');
+      chatContainer.appendChild(streamP);
+
+      // Chunk 1: Patient surrogate arrives
+      streamP.textContent = 'Dear Cameron Pendelton, ';
+      for (let i = 0; i < 20 && streamP.textContent.includes('Cameron Pendelton'); i++) {
+        await new Promise(res => setTimeout(res, 20));
+      }
+      expect(streamP.textContent).toContain('Arthur Pendelton');
+
+      // Chunk 2: Doctor surrogate arrives in the SAME paragraph
+      streamP.textContent += 'I reviewed the dispute with Dr. Avery Reed.';
+      for (let i = 0; i < 20 && streamP.textContent.includes('Dr. Avery Reed'); i++) {
+        await new Promise(res => setTimeout(res, 20));
+      }
+      expect(streamP.textContent).toContain('Arthur Pendelton');
+      expect(streamP.textContent).toContain('Dr. Marcus Vance');
+    });
+
     test('isolates substitutions across different web origins', () => {
       rehydration.recordSubstitution('Alex Mercer', 'Sarah Mitchell', 'GENERAL', 'https://chatgpt.com');
 
