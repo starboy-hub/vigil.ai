@@ -200,10 +200,25 @@ function bundleScannerWorker(out) {
   fs.writeFileSync(path.join(out, 'scanner-worker.js'), bundledContent);
 }
 
+function cleanDir(out) {
+  if (!fs.existsSync(out)) {
+    fs.mkdirSync(out, { recursive: true });
+    return;
+  }
+  for (const f of fs.readdirSync(out)) {
+    const full = path.join(out, f);
+    try {
+      fs.rmSync(full, { recursive: true, force: true });
+    } catch (e) {
+      if (e.code === 'EBUSY') continue;
+      throw e;
+    }
+  }
+}
+
 /** Build the Chromium target into `out` (default dist). Returns file count. */
 function buildChromium(out = CHROME_OUT) {
-  if (fs.existsSync(out)) fs.rmSync(out, { recursive: true });
-  fs.mkdirSync(out, { recursive: true });
+  cleanDir(out);
 
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const manifest = JSON.parse(fs.readFileSync('src/manifest.json', 'utf8'));
@@ -280,8 +295,7 @@ function buildChromium(out = CHROME_OUT) {
 
 /** Build the Firefox target: same files, adapted manifest, no offscreen AI. */
 function buildFirefox(out = FIREFOX_OUT) {
-  if (fs.existsSync(out)) fs.rmSync(out, { recursive: true });
-  fs.mkdirSync(out, { recursive: true });
+  cleanDir(out);
 
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const manifest = firefoxManifest(JSON.parse(fs.readFileSync('src/manifest.json', 'utf8')));

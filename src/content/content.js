@@ -1518,9 +1518,28 @@ async function initScannerWorker() {
   }
 }
 
+let scannerWorkerInitPromise = null;
+async function ensureScannerWorker() {
+  if (scannerWorker) return scannerWorker;
+  if (!scannerWorkerInitPromise) {
+    scannerWorkerInitPromise = initScannerWorker().then(() => scannerWorker).catch(() => null);
+  }
+  return scannerWorkerInitPromise;
+}
+
+function isAISite(hostname) {
+  const host = (hostname || (typeof window !== 'undefined' && window.location ? window.location.hostname : '') || '').toLowerCase();
+  const aiDomains = ['openai.com', 'chatgpt.com', 'claude.ai', 'anthropic.com', 'gemini.google.com', 'copilot.microsoft.com', 'huggingface.co', 'perplexity.ai', 'poe.com', 'mistral.ai'];
+  return aiDomains.some(d => host === d || host.endsWith('.' + d));
+}
+
 async function scanText(text, element) {
   if (!text || text.length < 5 || isWhitelisted || isPaused || isThreadPaused() || isPromptAllowed(element, text)) {
     return { alerts: [], redactions: [] };
+  }
+
+  if (!scannerWorker) {
+    ensureScannerWorker();
   }
 
   // Offload detection to Web Worker off the main thread
@@ -3707,7 +3726,10 @@ function showAttachmentWarning(title, message, fileName, fileSize, fileType) {
 async function init() {
   console.log('[VIGIL] Starting protection pipeline...');
   await historyStore.load(); await loadSettings(); await loadTheme(); await refreshVault(); plantAgentCanary();
-  await initScannerWorker();
+  // Smart On-Demand Loading: On dedicated AI sites, pre-warm worker; on passive browsing, defer until focus/input
+  if (typeof window !== 'undefined' && isAISite(window.location.hostname)) {
+    ensureScannerWorker();
+  }
   if (settings.webgpuAI) { try { chrome.runtime.sendMessage({ type: 'WEBGPU_WARMUP' }, () => {}); } catch (e) {} } // warm the bundled model at page open, not on first consult
   chrome.storage.sync.get(['manualLanguage'], (result) => {
     const manualLang = result.manualLanguage || 'auto';
@@ -3723,8 +3745,11 @@ async function init() {
 
   // Performance-optimized event triggers:
   // ONLY trigger scanning when an editable element is focused AND the user types
-  document.addEventListener('input', handleInputEvent, true);
-  document.addEventListener('keyup', handleInputEvent, true);
+  document.addEventListener('input', (e) => { ensureScannerWorker(); handleInputEvent(e); }, true);
+  document.addEventListener('keyup', (e) => { ensureScannerWorker(); handleInputEvent(e); }, true);
+  document.addEventListener('focusin', (e) => {
+    if (isEditableElement(e.target)) ensureScannerWorker();
+  }, { capture: true, passive: true });
 
   // Page passes are CHANGE-DRIVEN (verified external audit): a 2s full-page
   // poll burned CPU on complex pages. The MutationObserver runs the page

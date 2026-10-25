@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const toggles = ['toggleTheme', 'toggleRegex', 'toggleFakeData', 'toggleVaultRestore', 'toggleFamilyMode', 'toggleWebGPU'];
+  const toggles = ['toggleTheme', 'toggleRegex', 'toggleFakeData', 'toggleVaultRestore', 'toggleFamilyMode', 'toggleWebGPU', 'toggleSentinel', 'toggleInjectionFirewall', 'toggleCanaryTokens', 'toggleVaultSlot'];
   const langSelect = document.getElementById('selectLanguage');
   const sensitivitySelect = document.getElementById('selectSensitivity');
   const customInput = document.getElementById('customPatternsInput');
@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (s.vaultRestore !== false) document.getElementById('toggleVaultRestore').classList.add('active');
     if (s.webgpuAI) document.getElementById('toggleWebGPU').classList.add('active');
     if (s.familyMode) document.getElementById('toggleFamilyMode').classList.add('active');
+    if (s.sentinelEnabled !== false) document.getElementById('toggleSentinel')?.classList.add('active');
+    if (s.injectionFirewall !== false) document.getElementById('toggleInjectionFirewall')?.classList.add('active');
+    if (s.honeytokens !== false) document.getElementById('toggleCanaryTokens')?.classList.add('active');
+    if (s.vaultSlotMode) document.getElementById('toggleVaultSlot')?.classList.add('active');
     if (langSelect) langSelect.value = result.manualLanguage || 'auto';
     if (sensitivitySelect) sensitivitySelect.value = s.sensitivity || 'medium';
     if (customInput && s.customPatterns) customInput.value = s.customPatterns;
@@ -40,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
           s.webgpuAI = isActive;
           if (isActive) chrome.runtime.sendMessage({ type: 'WEBGPU_WARMUP' });
         }
+        if (id === 'toggleSentinel') s.sentinelEnabled = isActive;
+        if (id === 'toggleInjectionFirewall') s.injectionFirewall = isActive;
+        if (id === 'toggleCanaryTokens') s.honeytokens = isActive;
+        if (id === 'toggleVaultSlot') s.vaultSlotMode = isActive;
         chrome.storage.sync.set({ settings: s });
       });
     });

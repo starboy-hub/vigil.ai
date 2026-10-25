@@ -76,6 +76,12 @@
       this.clientKeyPair = null;
       this.cachedClientPubKey = null;
       this.isEncryptedChannel = false;
+      this.vaultSlotMode = false;
+    }
+
+    /** Toggle Vault Slot mode (strict request-response-drop isolation) */
+    enableVaultSlot(enabled = true) {
+      this.vaultSlotMode = Boolean(enabled);
     }
 
     /** Resolve current extension ID */
@@ -320,8 +326,113 @@
       return doSend();
     }
 
+    /**
+     * The Vault Slot: Strict one-shot request-response-drop IPC isolation.
+     * Passes a single message through the native messaging slot, captures the response,
+     * and immediately drops and closes the port to eliminate lingering channel exposure.
+     */
+    async sendThroughVaultSlot(method, params = {}, options = {}) {
+      const id = ++this.requestId;
+      const payload = {
+        jsonrpc: '2.0',
+        id,
+        method,
+        params: Object.assign({}, params, {
+          auth_token: options.overrideToken !== undefined ? options.overrideToken : (this.sessionToken || null),
+          origin: options.overrideOrigin !== undefined ? options.overrideOrigin : this.getOrigin(),
+          vault_slot: true,
+          timestamp: Date.now()
+        })
+      };
+
+      if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.sendNativeMessage === 'function') {
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const timer = setTimeout(() => {
+            if (!settled) {
+              settled = true;
+              reject(new Error(`Vault Slot request timed out: ${method}`));
+            }
+          }, options.timeoutMs || 5000);
+
+          try {
+            chrome.runtime.sendNativeMessage(HOST_NAME, payload, (response) => {
+              clearTimeout(timer);
+              if (settled) return;
+              settled = true;
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else if (response && response.error) {
+                reject(new Error(response.error.message || response.error));
+              } else if (response && 'result' in response) {
+                resolve(response.result);
+              } else {
+                resolve(response);
+              }
+            });
+          } catch (e) {
+            clearTimeout(timer);
+            if (!settled) {
+              settled = true;
+              reject(e);
+            }
+          }
+        });
+      }
+
+      if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.connectNative === 'function') {
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          let ephemeralPort = null;
+          const timer = setTimeout(() => {
+            if (!settled) {
+              settled = true;
+              if (ephemeralPort) { try { ephemeralPort.disconnect(); } catch (_) {} }
+              reject(new Error(`Vault Slot ephemeral port timed out: ${method}`));
+            }
+          }, options.timeoutMs || 5000);
+
+          try {
+            ephemeralPort = chrome.runtime.connectNative(HOST_NAME);
+            ephemeralPort.onMessage.addListener((res) => {
+              clearTimeout(timer);
+              if (!settled) {
+                settled = true;
+                try { ephemeralPort.disconnect(); } catch (_) {}
+                if (res && res.error) reject(new Error(res.error.message || res.error));
+                else if (res && 'result' in res) resolve(res.result);
+                else resolve(res);
+              }
+            });
+            ephemeralPort.onDisconnect.addListener(() => {
+              clearTimeout(timer);
+              if (!settled) {
+                settled = true;
+                const err = chrome.runtime.lastError;
+                reject(new Error((err && err.message) || 'Vault slot disconnected'));
+              }
+            });
+            ephemeralPort.postMessage(payload);
+          } catch (e) {
+            clearTimeout(timer);
+            if (ephemeralPort) { try { ephemeralPort.disconnect(); } catch (_) {} }
+            if (!settled) {
+              settled = true;
+              reject(e);
+            }
+          }
+        });
+      }
+
+      throw new Error('Chrome Native Messaging runtime unavailable');
+    }
+
     /** Send an authenticated JSON-RPC 2.0 request over Native Messaging pipe */
     sendRequest(method, params = {}, options = {}) {
+      if (options.vaultSlot || this.vaultSlotMode) {
+        return this.sendThroughVaultSlot(method, params, options);
+      }
+
       const isAuthMethod = method === 'vigil.auth.handshake' || method === 'vigil.auth.handshake';
       if (isAuthMethod) {
         return this.sendRawRequest(method, params);

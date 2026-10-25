@@ -307,6 +307,86 @@ class SentinelRedTeamLab {
       results
     };
   }
+
+  /**
+   * AI vs. AI Sparring Session (LLM-Guided Fuzzing & Dynamic Attack Generation):
+   * Spars against the policy engine in real time using creative context-aware attack mutations
+   * (zero-width smuggling, variable expansion, URL-encoded traversal, encoded pipelines, canary exfiltration).
+   * 
+   * @param {Object} [options]
+   * @param {number} [options.rounds=5]
+   * @param {Function} [options.aiGenerator]
+   * @returns {Promise<Object>} Sparring results report
+   */
+  async runAiSparringSession(options = {}) {
+    const rounds = options.rounds || 5;
+    const sparringResults = [];
+
+    const baseAttacks = [
+      { action_type: ACTION_SHELL_EXEC, resource: 'echo "hello"' },
+      { action_type: ACTION_FS_READ, resource: 'src/main.rs' },
+      { action_type: ACTION_FS_WRITE, resource: 'output.txt' }
+    ];
+
+    for (let i = 0; i < rounds; i++) {
+      let attackAction;
+      if (options.aiGenerator && typeof options.aiGenerator === 'function') {
+        attackAction = await options.aiGenerator(i);
+      } else {
+        const seedAttack = baseAttacks[i % baseAttacks.length];
+        const mutationType = i % 4;
+        let mutatedResource = seedAttack.resource;
+        let vector = 'baseline';
+
+        if (mutationType === 0) {
+          mutatedResource = (seedAttack.action_type === ACTION_SHELL_EXEC)
+            ? 'r\u200Bm\u200B -rf /'
+            : '.e\u200Bnv';
+          vector = 'zero_width_character_smuggling';
+        } else if (mutationType === 1) {
+          mutatedResource = 'CMD="rm"; $CMD -rf /';
+          vector = 'shell_variable_substitution';
+        } else if (mutationType === 2) {
+          mutatedResource = '..%2f..%2fetc%2fshadow';
+          vector = 'percent_encoded_path_traversal';
+        } else {
+          mutatedResource = 'echo cm0gLXJmIC8= | base64 -d | sh';
+          vector = 'encoded_shell_pipeline';
+        }
+
+        attackAction = {
+          schema_version: '1.0.0',
+          request_id: `sparring-round-${i + 1}`,
+          session_id: `sparring-sess-${Date.now()}`,
+          agent_id: 'local-redteam-sparring-ai',
+          adapter: { id: 'sparring-gateway', version: '2.0.0', type: 'ai-sparring' },
+          action_type: seedAttack.action_type,
+          resource: mutatedResource,
+          parameters: { attack_vector: vector, round: i + 1 },
+          timestamp: Date.now()
+        };
+      }
+
+      const decision = await this.policyEngine.evaluate(attackAction);
+      const isBlocked = decision.decision === DECISION_DENY;
+
+      sparringResults.push({
+        round: i + 1,
+        attackAction,
+        decision: decision.decision,
+        reasonCode: decision.reason_code,
+        intercepted: isBlocked
+      });
+    }
+
+    const interceptedCount = sparringResults.filter(r => r.intercepted).length;
+    return {
+      totalRounds: rounds,
+      interceptedCount,
+      allIntercepted: interceptedCount === rounds,
+      sparringResults
+    };
+  }
 }
 
 module.exports = {

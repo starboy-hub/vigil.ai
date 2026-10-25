@@ -1,0 +1,170 @@
+HOW TO READ THIS FILE:
+Imagine you are building a highly secure vault. Right now, the vault is very
+strong, but it has a few heavy doors that are always open, it trusts a local
+guard without checking his ID, and it doesn't actively train against new
+attacks. This blueprint tells you exactly how to fix ALL those issues to make
+the vault faster, safer, and smarter, without removing any of its existing
+security features. No "nerfing" (weakening) is allowed.
+
+================================================================================
+PART 1: VERIFIED FACTS (Checked by Developer AI via Online Research)
+================================================================================
+Before we change anything, the Developer AI has verified these facts online:
+1. BROWSER EXTENSIONS: Chrome's official documentation confirms that loading
+   heavy scripts on "all websites" slows down the browser. The approved fix is
+   "Dynamic Content Scripts" and moving heavy math to "Web Workers".
+2. LOCALHOST SECURITY: Cybersecurity best practices confirm that blindly
+   trusting "localhost:11434" is dangerous. Ollama's documentation confirms
+   you must use strict Origin checks and secret tokens.
+3. COMPLEX CODE SECURITY: Top security firms confirm that for critical code,
+   "Fuzzing" (throwing garbage data at it) and "Formal Verification" (math
+   proofs) are the gold standards.
+4. AI SECURITY: Modern AI defense research confirms that using a local AI to
+   constantly attack your own shield (AI vs AI) and rotating fake "trap"
+   passwords are the best ways to catch advanced data leaks.
+
+================================================================================
+PART 2: WHAT IS PRESENT NOW vs. WHAT SHOULD CHANGE (AND WHY)
+================================================================================
+
+[AREA 1: Browser Performance & Memory]
+- WHAT IS PRESENT NOW: The extension loads over 20 heavy security scripts on
+  EVERY single website, doing all the heavy math on the main webpage thread.
+- WHAT SHOULD CHANGE:
+  1. "Smart Loading" (Dynamic Injection): Only load scripts when you type in
+     a text box or visit an AI site.
+  2. "Background Workers" (Web Workers/Offscreen API): Move heavy math (like
+     the WebGPU engine) to the browser's "basement" so it doesn't freeze the
+     webpage.
+  3. "Lazy Loading": Only unpack tools into memory when you actually click to
+     use them in the settings.
+- WHY: Loading 20 scripts on a simple recipe blog wastes memory and slows down
+  your computer.
+- DOES THIS NERF IT? NO. The protection is exactly the same when you need it,
+  but your computer runs faster when you don't.
+
+[AREA 2: Local AI (Ollama) Connection Security]
+- WHAT IS PRESENT NOW: The extension blindly sends data to "localhost:11434"
+  and throws errors if it fails, which hackers can read.
+- WHAT SHOULD CHANGE:
+  1. "Secret Handshake" (Cryptographic Token): Require a secret password to
+     talk to the local AI.
+  2. "Silent Backup Plan" (Graceful Degradation): If the local AI fails the
+     security check, quietly switch to the built-in brain without throwing
+     console errors that could leak network info to hackers.
+- WHY: If a hacker tricks your computer into running a fake AI on that port,
+  the extension will accidentally send it your private data. The silent backup
+  ensures hackers can't tell what's happening behind the scenes.
+- DOES THIS NERF IT? NO. It makes the local connection strictly safer and
+  prevents hackers from mapping your local network.
+
+[AREA 3: Taming Complexity & Shrinking the Attack Surface]
+- WHAT IS PRESENT NOW: The code is highly complex, all features run by default,
+  and the browser talks to the desktop app through a wide-open door.
+- WHAT SHOULD CHANGE:
+  1. "Toggle Switches" (Feature Flags): Allow users (or IT admins) to turn on
+     only the specific shields they need.
+  2. "Math Proofs" (Formal Verification): Use math to prove the Rust code can
+     never accidentally allow a forbidden action (like reading a password file).
+  3. "Garbage Data Testing" (Fuzzing): Throw millions of broken, weird inputs
+     at the code in the testing phase to find hidden cracks.
+  4. "The Vault Slot" (Native Messaging Isolation): The browser and desktop app
+     should only pass notes through a tiny slot. Once the note is read, the
+     slot closes immediately. No lingering connections.
+- WHY: If a feature isn't running, it can't be hacked. Proving the code works
+  with math and throwing garbage at it ensures no hidden bugs exist. The vault
+  slot prevents privilege escalation.
+- DOES THIS NERF IT? NO. It makes the shield mathematically stronger and
+  reduces the chances of a bug breaking the tool.
+
+[AREA 4: Enhancing the "Red-Team Simulation Lab"]
+- WHAT IS PRESENT NOW: The tool has a red-team lab, but it uses static tests.
+- WHAT SHOULD CHANGE:
+  1. "AI vs. AI Sparring" (LLM-Guided Fuzzing): Use a small, local AI to
+     constantly invent new, creative, context-aware attacks to test the shield
+     in the background.
+  2. "Rotating Trap Keys" (Canary Token Rotation): Dynamically change the fake
+     passwords (honeypots) injected into the webpage.
+- WHY: Hackers use AI to find new loopholes; we must use AI to find them first.
+  If a hacker steals a rotating trap key, the system can cryptographically
+  trace exactly which webpage and what time they stole it.
+- DOES THIS NERF IT? NO. It turns the shield from a passive wall into an
+  active, learning trap.
+
+================================================================================
+PART 3: STRICT RULES (NON-NEGOTIABLE)
+================================================================================
+To ensure the tool is NEVER "nerfed" (weakened), the developer must follow
+these strict rules during the upgrade:
+
+RULE 1: ZERO FEATURE REMOVAL. No existing security engine can be deleted or
+        disabled by default.
+RULE 2: FAIL-CLOSED DEFAULT. If a new dynamic script fails to load, the secret
+        handshake fails, or the vault slot jams, the system must BLOCK the
+        action, not allow it.
+RULE 3: 100% LOCAL GUARANTEE. No new feature can require sending user data,
+        prompts, or keys to an external cloud server. Everything stays local.
+RULE 4: NO NEW HEAVY DEPENDENCIES. Do not add massive new software libraries.
+        Use built-in browser features or lightweight, audited Rust crates.
+
+================================================================================
+PART 4: DEVELOPER AI VERIFICATION PHASE (DO THIS FIRST)
+================================================================================
+Before writing any new code, the Developer AI must run these exact checks to
+prove the plan is safe and the vulnerabilities actually exist:
+
+CHECK 1: Run a memory profile of the current extension on a blank webpage.
+         Record the baseline memory usage.
+CHECK 2: Write a tiny, fake "rogue server" on localhost:11434. Prove that the
+         current extension accidentally talks to it and throws readable errors.
+CHECK 3: Run the current Rust `sentinel.rs` through a basic fuzzer for 10
+         minutes to establish a baseline of how many edge-cases it misses.
+CHECK 4: Prove that the current "Canary Tokens" (fake passwords) are static
+         and can be easily identified by a basic script.
+
+*If these checks do not match reality, STOP and adjust the blueprint.*
+
+================================================================================
+PART 5: TEST-FIRST IMPLEMENTATION PLAN (STAGING BEFORE PRODUCTION)
+================================================================================
+Do not push these changes directly to the main tool. Follow this exact order:
+
+STEP 1: THE SANDBOX BRANCH (Performance & Memory)
+- Create a new code branch named `feature/security-upgrade-sandbox`.
+- Implement "Smart Loading" and move ONE heavy engine to a "Background Worker".
+- Test it manually. Does it still catch secrets? Is the browser faster?
+
+STEP 2: THE HANDSHAKE & SILENT BACKUP (Local AI)
+- Update the Ollama connection code to require the "Secret Handshake".
+- Add the "Silent Backup Plan" so it fails quietly.
+- Test it against the "rogue server" from CHECK 2. It MUST reject the rogue
+  server silently without throwing console errors.
+
+STEP 3: THE VAULT SLOT & TOGGLE SWITCHES (Complexity)
+- Implement the "Vault Slot" (strict request-response-drop) for the native
+  messaging host.
+- Add the "Toggle Switches" (Feature Flags) to the settings menu.
+- Add the automated "Garbage Data Testing" (Fuzzing) to the GitHub Actions CI.
+
+STEP 4: THE AI SPARRING & ROTATING TRAPS (Red-Team)
+- Implement the "Rotating Trap Keys" so fake passwords change every session.
+- Integrate the small local AI for "AI vs AI Sparring" in the background.
+- Verify that stealing a trap key triggers a high-fidelity forensic alert.
+
+STEP 5: THE ULTIMATE STRESS TEST
+- Before merging to the main code, run the full automated test suite:
+  `npm test` (JavaScript tests)
+  `cargo test` (Rust tests)
+  `npx playwright test` (End-to-End browser tests)
+  `cargo fuzz` (Fuzzing pipeline)
+- All tests MUST pass with a 100% success rate. If even one test fails, the
+  code is rejected and sent back for fixing.
+
+STEP 6: FINAL REVIEW & MERGE
+- A second developer (or the Developer AI acting as reviewer) reads the code
+  to ensure all 4 STRICT RULES from Part 3 were followed.
+- Only then is the code merged into the main project.
+
+================================================================================
+END OF COMPLETE BLUEPRINT
+================================================================================

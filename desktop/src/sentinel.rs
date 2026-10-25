@@ -121,87 +121,148 @@ impl SentinelEngine {
         // LEVEL 1: HARD SAFETY RULES (NON-NEGOTIABLE)
         // ══════════════════════════════════════════════════════════════════════
 
-        // 1. Filesystem Hard Safety Rules
+        let decoded_resource = Self::percent_decode(resource);
+        let lower_res = decoded_resource.to_lowercase();
+
+        // 0. Universal Cross-Action Hard Invariants (Zero Exceptions)
+        // Null byte injection check
+        if resource.contains('\0') || decoded_resource.contains('\0') {
+            return Ok(Self::build_decision(
+                DECISION_DENY,
+                DENY_PATH_TRAVERSAL,
+                "Null-byte path injection detected.",
+                request_id,
+                &action_hash,
+            ));
+        }
+
+        // Universal Cloud Metadata Block (IMDS) across ALL action types
+        if lower_res.contains("169.254")
+            || lower_res.contains("metadata.google.internal")
+            || lower_res.contains("100.100.100.200")
+            || lower_res.contains("::ffff:a9fe:a9fe")
+        {
+            return Ok(Self::build_decision(
+                DECISION_DENY,
+                DENY_CLOUD_METADATA_BLOCKED,
+                "Access to cloud instance metadata service (IMDS) is blocked.",
+                request_id,
+                &action_hash,
+            ));
+        }
+
+        // Destructive command execution or injection payload
+        if lower_res.contains("rm -rf")
+            || lower_res.contains(":(){ :|:& };:")
+            || lower_res.contains("mkfs.")
+            || lower_res.contains("dd if=/dev/zero")
+        {
+            return Ok(Self::build_decision(
+                DECISION_DENY,
+                DENY_UNSAFE_SHELL_COMMAND,
+                "Destructive or catastrophic shell command blocked by native safety.",
+                request_id,
+                &action_hash,
+            ));
+        }
+
+        // Sensitive Credentials, Secret and Key Files (.env, .env.*, .ssh, private keys)
+        if lower_res.contains(".env")
+            || lower_res.contains(".ssh")
+            || lower_res.contains("id_rsa")
+            || lower_res.contains("id_ed25519")
+            || lower_res.contains("/.aws/credentials")
+            || lower_res.contains("/.git/config")
+        {
+            return Ok(Self::build_decision(
+                DECISION_DENY,
+                DENY_SECRET_EXFILTRATION,
+                "Direct access to environment secrets or private keys is prohibited.",
+                request_id,
+                &action_hash,
+            ));
+        }
+
+        // Sensitive System Files
+        if lower_res.starts_with("/etc")
+            || lower_res.starts_with("/usr")
+            || lower_res.starts_with("/bin")
+            || lower_res.starts_with("/sbin")
+            || lower_res.starts_with("/proc")
+            || lower_res.starts_with("/sys")
+            || lower_res.starts_with("/dev")
+            || lower_res.contains("etc/passwd")
+            || lower_res.contains("etc/shadow")
+            || lower_res.contains("etc/hosts")
+            || lower_res.contains("system32")
+            || lower_res.contains("windows\\system32")
+        {
+            return Ok(Self::build_decision(
+                DECISION_DENY,
+                DENY_SYSTEM_FILE_ACCESS,
+                "Access to critical OS system directory is denied.",
+                request_id,
+                &action_hash,
+            ));
+        }
+
+        // 1. Filesystem Specific Rules
         if action_type.starts_with("fs:") {
-            // Null-byte or control character check
-            if resource.contains('\0') {
+            // Path traversal via ".." is strictly forbidden across all profiles
+            if lower_res.contains("..") {
                 return Ok(Self::build_decision(
                     DECISION_DENY,
-                    DENY_PATH_TRAVERSAL,
-                    "Null-byte path injection detected.",
+                    DENY_WORKSPACE_ESCAPE,
+                    "Directory traversal sequence ('..') prohibited in filesystem action.",
                     request_id,
                     &action_hash,
                 ));
             }
 
-            // Sensitive System File Checks
-            let lower_res = resource.to_lowercase();
-            if lower_res.starts_with("/etc")
-                || lower_res.starts_with("/usr")
-                || lower_res.starts_with("/bin")
-                || lower_res.starts_with("/sbin")
-                || lower_res.starts_with("/proc")
-                || lower_res.starts_with("/sys")
-                || lower_res.starts_with("/dev")
-                || lower_res.contains("/etc/passwd")
-                || lower_res.contains("/etc/shadow")
+            // Command injection / shell smuggling in file path
+            if lower_res.contains('|')
+                || lower_res.contains('`')
+                || lower_res.contains("$(")
+                || lower_res.contains(';')
+                || lower_res.contains('&')
+                || lower_res.contains('\n')
+            {
+                return Ok(Self::build_decision(
+                    DECISION_DENY,
+                    DENY_UNSAFE_SHELL_COMMAND,
+                    "Unsafe shell metacharacter detected in file path.",
+                    request_id,
+                    &action_hash,
+                ));
+            }
+
+            // Windows reserved device names
+            let trimmed = lower_res.trim();
+            if trimmed == "con"
+                || trimmed == "prn"
+                || trimmed == "aux"
+                || trimmed == "nul"
+                || trimmed.ends_with("/con")
+                || trimmed.ends_with("/prn")
+                || trimmed.ends_with("/aux")
+                || trimmed.ends_with("/nul")
+                || trimmed.ends_with("\\con")
+                || trimmed.ends_with("\\prn")
+                || trimmed.ends_with("\\aux")
+                || trimmed.ends_with("\\nul")
             {
                 return Ok(Self::build_decision(
                     DECISION_DENY,
                     DENY_SYSTEM_FILE_ACCESS,
-                    "Access to critical OS system directory is denied.",
+                    "Access to Windows reserved device name is denied.",
                     request_id,
                     &action_hash,
                 ));
-            }
-
-            // Sensitive Credentials and Secret Files
-            if lower_res.ends_with(".env")
-                || lower_res.contains("/.env")
-                || lower_res.contains("id_rsa")
-                || lower_res.contains("id_ed25519")
-                || lower_res.contains("/.aws/credentials")
-                || lower_res.contains("/.git/config")
-            {
-                return Ok(Self::build_decision(
-                    DECISION_DENY,
-                    DENY_SECRET_EXFILTRATION,
-                    "Direct access to environment secrets or private keys is prohibited.",
-                    request_id,
-                    &action_hash,
-                ));
-            }
-
-            // Workspace escape check
-            if let Some(ws_root) = workspace_root_opt {
-                let ws_path = Path::new(ws_root);
-                let target = Path::new(resource);
-
-                let resolved = if target.is_absolute() {
-                    target.to_path_buf()
-                } else {
-                    ws_path.join(target)
-                };
-
-                let clean_str = resolved.to_string_lossy();
-                if clean_str.contains("..") {
-                    // Check if path attempts to escape ws_root
-                    let normalized = Self::lexically_normal_path(&resolved);
-                    if !normalized.starts_with(ws_path) {
-                        return Ok(Self::build_decision(
-                            DECISION_DENY,
-                            DENY_WORKSPACE_ESCAPE,
-                            "Path traversal escapes approved workspace boundary.",
-                            request_id,
-                            &action_hash,
-                        ));
-                    }
-                }
             }
 
             // Broad deletion check
             if action_type == "fs:delete" {
-                let trimmed = resource.trim();
+                let trimmed = decoded_resource.trim();
                 if trimmed == "/"
                     || trimmed == "*"
                     || trimmed == "."
@@ -215,41 +276,6 @@ impl SentinelEngine {
                         &action_hash,
                     ));
                 }
-            }
-        }
-
-        // 2. Shell Command Hard Safety Rules
-        if action_type == "shell:exec" {
-            let lower_cmd = resource.to_lowercase();
-            if lower_cmd.contains(":(){ :|:& };:")
-                || lower_cmd.contains("rm -rf /")
-                || lower_cmd.contains("mkfs.")
-                || lower_cmd.contains("dd if=/dev/zero")
-            {
-                return Ok(Self::build_decision(
-                    DECISION_DENY,
-                    DENY_UNSAFE_SHELL_COMMAND,
-                    "Destructive or catastrophic shell command blocked by native safety.",
-                    request_id,
-                    &action_hash,
-                ));
-            }
-        }
-
-        // 3. Network Outbound Hard Safety Rules
-        if action_type == "net:request" {
-            let lower_url = resource.to_lowercase();
-            if lower_url.contains("169.254.169.254")
-                || lower_url.contains("metadata.google.internal")
-                || lower_url.contains("100.100.100.200")
-            {
-                return Ok(Self::build_decision(
-                    DECISION_DENY,
-                    DENY_CLOUD_METADATA_BLOCKED,
-                    "Outbound request to cloud instance metadata service (IMDS) is blocked.",
-                    request_id,
-                    &action_hash,
-                ));
             }
         }
 
@@ -535,6 +561,25 @@ impl SentinelEngine {
         })
     }
 
+    fn percent_decode(s: &str) -> String {
+        let mut out = Vec::with_capacity(s.len());
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' && i + 2 < bytes.len() {
+                if let Ok(hex_val) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                    out.push(hex_val);
+                    i += 3;
+                    continue;
+                }
+            }
+            out.push(bytes[i]);
+            i += 1;
+        }
+        String::from_utf8_lossy(&out).to_string()
+    }
+
+    #[allow(dead_code)]
     fn lexically_normal_path(p: &Path) -> PathBuf {
         let mut out = PathBuf::new();
         for component in p.components() {
@@ -655,5 +700,167 @@ mod tests {
         let reg = engine.register_enforcement_point("mcp-gw", "mcp", vec!["tools/call".to_string()]).unwrap();
         assert_eq!(reg["registered"], true);
         assert_eq!(reg["adapter_id"], "mcp-gw");
+    }
+
+    #[test]
+    fn test_fuzz_sentinel_policy_engine_invariants() {
+        use std::time::Instant;
+
+        println!("\n=== CHECK 3: RUST SENTINEL ENGINE FUZZING HARNESS ===");
+        let engine = SentinelEngine::new();
+        let workspace_root = "/app/workspace";
+
+        let mut rng_seed: u64 = 0xDEADBEEFCAFEBABE;
+        let mut next_random = || -> u64 {
+            rng_seed = rng_seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            rng_seed
+        };
+
+        // Adversarial corpus seed fragments
+        let path_fragments = [
+            "README.md",
+            "src/main.rs",
+            "../../etc/passwd",
+            "../outside.txt",
+            "..%2f..%2fetc%2fshadow",
+            "nested/../../../../etc/hosts",
+            "file\0with_null_byte",
+            "http://169.254.169.254/latest/meta-data/",
+            "http://[::ffff:a9fe:a9fe]/meta-data",
+            ".env",
+            ".env.local",
+            "id_rsa",
+            ".git/config",
+            "/etc/shadow",
+            "C:\\Windows\\System32\\drivers\\etc\\hosts",
+            "CON",
+            "PRN",
+            "AUX",
+            "rm -rf /",
+            "echo cm0gLXJmIC8= | base64 -d | sh",
+            "$(cat /etc/passwd)",
+            "`rm -rf *`",
+            "foo; rm -rf /",
+            "foo && rm -rf /",
+            "",
+            "/",
+            ".",
+            "..",
+            "./",
+            "../",
+            "~/.ssh/id_rsa",
+        ];
+
+        let action_types = [
+            "fs:read",
+            "fs:write",
+            "fs:delete",
+            "shell:exec",
+            "net:request",
+            "unknown_action",
+            "",
+            "fs:execute",
+            "kernel:panic",
+            "ADMIN:OVERRIDE",
+        ];
+
+        let profiles = [
+            "balanced",
+            "strict",
+            "observe_only",
+            "permissive",
+            "UNKNOWN_PROFILE",
+            "",
+        ];
+
+        let total_iterations = 100_000;
+        let mut allowed_count = 0;
+        let mut denied_count = 0;
+        let mut approval_count = 0;
+        let mut invariant_violations = 0;
+
+        let start_time = Instant::now();
+
+        for i in 0..total_iterations {
+            let r1 = next_random();
+            let r2 = next_random();
+            let r3 = next_random();
+
+            let action_type = action_types[(r1 as usize) % action_types.len()];
+            let path_frag = path_fragments[(r2 as usize) % path_fragments.len()];
+            let profile = profiles[(r3 as usize) % profiles.len()];
+
+            // Mutate resource with random fuzz variations
+            let mut resource = path_frag.to_string();
+            if r1 % 5 == 0 {
+                resource = format!("./{}", resource);
+            } else if r1 % 7 == 0 {
+                resource = format!("sub/dir/../{}", resource);
+            } else if r1 % 11 == 0 {
+                resource = format!("{}/{}", resource, (r2 % 1000));
+            }
+
+            let action = json!({
+                "action_type": action_type,
+                "resource": resource,
+                "request_id": format!("fuzz-req-{}", i),
+                "parameters": {
+                    "depth": r1 % 10,
+                    "flags": format!("-x{}", r2 % 5)
+                }
+            });
+
+            // Test evaluate_policy - MUST NEVER PANIC
+            match engine.evaluate_policy(&action, Some(profile), Some(workspace_root)) {
+                Ok(decision) => {
+                    let dec = decision["decision"].as_str().unwrap_or("unknown");
+                    match dec {
+                        DECISION_ALLOW => {
+                            allowed_count += 1;
+
+                            // NON-NEGOTIABLE SAFETY INVARIANT CHECK:
+                            // Forbidden resources must NEVER be allowed under any profile
+                            let is_forbidden = resource.contains("..")
+                                || resource.contains("etc/passwd")
+                                || resource.contains("etc/shadow")
+                                || resource.contains("169.254")
+                                || resource.contains(".env")
+                                || resource.contains(".ssh")
+                                || resource.contains('\0')
+                                || resource.contains("rm -rf /");
+
+                            if is_forbidden {
+                                invariant_violations += 1;
+                                eprintln!(
+                                    "🚨 INVARIANT VIOLATION on iter {}: Action {:?} was ALLOWED for resource {:?}",
+                                    i, action_type, resource
+                                );
+                            }
+                        }
+                        DECISION_DENY => denied_count += 1,
+                        DECISION_REQUIRE_APPROVAL => approval_count += 1,
+                        _ => {}
+                    }
+                }
+                Err(_) => {
+                    // Fail-closed Err is safe
+                    denied_count += 1;
+                }
+            }
+        }
+
+        let elapsed = start_time.elapsed();
+        let throughput = (total_iterations as f64) / elapsed.as_secs_f64();
+
+        println!("Total Fuzz Iterations:     {}", total_iterations);
+        println!("Total Elapsed Time:        {:.2?}", elapsed);
+        println!("Evaluation Throughput:     {:.0} evals/second", throughput);
+        println!("Allowed Actions:           {}", allowed_count);
+        println!("Denied Actions:            {}", denied_count);
+        println!("Require Approval Actions:  {}", approval_count);
+        println!("Invariant Violations:      {}", invariant_violations);
+
+        assert_eq!(invariant_violations, 0, "Security Invariant Violated! Forbidden action was allowed!");
+        println!("\n✅ CHECK 3 PASSED: 0 panics, 0 invariant violations across {} fuzzed inputs.", total_iterations);
     }
 }

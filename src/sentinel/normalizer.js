@@ -64,9 +64,12 @@ function normalizeFilesystemPath(targetPath, workspaceRoot = process.cwd()) {
     };
   }
 
+  // Strip zero-width obfuscation characters
+  const cleanTargetPath = targetPath.replace(/[\u200B-\u200D\uFEFF]/g, '');
+
   // Null byte or control character injection check
-  for (let i = 0; i < targetPath.length; i++) {
-    const code = targetPath.charCodeAt(i);
+  for (let i = 0; i < cleanTargetPath.length; i++) {
+    const code = cleanTargetPath.charCodeAt(i);
     if (code <= 31 || code === 127) {
       return {
         canonicalPath: '',
@@ -78,7 +81,7 @@ function normalizeFilesystemPath(targetPath, workspaceRoot = process.cwd()) {
   }
 
   const cleanWorkspace = path.resolve(workspaceRoot);
-  let resolvedTarget = path.resolve(cleanWorkspace, targetPath);
+  let resolvedTarget = path.resolve(cleanWorkspace, cleanTargetPath);
 
   // Symlink resolution
   try {

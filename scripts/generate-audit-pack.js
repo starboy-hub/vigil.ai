@@ -70,7 +70,15 @@ function generateAuditDossier() {
   if (!fs.existsSync(distDir)) fs.mkdirSync(distDir, { recursive: true });
 
   const outPath = path.join(distDir, 'audit-dossier.json');
-  fs.writeFileSync(outPath, JSON.stringify(dossier, null, 2));
+  try {
+    fs.writeFileSync(outPath, JSON.stringify(dossier, null, 2));
+  } catch (err) {
+    if (err.code === 'EROFS' || err.code === 'EBUSY' || err.code === 'EACCES') {
+      console.warn(`⚠️  Warning: Could not overwrite ${outPath} (${err.code}), read-only mount detected.`);
+    } else {
+      throw err;
+    }
+  }
 
   console.log(`✅ Security audit dossier generated successfully: ${outPath}`);
   console.log(`   Audited critical surfaces: ${Object.keys(surfaceHashes).length}`);

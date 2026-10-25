@@ -31,7 +31,7 @@ class ShellAstAnalyzer {
       return { isSafe: false, reasonCode: REASON_CODES.DENY_INVALID_SCHEMA };
     }
 
-    const trimmed = rawCommand.trim();
+    const trimmed = rawCommand.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
     if (!trimmed) {
       return { isSafe: true, primaryBinary: '', normalizedCommand: '' };
     }

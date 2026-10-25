@@ -210,6 +210,19 @@ class SentinelPolicyEngine {
     const activeWorkspace = evalContext.workspaceRoot ? require('path').resolve(evalContext.workspaceRoot) : this.workspaceRoot;
 
     if ([ACTION_FS_READ, ACTION_FS_WRITE, ACTION_FS_DELETE, ACTION_FS_LIST].includes(safeAction.action_type)) {
+      // Hard check: Shell metacharacter / command smuggling in filesystem path
+      const rawRes = String(safeAction.resource || '');
+      if (/[;&|`]|\$\(|\b(sh|bash|zsh|eval)\b/i.test(rawRes)) {
+        return this._buildDecision(
+          DECISION_DENY,
+          REASON_CODES.DENY_UNSAFE_SHELL_COMMAND,
+          `Dangerous shell metacharacter or command smuggling detected in filesystem path: ${safeAction.resource}`,
+          ['rule-level1-shell-path-smuggling-guard'],
+          requestId,
+          actionHash
+        );
+      }
+
       const pathNorm = normalizeFilesystemPath(safeAction.resource, activeWorkspace);
 
       if (pathNorm.error === 'PATH_INJECTION_NULL_BYTE') {
@@ -283,6 +296,19 @@ class SentinelPolicyEngine {
     // 1.4 Shell Execution Hard Safety Rules
     if (safeAction.action_type === ACTION_SHELL_EXEC) {
       const cmd = String(safeAction.resource || '');
+      let cleanCmd = cmd.replace(/[\u200B-\u200D\uFEFF]/g, '');
+      try { cleanCmd = decodeURIComponent(cleanCmd); } catch (_) {}
+
+      if (/etc\/(?:shadow|passwd)|\/root|\.ssh|id_rsa|\.env/i.test(cleanCmd)) {
+        return this._buildDecision(
+          DECISION_DENY,
+          REASON_CODES.DENY_SYSTEM_FILE_ACCESS,
+          'Direct access to sensitive system or credential files via shell is prohibited.',
+          ['rule-level1-shell-system-file-guard'],
+          requestId,
+          actionHash
+        );
+      }
 
       // De-obfuscate and analyze using Shell AST Analyzer
       if (this.shellAnalyzer) {
@@ -334,7 +360,7 @@ class SentinelPolicyEngine {
 
     // 2.1 Secret / Environment Files Guard
     if ([ACTION_FS_READ, ACTION_FS_WRITE, ACTION_FS_DELETE].includes(safeAction.action_type)) {
-      const normalizedPath = safeAction.resource.replace(/\\/g, '/');
+      const normalizedPath = safeAction.resource.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\\/g, '/');
       for (const secretPattern of BLOCKED_SECRET_FILE_PATTERNS) {
         if (secretPattern.test(normalizedPath)) {
           return this._buildDecision(

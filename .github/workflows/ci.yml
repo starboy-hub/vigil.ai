@@ -55,6 +55,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Rust Sentinel Security Tests & Invariant Fuzzing
+        run: cargo test --manifest-path desktop/Cargo.toml -- --nocapture
+
       - name: Latency Benchmark
         run: npm run benchmark:latency
 

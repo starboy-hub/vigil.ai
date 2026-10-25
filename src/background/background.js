@@ -115,6 +115,61 @@ const ensureOffscreen = async () => {
   await offscreenCreating;
 };
 
+// ---- Local AI (Ollama) Cryptographic Handshake & Silent Backup Plan ----
+let localOllamaHandshakeToken = null;
+
+async function getLocalHandshakeToken() {
+  if (localOllamaHandshakeToken) return localOllamaHandshakeToken;
+  try {
+    const stored = await new Promise(r => chrome.storage.local.get(['vigil_ollama_secret'], res => r(res && res.vigil_ollama_secret)));
+    if (stored) {
+      localOllamaHandshakeToken = stored;
+      return stored;
+    }
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    localOllamaHandshakeToken = token;
+    chrome.storage.local.set({ vigil_ollama_secret: token });
+    return token;
+  } catch (_) {
+    return 'vigil-local-handshake-token';
+  }
+}
+
+async function secureOllamaFetch(url, options = {}) {
+  try {
+    const token = await getLocalHandshakeToken();
+    const headers = Object.assign({
+      'Content-Type': 'application/json',
+      'X-Vigil-Auth': token,
+      'X-Vigil-Origin': 'chrome-extension://vigil-local',
+      'X-Requested-With': 'VigilAI'
+    }, options.headers || {});
+
+    // Silent backup: Wrap fetch so network errors NEVER leak to console
+    const resp = await fetch(url, Object.assign({}, options, { headers }));
+    if (!resp || !resp.ok) {
+      return { ok: false, status: resp ? resp.status : 0, data: null };
+    }
+
+    const contentType = (resp.headers && resp.headers.get) ? (resp.headers.get('content-type') || '') : 'application/json';
+    if (contentType && !contentType.includes('application/json') && !contentType.includes('text/plain')) {
+      return { ok: false, status: 415, data: null };
+    }
+
+    const data = await resp.json().catch(() => null);
+    if (!data || typeof data !== 'object') {
+      return { ok: false, status: 500, data: null };
+    }
+
+    return { ok: true, status: resp.status, data };
+  } catch (_) {
+    // Silent degradation: NEVER throw console errors
+    return { ok: false, status: 0, data: null };
+  }
+}
+
 // ---- Multi-Turn Semantic Drift & Behavioral Grooming Tracker (Security Policy) ----
 const driftTracker = typeof VIGIL_DRIFT !== 'undefined'
   ? new VIGIL_DRIFT.SemanticDriftTracker()
@@ -150,13 +205,13 @@ const consensusFirewall = typeof VIGIL_CONSENSUS !== 'undefined'
             'Reply with ONLY this JSON, nothing else: {"verdict":"manipulation|normal|scam|legit|unclear","confidence":0-100,"reason":"max 15 words"}',
             'Message to classify:\n' + String(text || '').substring(0, 800)
           ].join('\n');
-          const resp = await fetch('http://localhost:11434/api/generate', {
+          const res = await secureOllamaFetch('http://localhost:11434/api/generate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: ollamaModel || 'llama3', stream: false, prompt, format: 'json' }),
             signal: AbortSignal.timeout(2500)
           });
-          const data = await resp.json();
+          if (!res.ok || !res.data) return { vote: 'unclear', confidence: 0 };
+          const data = res.data;
           const m = (data.response || '').match(/\{[\s\S]*\}/);
           const j = m ? JSON.parse(m[0]) : {};
           const isHarm = j.verdict === 'manipulation' || j.verdict === 'scam';
@@ -456,13 +511,17 @@ function pickModel(models, preferredModel) {
 
 async function detectOllamaModel() {
   try {
-    const resp = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
-    if (!resp.ok) { ollamaModel = null; ollamaInstalledModels = []; return null; }
-    const data = await resp.json();
+    const res = await secureOllamaFetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) });
+    if (!res.ok || !res.data || !Array.isArray(res.data.models)) {
+      ollamaModel = null;
+      ollamaInstalledModels = [];
+      return null;
+    }
+    const data = res.data;
     const stored = await new Promise(r => chrome.storage.sync.get(['settings'], s => r(s?.settings?.preferredOllamaModel || null)));
     ollamaModel = pickModel(data.models, stored);
     return ollamaModel;
-  } catch (e) {
+  } catch (_) {
     ollamaModel = null;
     ollamaInstalledModels = [];
     return null;
@@ -558,16 +617,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ available: false, reason: 'timeout' });
       }, 3000);
       
-      fetch('http://localhost:11434/api/tags', { 
+      secureOllamaFetch('http://localhost:11434/api/tags', { 
         method: 'GET',
         signal: AbortSignal.timeout(2500)
       })
-        .then(async r => {
+        .then(async res => {
           clearTimeout(timeoutId);
           ollamaCheckPending = false;
-          ollamaAvailable = r.ok;
-          if (r.ok) await detectOllamaModel(); else ollamaModel = null;
-          sendResponse({ available: r.ok, model: ollamaModel, models: ollamaInstalledModels });
+          if (res.ok && res.data && Array.isArray(res.data.models)) {
+            ollamaAvailable = true;
+            await detectOllamaModel();
+            sendResponse({ available: true, model: ollamaModel, models: ollamaInstalledModels });
+          } else {
+            ollamaAvailable = false;
+            ollamaModel = null;
+            ollamaInstalledModels = [];
+            sendResponse({ available: false, reason: 'unreachable', models: [] });
+          }
         })
         .catch(() => {
           clearTimeout(timeoutId);
@@ -862,9 +928,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         '',
         'Message to classify:\n' + String(request.text || '').substring(0, 800)
       ].join('\n');
-      fetch('http://localhost:11434/api/generate', {
+      secureOllamaFetch('http://localhost:11434/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: ollamaModel || 'llama3',
           stream: false,
@@ -873,15 +938,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }),
         signal: AbortSignal.timeout(8000)
       })
-        .then((r) => r.json())
-        .then((data) => {
+        .then((res) => {
+          if (!res.ok || !res.data) {
+            sendResponse({ verdict: 'unclear', reason: 'offline' });
+            return;
+          }
           try {
+            const data = res.data;
             const m = (data.response || '').match(/\{[\s\S]*\}/);
             const j = m ? JSON.parse(m[0]) : {};
             const allowed = kind === 'injection' ? ['manipulation', 'normal', 'unclear'] : ['scam', 'legit', 'unclear'];
             const verdict = allowed.includes(j.verdict) ? j.verdict : 'unclear';
             sendResponse({ verdict, confidence: +j.confidence || 0, reason: j.reason || '' });
-          } catch (e) { sendResponse({ verdict: 'unclear', reason: 'parse' }); }
+          } catch (_) { sendResponse({ verdict: 'unclear', reason: 'parse' }); }
         })
         .catch(() => sendResponse({ verdict: 'unclear', reason: 'timeout' }));
       return true;
@@ -1368,15 +1437,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
 
             if (typeof VIGIL_ADAPTIVE_ROUTER !== 'undefined') {
-              const result = await VIGIL_ADAPTIVE_ROUTER.executeRoutedInference(route, prompt, fetch);
+              const token = await getLocalHandshakeToken();
+              route.headers = { 'X-Vigil-Auth': token };
+              const result = await VIGIL_ADAPTIVE_ROUTER.executeRoutedInference(route, prompt, (u, o) => secureOllamaFetch(u, o).then(r => ({
+                ok: r.ok,
+                status: r.status,
+                headers: { get: () => 'application/json' },
+                json: async () => r.data
+              })));
               if (result.ok && result.text) {
                 sendResponse({ ok: true, text: result.text, tier: 'ollama', model: result.model, routedTier: result.tier });
                 return;
               }
             } else {
-              const resp = await fetch('http://localhost:11434/api/generate', {
+              const res = await secureOllamaFetch('http://localhost:11434/api/generate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   model: route.selectedModel || ollamaModel,
                   prompt,
@@ -1385,9 +1460,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }),
                 signal: AbortSignal.timeout(route.timeoutMs || 35000)
               });
-              if (resp.ok) {
-                const data = await resp.json();
-                let paraphrased = (data.response || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+              if (res.ok && res.data) {
+                let paraphrased = (res.data.response || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
                 if (paraphrased) { sendResponse({ ok: true, text: paraphrased, tier: 'ollama' }); return; }
               }
             }

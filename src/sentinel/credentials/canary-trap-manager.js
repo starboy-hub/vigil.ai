@@ -19,9 +19,31 @@ class CanaryTrapManager {
 
     this.canaryAwsKey = options.canaryAwsKey || `AKIA_CANARY_${randomHex}`;
     this.canaryGithubPat = options.canaryGithubPat || `ghp_CanaryDecoy${randomAlphanum}`;
-    this.canaryFiles = Object.freeze(['.env.canary']);
+    this.canaryFiles = Object.freeze(['.env.canary', '.env.decoy']);
+
+    this.activeTrapTokens = new Map();
+    this.activeTrapTokens.set(this.canaryAwsKey, { type: 'AWS_KEY', createdAt: Date.now() });
+    this.activeTrapTokens.set(this.canaryGithubPat, { type: 'GITHUB_PAT', createdAt: Date.now() });
 
     this.quarantinedSessions = new Set();
+    this.forensicAlerts = [];
+  }
+
+  /**
+   * Dynamically rotates trap keys, creating fresh unpredictable session decoys.
+   */
+  rotateTrapKeys(sessionId = null) {
+    const randomHex = crypto.randomBytes(8).toString('hex').toUpperCase();
+    const randomAlphanum = crypto.randomBytes(16).toString('hex');
+    const newAws = `AKIA${randomHex}`;
+    const newGh = `ghp_${randomAlphanum}`;
+
+    this.activeTrapTokens.set(newAws, { type: 'AWS_KEY', sessionId, rotatedAt: Date.now() });
+    this.activeTrapTokens.set(newGh, { type: 'GITHUB_PAT', sessionId, rotatedAt: Date.now() });
+    this.canaryAwsKey = newAws;
+    this.canaryGithubPat = newGh;
+
+    return { awsKey: newAws, githubPat: newGh };
   }
 
   /**
@@ -92,25 +114,31 @@ class CanaryTrapManager {
       }
     }
 
-    // 3. Canary Token Leakage in Resource string
-    if (resource.includes(this.canaryAwsKey) || resource.includes(this.canaryGithubPat)) {
-      this.quarantineSession(sessionId);
-      return {
-        triggered: true,
-        reasonCode: REASON_CODES.DENY_CANARY_TRAP_TRIGGERED,
-        explanation: 'CRITICAL: Injected decoy canary credential detected in action resource!'
-      };
-    }
+    // 3. Canary Token Leakage in Resource or Parameters (including rotating tokens)
+    const paramStr = (action.parameters && typeof action.parameters === 'object')
+      ? JSON.stringify(action.parameters)
+      : '';
 
-    // 4. Deep Inspection of Action Parameters for Canary Tokens
-    if (action.parameters && typeof action.parameters === 'object') {
-      const paramStr = JSON.stringify(action.parameters);
-      if (paramStr.includes(this.canaryAwsKey) || paramStr.includes(this.canaryGithubPat)) {
+    for (const [token, meta] of this.activeTrapTokens.entries()) {
+      if (resource.includes(token) || paramStr.includes(token)) {
         this.quarantineSession(sessionId);
+        const forensicAlert = {
+          triggered: true,
+          tokenType: meta.type,
+          tokenSnippet: token.slice(0, 10) + '...',
+          sessionId,
+          requestId: action.request_id,
+          agentId: action.agent_id,
+          actionType: action.action_type,
+          detectedIn: resource.includes(token) ? 'resource' : 'parameters',
+          compromisedAt: Date.now()
+        };
+        this.forensicAlerts.push(forensicAlert);
         return {
           triggered: true,
           reasonCode: REASON_CODES.DENY_CANARY_TRAP_TRIGGERED,
-          explanation: 'CRITICAL: Injected decoy canary credential detected in tool parameters!'
+          explanation: `CRITICAL: Injected decoy canary credential (${meta.type}) detected! Potential agent exfiltration.`,
+          forensicAlert
         };
       }
     }

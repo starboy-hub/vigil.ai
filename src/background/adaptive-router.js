@@ -133,23 +133,39 @@
     const { selectedModel, options, timeoutMs, taskType } = routeConfig;
 
     try {
+      const headers = Object.assign({
+        'Content-Type': 'application/json',
+        'X-Vigil-Origin': 'chrome-extension://vigil-local',
+        'X-Requested-With': 'VigilAI'
+      }, routeConfig.headers || {});
+
       const resp = await f('http://localhost:11434/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           model: selectedModel,
           prompt: promptText,
           options,
           stream: false
         }),
-        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout && typeof timeoutMs === 'number' ? AbortSignal.timeout(timeoutMs) : undefined
       });
 
-      if (!resp.ok) {
-        return { ok: false, fallback: true, status: resp.status };
+      if (!resp || !resp.ok) {
+        return { ok: false, fallback: true, status: resp ? resp.status : 0 };
       }
 
-      const data = await resp.json();
+      // Rogue server mitigation: Ensure content-type is valid json
+      const ct = (resp.headers && resp.headers.get) ? (resp.headers.get('content-type') || '') : 'application/json';
+      if (ct && !ct.includes('application/json') && !ct.includes('text/plain')) {
+        return { ok: false, fallback: true, status: 415, error: 'invalid_content_type' };
+      }
+
+      const data = await resp.json().catch(() => null);
+      if (!data || typeof data !== 'object') {
+        return { ok: false, fallback: true, error: 'invalid_json_payload' };
+      }
+
       let rawText = data.response || '';
 
       // If fast task and model returned CoT <think>...</think>, strip it
@@ -170,7 +186,8 @@
         tier: routeConfig.tier
       };
     } catch (err) {
-      return { ok: false, fallback: true, error: err.message };
+      // Silent degradation: NEVER leak console errors; pass clean error description to caller
+      return { ok: false, fallback: true, error: err && err.message ? err.message : 'silent_failover' };
     }
   }
 

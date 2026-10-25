@@ -32,7 +32,11 @@
   /**
    * Generates a realistic dummy canary token based on category and workflow seed
    */
-  function generateCanary(category, domain = 'general', seed = '') {
+  function generateCanary(category, domain = 'general', seed = '', options = {}) {
+    if (options.rotating || seed === 'rotating') {
+      return generateRotatingCanary(category, domain, seed);
+    }
+
     const s = seed || String(Date.now());
     const h = fastHash(`${category}|${domain}|${s}`);
     const h2 = fastHash(`${s}|${category}|${domain}`);
@@ -73,7 +77,63 @@
       domain,
       createdAt: Date.now(),
       status: 'ARMED',
-      hitCount: 0
+      hitCount: 0,
+      forensicSignature: `sig_${h}_${domain}_${Date.now()}`
+    };
+
+    activeCanaries.set(canary, metadata);
+    return metadata;
+  }
+
+  /**
+   * Generates a rotating, high-entropy decoy credential indistinguishable from real keys
+   * with zero predictable static substrings.
+   */
+  function generateRotatingCanary(category, domain = 'general', seed = '') {
+    const s = seed || String(Date.now() + Math.random());
+    const h = fastHash(`${category}|${domain}|${s}`);
+    const h2 = fastHash(`${s}|${category}|${domain}`);
+    const h3 = fastHash(`${h}|${s}|entropy`);
+
+    let canary = null;
+    let type = category.toUpperCase();
+
+    switch (type) {
+      case 'API_KEY':
+        canary = `ak_live_${h}${h2}${h3}`.slice(0, 32);
+        break;
+      case 'AWS_KEY':
+        canary = `AKIA${(h + h2 + h3).toUpperCase()}`.slice(0, 20);
+        break;
+      case 'GITHUB_TOKEN':
+        canary = `ghp_${h}${h2}${h3}${fastHash(s + 'gh')}`.slice(0, 40);
+        break;
+      case 'OPENAI_KEY':
+        canary = `sk-proj-${h.slice(0, 6)}_${h2.slice(0, 8)}${h3.slice(0, 20)}`;
+        break;
+      case 'JWT_SESSION':
+        canary = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3Jf${h}","cm9sZSI6ImFkbWluIn0.${h2}${h3}`;
+        break;
+      case 'DATABASE_URL':
+        canary = `postgres://app_user_${h.slice(0, 6)}:${h2}@db-${domain.replace(/[^a-z0-9]/gi, '') || 'prod'}.internal:5432/main_db`;
+        break;
+      case 'EMAIL':
+      default:
+        canary = `alerts.${h.slice(0, 8)}@${domain.replace(/[^a-z0-9.-]/gi, '') || 'company-relay'}.internal`;
+        type = 'EMAIL';
+        break;
+    }
+
+    const metadata = {
+      value: canary,
+      type,
+      category,
+      domain,
+      createdAt: Date.now(),
+      status: 'ARMED',
+      hitCount: 0,
+      rotating: true,
+      forensicSignature: `sig_${h}_${domain}_${Date.now()}`
     };
 
     activeCanaries.set(canary, metadata);
@@ -83,7 +143,7 @@
   /**
    * Generates a context-aware canary bundle for the target environment
    */
-  function generateContextualBundle(domain = 'general', seed = '') {
+  function generateContextualBundle(domain = 'general', seed = '', options = {}) {
     const bundle = {
       domain,
       generatedAt: Date.now(),
@@ -92,17 +152,17 @@
 
     const host = domain.toLowerCase();
     if (host.includes('github') || host.includes('gitlab')) {
-      bundle.canaries.push(generateCanary('GITHUB_TOKEN', domain, seed));
-      bundle.canaries.push(generateCanary('API_KEY', domain, seed));
+      bundle.canaries.push(generateCanary('GITHUB_TOKEN', domain, seed, options));
+      bundle.canaries.push(generateCanary('API_KEY', domain, seed, options));
     } else if (host.includes('aws') || host.includes('amazon') || host.includes('cloud')) {
-      bundle.canaries.push(generateCanary('AWS_KEY', domain, seed));
-      bundle.canaries.push(generateCanary('DATABASE_URL', domain, seed));
+      bundle.canaries.push(generateCanary('AWS_KEY', domain, seed, options));
+      bundle.canaries.push(generateCanary('DATABASE_URL', domain, seed, options));
     } else if (host.includes('openai') || host.includes('anthropic') || host.includes('claude')) {
-      bundle.canaries.push(generateCanary('OPENAI_KEY', domain, seed));
-      bundle.canaries.push(generateCanary('JWT_SESSION', domain, seed));
+      bundle.canaries.push(generateCanary('OPENAI_KEY', domain, seed, options));
+      bundle.canaries.push(generateCanary('JWT_SESSION', domain, seed, options));
     } else {
-      bundle.canaries.push(generateCanary('API_KEY', domain, seed));
-      bundle.canaries.push(generateCanary('EMAIL', domain, seed));
+      bundle.canaries.push(generateCanary('API_KEY', domain, seed, options));
+      bundle.canaries.push(generateCanary('EMAIL', domain, seed, options));
     }
 
     return bundle;
@@ -131,7 +191,15 @@
       triggeredCanaries: triggered,
       warning: triggered.length > 0
         ? `🚨 Counter-Surveillance Alert: Decoy honeytoken (${triggered[0].type}) detected in data stream. Potential scraper or extension exfiltration!`
-        : null
+        : null,
+      forensicAlert: triggered.length > 0 ? {
+        type: triggered[0].type,
+        domain: triggered[0].domain,
+        plantedAt: triggered[0].createdAt,
+        triggeredAt: Date.now(),
+        stolenTokenSnippet: triggered[0].value.slice(0, 10) + '...',
+        signature: triggered[0].forensicSignature
+      } : null
     };
   }
 
@@ -166,6 +234,7 @@
 
   return {
     generateCanary,
+    generateRotatingCanary,
     generateContextualBundle,
     inspectPayloadForCanaries,
     registerCanary,

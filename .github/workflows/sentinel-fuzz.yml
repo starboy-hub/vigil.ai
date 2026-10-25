@@ -1,0 +1,40 @@
+name: Sentinel Invariant Fuzzing & Stress Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  fuzz-rust-sentinel:
+    name: Rust Sentinel Policy Engine 100k Fuzz Invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Sentinel Fuzz Invariant Harness (100k iterations)
+        run: |
+          cargo test --manifest-path desktop/Cargo.toml test_fuzz_sentinel_policy_engine_invariants -- --nocapture
+
+  fuzz-detection-engine:
+    name: JavaScript Detection Engine ReDoS & Fuzzing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run JS ReDoS & Adversarial Fuzz Suites
+        run: |
+          npx jest tests/fuzz-detection.test.js --verbose
