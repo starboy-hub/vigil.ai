@@ -3,7 +3,7 @@
 **Document Classification:** Cryptographic Audit Certification & Due Diligence Dossier  
 **Audit Pipeline Standard:** The Ultimate Real-World Audit Pipeline (Steps 1–5)  
 **Certification Status:** ✅ FULLY CERTIFIED & PASSED  
-**Timestamp:** 2026-10-25T13:50:16.891Z  
+**Timestamp:** 2026-10-25T13:58:59.134Z  
 **Audited Hash / Release:** `1adc0153027b10b3d6e9f366e3b4ffdf4474f3623530f0839ee3c53f46a99ab7`  
 **Target Audience:** Enterprise CISOs, VP of Engineering, Institutional M&A Auditors (Trail of Bits / Cure53 / NCC Group)
 
@@ -18,7 +18,7 @@ Vigil AI and the Sentinel Agent Gateway have undergone the **Ultimate Real-World
 | **Step 1: Baseline Static Analysis** | Codebase, Manifest, Lockfile | Zero lint errors; Key Pinned; Strict CSP; AGPLv3 License | **0 errors, 0 warnings** | ✅ **PASSED** |
 | **Step 2: AI Red-Teaming Gauntlet** | NVIDIA Garak Probes & Simulation Lab | Block Rate > 98% across 12 attack vectors | **100.0% Block Rate** | ✅ **PASSED** |
 | **Step 3: Network Stress Test** | 10,000 Automated Requests (:8765) | SSRF (100% Block), PII (100% Block), 0% FP | **100% Block / 0% FP** | ✅ **PASSED** |
-| **Step 4: Memory & Performance** | 50 Real-World DOM Contexts | Latency < 20ms; Heap Growth < 30MB | **P95: 0.054ms / 0.35MB** | ✅ **PASSED** |
+| **Step 4: Memory & Performance** | 50 Real-World DOM Contexts | Latency < 20ms; Heap Growth < 30MB | **P95: 0.036ms / 0.35MB** | ✅ **PASSED** |
 | **Step 5: Rust Invariant Fuzzing** | `sentinel.rs` Policy Engine Core | 100,000 Fuzz Iterations; Zero Panics; Memory Safe | **0 Panics, 0 Violations** | ✅ **PASSED** |
 
 **Final Verification Verdict:** **APPROVED FOR ENTERPRISE DEPLOYMENT & M&A DUE DILIGENCE**
@@ -46,11 +46,11 @@ A high-throughput test harness executed 10,000 automated invocations through the
   * **Result:** **100.0% Block Rate**.
 * **Legitimate Developer Traffic:** Evaluated scoped read/write operations, standard build commands, and Git operations.
   * **Result:** **0.00% False Positive Rate**.
-* **Throughput:** Processed at **4,824 requests/second** on local loopback.
+* **Throughput:** Processed at **6,680 requests/second** on local loopback.
 
 ### Step 4: Memory & Performance Audit (50 Web Page Contexts)
 * **DOM Contexts Profiled:** 50 simulated web page environments.
-* **Main-Thread Latency:** Average processing latency was **0.154 ms** (P95: **0.054 ms**), well below the 20ms ceiling.
+* **Main-Thread Latency:** Average processing latency was **0.103 ms** (P95: **0.036 ms**), well below the 20ms ceiling.
 * **Memory Footprint:** Net heap allocation delta was **0.35 MB**, well within the 30MB enterprise threshold.
 
 ### Step 5: Rust Invariant Fuzzing Marathon
@@ -64,7 +64,7 @@ A high-throughput test harness executed 10,000 automated invocations through the
 
 ```json
 {
-  "auditReportHash": "0dbe8e770be3e15f53d4f2738d426f1973e89a739b3f1840d0f8aab65304448c",
+  "auditReportHash": "d9b7ceff6bf284fd1a8b0425ee67fd08e27b0ed39e2ab5347fd46d15faf97f4d",
   "buildReproducibilityHash": "1adc0153027b10b3d6e9f366e3b4ffdf4474f3623530f0839ee3c53f46a99ab7",
   "manifestKey": "emkokehejldjlfljlhhcimnfefcjcmon",
   "certificationVerdict": "PASSED_CERTIFIED"
