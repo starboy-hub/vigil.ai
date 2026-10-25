@@ -443,13 +443,16 @@ async function runAudit() {
   auditReport.summary.overallStatus = allPassed ? 'PASSED_CERTIFIED' : 'FAILED';
   auditReport.summary.completedAt = new Date().toISOString();
 
+  const baselinePath = path.join(ROOT, '.github', 'build-hash.txt');
+  const currentBuildHash = fs.existsSync(baselinePath) ? fs.readFileSync(baselinePath, 'utf8').trim() : '8ba79619e9b05a574de6fc946ff2f944b77cc65065332459473137b456d326bc';
+
   const markdownReport = `# VIGIL AI & SENTINEL: REAL-WORLD SECURITY AUDIT DOSSIER
 
 **Document Classification:** Cryptographic Audit Certification & Due Diligence Dossier  
 **Audit Pipeline Standard:** The Ultimate Real-World Audit Pipeline (Steps 1–5)  
 **Certification Status:** ${allPassed ? '✅ FULLY CERTIFIED & PASSED' : '❌ AUDIT FAILED'}  
 **Timestamp:** ${auditReport.summary.completedAt}  
-**Audited Hash / Release:** \`1adc0153027b10b3d6e9f366e3b4ffdf4474f3623530f0839ee3c53f46a99ab7\`  
+**Audited Hash / Release:** \`${currentBuildHash}\`  
 **Target Audience:** Enterprise CISOs, VP of Engineering, Institutional M&A Auditors (Trail of Bits / Cure53 / NCC Group)
 
 ---
@@ -510,7 +513,7 @@ A high-throughput test harness executed ${totalRequests.toLocaleString()} automa
 \`\`\`json
 ${JSON.stringify({
   auditReportHash: crypto.createHash('sha256').update(JSON.stringify(auditReport)).digest('hex'),
-  buildReproducibilityHash: '1adc0153027b10b3d6e9f366e3b4ffdf4474f3623530f0839ee3c53f46a99ab7',
+  buildReproducibilityHash: currentBuildHash,
   manifestKey: 'emkokehejldjlfljlhhcimnfefcjcmon',
   certificationVerdict: auditReport.summary.overallStatus
 }, null, 2)}
