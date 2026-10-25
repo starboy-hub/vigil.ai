@@ -1774,6 +1774,94 @@ function clearHighlights(element) { if (!element) return; removeInlineIndicator(
 function showInlineIndicator(element, text, color) { const rect = element.getBoundingClientRect(); const indicator = document.createElement('div'); indicator.className = 'vigil-inline-indicator'; indicator.textContent = text; indicator.style.cssText = `position:absolute!important;top:${rect.top - 28}px!important;left:${rect.left}px!important;background:${color}!important;color:white!important;padding:4px 10px!important;border-radius:4px!important;font-size:11px!important;font-weight:600!important;z-index:2147483645!important;font-family:-apple-system,sans-serif!important;box-shadow:0 2px 8px ${currentTheme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)'}!important;pointer-events:none!important;`; document.body.appendChild(indicator); }
 function removeInlineIndicator() { document.querySelectorAll('.vigil-inline-indicator').forEach(el => el.remove()); }
 
+function applySanitizedText(element, txt) {
+  if (!element || typeof txt !== 'string') return;
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    const valueProto = element.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(valueProto, 'value')?.set;
+    if (nativeInputValueSetter) {
+      nativeInputValueSetter.call(element, txt);
+    } else {
+      element.value = txt;
+    }
+    // React 16/17/18/19 internal value tracker synchronization
+    if (element._valueTracker) {
+      try { element._valueTracker.setValue(''); } catch (_) {}
+    }
+    try {
+      element.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        composed: true,
+        inputType: 'insertReplacementText',
+        data: txt
+      }));
+    } catch (_) {}
+    element.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+  } else {
+    // Robust ContentEditable replacement (Lexical, ProseMirror, Slate, DraftJS, etc.)
+    element.focus();
+    let replaced = false;
+    try {
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      // 1. Dispatch beforeinput for modern rich-text editors (Lexical, ProseMirror, Slate)
+      try {
+        element.dispatchEvent(new InputEvent('beforeinput', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          inputType: 'insertText',
+          data: txt
+        }));
+      } catch (_) {}
+
+      // 2. Direct execCommand (do NOT gate on deprecated queryCommandSupported)
+      if (typeof document.execCommand === 'function') {
+        replaced = document.execCommand('insertText', false, txt);
+      }
+    } catch (_) {}
+
+    // 3. Fallback if execCommand did not update the inner text
+    const currentText = (element.innerText || element.textContent || '').trim();
+    if (!replaced || currentText !== txt.trim()) {
+      try {
+        if (typeof document.execCommand === 'function') {
+          const sel = window.getSelection();
+          if (sel) {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand('delete', false, null);
+            replaced = document.execCommand('insertText', false, txt);
+          }
+        }
+      } catch (_) {}
+      if (!replaced || (element.innerText || element.textContent || '').trim() !== txt.trim()) {
+        element.innerText = txt;
+      }
+    }
+
+    // 4. Dispatch InputEvent, input, and change events
+    try {
+      element.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        composed: true,
+        inputType: 'insertText',
+        data: txt
+      }));
+    } catch (_) {}
+    element.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+  }
+}
+
 function performRedaction(element, redactions) {
   try {
     console.log('[dbg] performRedaction:', JSON.stringify(redactions && redactions.map(r => r.text)));
@@ -1797,30 +1885,7 @@ function performRedaction(element, redactions) {
     const result = VIGIL_FAKE.redactText(cur, enriched, settings.useFakeData);
     const txt = result.text; const reps = result.replacements; const orig = cur;
     if (txt !== orig) {
-      if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-        const valueProto = element.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(valueProto, 'value').set;
-        if (nativeInputValueSetter) nativeInputValueSetter.call(element, txt);
-        else element.value = txt;
-        element.dispatchEvent(new Event('input', { bubbles: true }));
-      } else {
-        if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
-          element.focus();
-          try {
-            const sel = window.getSelection();
-            const range = document.createRange();
-            range.selectNodeContents(element);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            document.execCommand('insertText', false, txt);
-          } catch (e) {
-            element.innerText = txt;
-          }
-        } else {
-          element.innerText = txt;
-        }
-        element.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      applySanitizedText(element, txt);
       reps.forEach(r => {
         historyStore.add({ ...r, site: window.location.hostname });
         if (r.fake && r.original && r.fake !== r.original) {
@@ -2260,6 +2325,24 @@ function isSubmissionButton(button) {
   return false;
 }
 
+function findAssociatedSendButton(element) {
+  if (!element) return null;
+  const container = (element.closest && element.closest('form, [data-testid*="chat"], main, section, [class*="composer"], [class*="chat"], .chat-container, .chat-input-bar')) || document;
+  const buttons = Array.from(container.querySelectorAll('button, [role="button"], [data-testid*="send"], [aria-label*="Send" i]'));
+  for (const b of buttons) {
+    if (isSubmissionButton(b) && !b.disabled && b.offsetParent !== null) {
+      return b;
+    }
+  }
+  const globalButtons = Array.from(document.querySelectorAll('button[data-testid*="send"], button[aria-label*="Send" i], button[aria-label*="send" i], [data-testid="send-button"], #chat-send, #send'));
+  for (const b of globalButtons) {
+    if (!b.disabled && b.offsetParent !== null) {
+      return b;
+    }
+  }
+  return null;
+}
+
 function setupPasteGuardian() {
   document.addEventListener('paste', async (e) => {
     if (isWhitelisted || isPaused) return;
@@ -2274,20 +2357,7 @@ function setupPasteGuardian() {
         if (settings.autoProtectPaste) {
           e.preventDefault();
           const result = VIGIL_FAKE.redactText(pastedText, redactions, settings.useFakeData);
-          if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-            const valueProto = target.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
-            const nativeSetter = Object.getOwnPropertyDescriptor(valueProto, 'value').set;
-            if (nativeSetter) nativeSetter.call(target, result.text);
-            else target.value = result.text;
-            target.dispatchEvent(new Event('input', { bubbles: true }));
-          } else {
-            if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
-              document.execCommand('insertText', false, result.text);
-            } else {
-              target.innerText = result.text;
-            }
-            target.dispatchEvent(new Event('input', { bubbles: true }));
-          }
+          applySanitizedText(target, result.text);
         }
         const markedAlerts = alerts.map(a => ({ ...a, source: 'clipboard:' + a.source }));
         if (popup) popup.showAlert(markedAlerts, redactions, target, pastedText, null, 'clipboard');
@@ -2975,26 +3045,74 @@ function consensusHoldSubmission(promptText, element, pending) {
 }
 
 function resumeHeldSubmission(promptText, pending) {
-  allowedPromptHashes.add(promptText);
-  const modal = document.querySelector('[data-vigil="consensus-modal"]');
+  if (promptText) allowedPromptHashes.add(promptText);
+  const modal = document.querySelector('[data-vigil="consensus-modal"], [data-vigil="submission-modal"]');
   if (modal) modal.remove();
   if (!pending) return;
   const elem = pending.element;
   submissionGuardEnabled = false;
-  if (pending.type === 'button') {
-    setTimeout(() => { try { elem.click(); } catch (e) {} submissionGuardEnabled = true; }, 50);
-  } else if (pending.type === 'form') {
-    setTimeout(() => { try { elem.submit(); } catch (e) {} submissionGuardEnabled = true; }, 50);
-  } else if (pending.type === 'enter') {
-    elem.focus();
-    setTimeout(() => {
-      try {
-        elem.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
-      } catch (e) {}
-      submissionGuardEnabled = true;
-    }, 50);
-  }
+  setTimeout(() => {
+    try {
+      if (pending.type === 'button' && elem && typeof elem.click === 'function') {
+        elem.click();
+      } else if (pending.type === 'form' && elem && typeof elem.submit === 'function') {
+        elem.submit();
+      } else if (pending.type === 'enter' && elem) {
+        elem.focus();
+        const sendBtn = findAssociatedSendButton(elem);
+        if (sendBtn && typeof sendBtn.click === 'function') {
+          sendBtn.click();
+        } else {
+          const enterInit = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true, composed: true };
+          elem.dispatchEvent(new KeyboardEvent('keydown', enterInit));
+          elem.dispatchEvent(new KeyboardEvent('keypress', enterInit));
+          elem.dispatchEvent(new KeyboardEvent('keyup', enterInit));
+          if (elem.closest && elem.closest('form')) {
+            try { elem.closest('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[VIGIL] Error resuming submission:', e);
+    } finally {
+      setTimeout(() => { submissionGuardEnabled = true; }, 500);
+    }
+  }, 80);
   pendingSubmission = null;
+}
+
+function executeMaskAndSend(activeEl, pending) {
+  const targetEl = activeEl || (pending && pending.element) || getActiveInputElement();
+  let sanitizedPrompt = '';
+  if (targetEl) {
+    let reds = (popup && popup.activeAlerts && popup.activeAlerts.flatMap(a => a.redactions)) || [];
+    if (!reds.length) {
+      const txt = getPromptTextFromElement(targetEl);
+      if (typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.scanWithRegex) {
+        const sc = VIGIL_ENGINE.scanWithRegex(txt);
+        if (sc && sc.redactions) reds = reds.concat(sc.redactions);
+      }
+      if (typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets) {
+        const sec = VIGIL_SECRETS.scanSecrets(txt);
+        if (sec && sec.redactions) reds = reds.concat(sec.redactions);
+      }
+    }
+    if (reds.length) {
+      const redResult = performRedaction(targetEl, reds);
+      if (redResult && redResult.error) {
+        console.error('[VIGIL] Redaction failed — aborting submission to prevent leak');
+        return false;
+      }
+      sanitizedPrompt = redResult.sanitizedText || '';
+    }
+    allowCurrentPrompt(targetEl);
+  }
+  const modal = document.querySelector('[data-vigil="submission-modal"]');
+  if (modal) modal.remove();
+  if (pending) {
+    resumeHeldSubmission(sanitizedPrompt, pending);
+  }
+  return true;
 }
 
 function showConsensusModal(promptText, verdict, details, pending) {
@@ -3093,65 +3211,24 @@ function setupSubmissionGuard() {
     if (target.id === 'vigil-modal-mask-send' || target.closest('#vigil-modal-mask-send')) {
       e.preventDefault();
       e.stopPropagation();
+      const pending = pendingSubmission;
+      pendingSubmission = null;
       const modal = document.querySelector('[data-vigil="submission-modal"]');
       if (modal) modal.remove();
-      const activeEl = getActiveInputElement() || (pendingSubmission && pendingSubmission.element);
-      if (activeEl) {
-        let reds = (popup && popup.activeAlerts && popup.activeAlerts.flatMap(a => a.redactions)) || [];
-        if (!reds.length) {
-          const txt = getPromptTextFromElement(activeEl);
-          if (typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.scanWithRegex) {
-            const sc = VIGIL_ENGINE.scanWithRegex(txt);
-            if (sc && sc.redactions) reds = reds.concat(sc.redactions);
-          }
-          if (typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets) {
-            const sec = VIGIL_SECRETS.scanSecrets(txt);
-            if (sec && sec.redactions) reds = reds.concat(sec.redactions);
-          }
-        }
-        if (reds.length) {
-          const redResult = performRedaction(activeEl, reds);
-          if (redResult && redResult.error) {
-            console.error('[VIGIL] Redaction failed — aborting submission to prevent leak');
-            return;
-          }
-        }
-        allowCurrentPrompt(activeEl);
-      }
-      if (pendingSubmission) {
-        const elem = pendingSubmission.element;
-        submissionGuardEnabled = false;
-        setTimeout(() => {
-          if (pendingSubmission && pendingSubmission.type === 'button') {
-            elem.click();
-          } else if (pendingSubmission && pendingSubmission.type === 'form') {
-            elem.submit();
-          }
-          pendingSubmission = null;
-          setTimeout(() => { submissionGuardEnabled = true; }, 500);
-        }, 50);
-      }
+      const activeEl = getActiveInputElement() || (pending && pending.element);
+      executeMaskAndSend(activeEl, pending);
       return;
     }
     if (target.id === 'vigil-modal-confirm' || target.closest('#vigil-modal-confirm')) {
       e.preventDefault();
       e.stopPropagation();
+      const pending = pendingSubmission;
+      pendingSubmission = null;
       const modal = document.querySelector('[data-vigil="submission-modal"]');
       if (modal) modal.remove();
-      if (pendingSubmission) {
-        const elem = pendingSubmission.element;
-        allowCurrentPrompt(getActiveInputElement() || elem);
-        submissionGuardEnabled = false;
-        setTimeout(() => {
-          if (pendingSubmission && pendingSubmission.type === 'button') {
-            elem.click();
-          } else if (pendingSubmission && pendingSubmission.type === 'form') {
-            elem.submit();
-          }
-          pendingSubmission = null;
-          setTimeout(() => { submissionGuardEnabled = true; }, 500);
-        }, 50);
-      }
+      const activeEl = getActiveInputElement() || (pending && pending.element);
+      if (activeEl) allowCurrentPrompt(activeEl);
+      if (pending) resumeHeldSubmission(getPromptTextFromElement(activeEl), pending);
       return;
     }
   }, true);
@@ -3334,48 +3411,11 @@ function showSubmissionConfirmation() {
     maskSendBtn.onclick = function(e) {
       e.preventDefault();
       e.stopPropagation();
-      const activeEl = getActiveInputElement() || (pendingSubmission && pendingSubmission.element);
-      if (activeEl) {
-        let reds = (popup && popup.activeAlerts && popup.activeAlerts.flatMap(a => a.redactions)) || [];
-        if (!reds.length) {
-          const txt = getPromptTextFromElement(activeEl);
-          if (typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.scanWithRegex) {
-            const sc = VIGIL_ENGINE.scanWithRegex(txt);
-            if (sc && sc.redactions) reds = reds.concat(sc.redactions);
-          }
-          if (typeof VIGIL_SECRETS !== 'undefined' && VIGIL_SECRETS.scanSecrets) {
-            const sec = VIGIL_SECRETS.scanSecrets(txt);
-            if (sec && sec.redactions) reds = reds.concat(sec.redactions);
-          }
-        }
-        if (reds.length) {
-          const redResult = performRedaction(activeEl, reds);
-          if (redResult && redResult.error) {
-            console.error('[VIGIL] Redaction failed — aborting submission to prevent leak');
-            return false;
-          }
-        }
-        allowCurrentPrompt(activeEl);
-      }
+      const pending = pendingSubmission;
+      pendingSubmission = null;
       modal.remove();
-      if (pendingSubmission) {
-        const elem = pendingSubmission.element;
-        submissionGuardEnabled = false;
-        if (pendingSubmission.type === 'button') {
-          setTimeout(() => { elem.click(); submissionGuardEnabled = true; }, 50);
-        } else if (pendingSubmission.type === 'form') {
-          setTimeout(() => { elem.submit(); submissionGuardEnabled = true; }, 50);
-        } else if (pendingSubmission.type === 'enter') {
-          elem.focus();
-          setTimeout(() => {
-            try {
-              elem.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
-            } catch (err) {}
-            submissionGuardEnabled = true;
-          }, 50);
-        }
-        pendingSubmission = null;
-      }
+      const activeEl = getActiveInputElement() || (pending && pending.element);
+      executeMaskAndSend(activeEl, pending);
       return false;
     };
   }
@@ -3391,22 +3431,12 @@ function showSubmissionConfirmation() {
   confirmBtn.onclick = function(e) {
     e.preventDefault();
     e.stopPropagation();
+    const pending = pendingSubmission;
+    pendingSubmission = null;
     modal.remove();
-    const activeEl = getActiveInputElement();
+    const activeEl = getActiveInputElement() || (pending && pending.element);
     if (activeEl) allowCurrentPrompt(activeEl);
-    if (pendingSubmission) {
-      const elem = pendingSubmission.element;
-      submissionGuardEnabled = false;
-      if (pendingSubmission.type === 'button') {
-        setTimeout(() => { elem.click(); submissionGuardEnabled = true; }, 50);
-      } else if (pendingSubmission.type === 'form') {
-        setTimeout(() => { elem.submit(); submissionGuardEnabled = true; }, 50);
-      } else if (pendingSubmission.type === 'enter') {
-        elem.focus();
-        setTimeout(() => { submissionGuardEnabled = true; }, 500);
-      }
-      pendingSubmission = null;
-    }
+    if (pending) resumeHeldSubmission(getPromptTextFromElement(activeEl), pending);
     return false;
   };
 

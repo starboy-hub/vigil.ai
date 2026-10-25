@@ -219,6 +219,23 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     await page.close();
   });
 
+  test('submission guard: Mask & Send replaces text with pseudonym, triggers submit, and keeps text masked without reverting', async () => {
+    const page = await openTestPage();
+    await page.fill('#chat-input', 'my sensitive SSN is 123-45-6789');
+    await page.waitForTimeout(500);
+    await page.click('#chat-input');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('#vigil-modal-mask-send', { timeout: 10000 });
+    await page.click('#vigil-modal-mask-send');
+    await expect(page.locator('[data-vigil="submission-modal"]')).toHaveCount(0);
+    await page.waitForTimeout(400);
+
+    // Text must remain masked in the input/DOM and never revert back to the sensitive SSN
+    const val = await page.inputValue('#chat-input');
+    expect(val).not.toContain('123-45-6789');
+    await page.close();
+  });
+
   test('vault: a taught name is detected and pseudonymized deterministically', async () => {
     const options = await context.newPage();
     await options.goto(`chrome-extension://${extensionId}/options.html`);

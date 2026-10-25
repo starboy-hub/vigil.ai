@@ -107,6 +107,15 @@
       if (curr.getAttribute && curr.getAttribute('role') === 'textbox') return false;
       if (curr.hasAttribute && (curr.hasAttribute('contenteditable') || curr.hasAttribute('data-vigil'))) return false;
       if (curr.closest && (curr.closest('input, textarea, select, [contenteditable], [role="textbox"], [data-vigil]'))) return false;
+
+      // User-sent messages and prompts must remain masked in the conversation thread
+      const role = curr.getAttribute && curr.getAttribute('data-message-author-role');
+      if (role === 'user') return false;
+      const testId = curr.getAttribute && curr.getAttribute('data-testid');
+      if (testId && (testId.includes('user-message') || testId === 'user-turn')) return false;
+      const className = (curr.className && typeof curr.className === 'string') ? curr.className.toLowerCase() : '';
+      if (className.includes('bubble user') || className.includes('user-bubble') || className.includes('chat-bubble-user') || className.includes('user-message')) return false;
+
       curr = curr.parentElement;
     }
     return true;
