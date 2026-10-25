@@ -10,7 +10,7 @@ The following researchers have helped secure Vigil AI and protect our users thro
 
 | Date | Researcher | Scope & Key Contributions | Severity | Fixed In |
 | :--- | :--- | :--- | :---: | :---: |
-| **2026-10-11** | **Independent Security Researcher**<br>*(Pending confirmation of preferred public handle/name)* | **v1.0.0 Security Verification & Supply-Chain Hardening**<br>• Identified potential hash overwrite vector in Gate 3 build reproducibility verification; prompted strict fail-closed enforcement and `--update-baseline` flag.<br>• Identified submission guard edge-cases on plaintext-only contenteditable surfaces and negative-control buttons (cancel/attach).<br>• Recommended sensitive context deny-list surface expansion across enterprise IdPs (Okta preview, Ping, Duo, OneLogin) and financial portals.<br>• Recommended administrative vault IPC hardening in the background service worker. | **Medium** | `v1.0.0` |
+| **2026-10-11** | **Independent Security Researcher**<br> | **v1.0.0 Security Verification & Supply-Chain Hardening**<br>• Identified potential hash overwrite vector in Gate 3 build reproducibility verification; prompted strict fail-closed enforcement and `--update-baseline` flag.<br>• Identified submission guard edge-cases on plaintext-only contenteditable surfaces and negative-control buttons (cancel/attach).<br>• Recommended sensitive context deny-list surface expansion across enterprise IdPs (Okta preview, Ping, Duo, OneLogin) and financial portals.<br>• Recommended administrative vault IPC hardening in the background service worker. | **Medium** | `v1.0.0` |
 
 ---
 
