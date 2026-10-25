@@ -117,6 +117,48 @@
   ];
 
   /**
+   * Mutual Information Discount Matrix (MIDM) for correlated quasi-identifiers.
+   * Prevents false-positive entropy inflation when attributes share high mutual information.
+   */
+  const COVARIANCE_MATRIX = {
+    'EDUCATION:SPECIALIZATION': 0.35,
+    'EMPLOYMENT_NICHE:SPECIALIZATION': 0.50,
+    'DEMOGRAPHIC_AGE_LOCATION:GEOGRAPHY_LOCAL': 0.60,
+    'FINANCIAL_EXACT:EMPLOYMENT_NICHE': 0.40
+  };
+
+  function computeDiscountedEntropy(items) {
+    if (!items || items.length === 0) return 0;
+    let sum = 0;
+    items.forEach(item => { sum += item.weight || item.baseEntropy || 3.0; });
+
+    // Discount correlated pairs
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const catA = items[i].category;
+        const catB = items[j].category;
+        const pair1 = `${catA}:${catB}`;
+        const pair2 = `${catB}:${catA}`;
+        const discountFactor = COVARIANCE_MATRIX[pair1] || COVARIANCE_MATRIX[pair2] || 0;
+        if (discountFactor > 0) {
+          const minW = Math.min(items[i].weight || 3.0, items[j].weight || 3.0);
+          sum -= (minW * discountFactor);
+        }
+      }
+    }
+    return Math.max(0, sum);
+  }
+
+  function getThreadRegistry() {
+    if (typeof root !== 'undefined' && root.VIGIL_THREAD_REGISTRY) return root.VIGIL_THREAD_REGISTRY;
+    if (typeof globalThis !== 'undefined' && globalThis.VIGIL_THREAD_REGISTRY) return globalThis.VIGIL_THREAD_REGISTRY;
+    try {
+      if (typeof require === 'function') return require('./thread-registry');
+    } catch (_) {}
+    return null;
+  }
+
+  /**
    * Estimates population anonymity set size K based on cumulative quasi-identifier entropy
    * H_total in bits.
    * Assuming reference metropolitan population N ≈ 1,000,000.
@@ -150,9 +192,10 @@
   }
 
   /**
-   * Scans text for quasi-identifiers and computes cumulative entropy
+   * Scans text for quasi-identifiers and computes cumulative entropy.
+   * If threadId is provided, accumulates and discounts across multi-turn context.
    */
-  function auditPrompt(text) {
+  function auditPrompt(text, threadId = null) {
     if (!text || typeof text !== 'string') {
       return {
         quasiIdentifiers: [],
@@ -162,12 +205,13 @@
         riskTier: 'LOW',
         isHighRisk: false,
         warning: null,
-        recommendations: []
+        recommendations: [],
+        isMultiTurn: false
       };
     }
 
     const detected = [];
-    let cumulativeEntropy = 0;
+    let promptEntropy = 0;
 
     QI_PATTERNS.forEach(pattern => {
       pattern.regex.lastIndex = 0;
@@ -176,12 +220,42 @@
         const item = pattern.extract(match);
         item.category = pattern.category;
         detected.push(item);
-        cumulativeEntropy += item.weight;
+        promptEntropy += item.weight;
       }
     });
 
-    // Diminishing returns after multiple items
-    const adjustedEntropy = Number(cumulativeEntropy.toFixed(2));
+    let effectiveItems = detected;
+    let isMultiTurn = false;
+
+    // Check for conversational accumulation if threadId is present
+    if (threadId) {
+      const registry = getThreadRegistry();
+      if (registry && typeof registry.getThreadQuasiIdentifiers === 'function') {
+        const priorQIs = registry.getThreadQuasiIdentifiers(threadId);
+        if (priorQIs && priorQIs.length > 0) {
+          isMultiTurn = true;
+          // Merge unique QIs
+          const merged = [...priorQIs];
+          detected.forEach(d => {
+            if (!merged.some(m => m.raw === d.raw && m.category === d.category)) {
+              merged.push(d);
+            }
+          });
+          effectiveItems = merged;
+        }
+        // Record current QIs into thread
+        if (typeof registry.recordThreadQuasiIdentifier === 'function') {
+          detected.forEach(d => registry.recordThreadQuasiIdentifier(threadId, d));
+        }
+      }
+    }
+
+    // Apply Copula-discounted mutual information reduction
+    const calculatedEntropy = isMultiTurn || effectiveItems.length > 2
+      ? computeDiscountedEntropy(effectiveItems)
+      : promptEntropy;
+
+    const adjustedEntropy = Number(calculatedEntropy.toFixed(2));
     const estimatedK = estimateKAnonymity(adjustedEntropy);
     const riskScore = Number(calculateRiskScore(adjustedEntropy, estimatedK).toFixed(2));
     const riskTier = getRiskTier(riskScore);
@@ -189,22 +263,26 @@
 
     let warning = null;
     if (isHighRisk) {
-      warning = `⚠️ Quasi-Identifier Alert: Combined details reduce anonymity pool to ~${estimatedK} individual(s) (${Math.round(riskScore * 100)}% re-identification risk).`;
+      const scopeLabel = isMultiTurn ? 'Across this conversation, combined details' : 'Combined details';
+      warning = `⚠️ Quasi-Identifier Alert: ${scopeLabel} reduce anonymity pool to ~${estimatedK} individual(s) (${Math.round(riskScore * 100)}% re-identification risk).`;
     } else if (riskTier === 'ELEVATED') {
-      warning = `⚠️ Elevated Re-Identification Risk: Anonymity set ~${estimatedK} people. Consider generalizing specific details.`;
+      const scopeLabel = isMultiTurn ? 'Across turns, elevated' : 'Elevated';
+      warning = `⚠️ ${scopeLabel} Re-Identification Risk: Anonymity set ~${estimatedK} people. Consider generalizing specific details.`;
     }
 
-    const recommendations = detected.map(d => d.recommendation);
+    const recommendations = effectiveItems.map(d => d.recommendation);
 
     return {
       quasiIdentifiers: detected,
+      accumulatedQuasiIdentifiers: effectiveItems,
       cumulativeEntropy: adjustedEntropy,
       estimatedK,
       riskScore,
       riskTier,
       isHighRisk,
       warning,
-      recommendations
+      recommendations,
+      isMultiTurn
     };
   }
 

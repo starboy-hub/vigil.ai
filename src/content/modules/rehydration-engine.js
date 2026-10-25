@@ -17,6 +17,41 @@
   const MAX_SUBSTITUTIONS = 500;
   const SUBSTITUTION_TTL_MS = 60 * 60 * 1000; // 60 minutes TTL
 
+  let pendingBatchNodes = new Set();
+  let rafScheduled = false;
+
+  function scheduleBatchFlush() {
+    if (rafScheduled) return;
+    rafScheduled = true;
+    const scheduler = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    scheduler(flushPendingBatch);
+  }
+
+  function flushPendingBatch() {
+    rafScheduled = false;
+    if (isMutatingInternally || pendingBatchNodes.size === 0) return;
+    const nodes = Array.from(pendingBatchNodes);
+    pendingBatchNodes.clear();
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (!n || !n.parentElement) continue;
+      if (n.nodeType === Node.TEXT_NODE) {
+        rehydrateTextNode(n);
+      } else if (n.nodeType === Node.ELEMENT_NODE) {
+        rehydrateSubtree(n);
+      }
+    }
+  }
+
+  function getThreadRegistry() {
+    if (typeof root !== 'undefined' && root.VIGIL_THREAD_REGISTRY) return root.VIGIL_THREAD_REGISTRY;
+    if (typeof globalThis !== 'undefined' && globalThis.VIGIL_THREAD_REGISTRY) return globalThis.VIGIL_THREAD_REGISTRY;
+    try {
+      if (typeof require === 'function') return require('./thread-registry');
+    } catch (_) {}
+    return null;
+  }
+
   function getCurrentOrigin() {
     try {
       if (typeof window !== 'undefined' && window.location && window.location.origin) {
@@ -184,18 +219,14 @@
       for (let i = 0; i < mutations.length; i++) {
         const m = mutations[i];
         if (m.type === 'characterData') {
-          rehydrateTextNode(m.target);
+          pendingBatchNodes.add(m.target);
         } else if (m.type === 'childList') {
           for (let j = 0; j < m.addedNodes.length; j++) {
-            const added = m.addedNodes[j];
-            if (added.nodeType === Node.TEXT_NODE) {
-              rehydrateTextNode(added);
-            } else if (added.nodeType === Node.ELEMENT_NODE) {
-              rehydrateSubtree(added);
-            }
+            pendingBatchNodes.add(m.addedNodes[j]);
           }
         }
       }
+      scheduleBatchFlush();
     });
 
     streamingObserver.observe(target, {
@@ -226,7 +257,8 @@
     rehydrateTextNode,
     rehydrateSubtree,
     startStreamingObserver,
-    stopStreamingObserver
+    stopStreamingObserver,
+    flushPendingBatch
   };
 
   root.VIGIL_REHYDRATION = VIGIL_REHYDRATION;

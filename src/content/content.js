@@ -1867,23 +1867,66 @@ function performRedaction(element, redactions) {
     console.log('[dbg] performRedaction:', JSON.stringify(redactions && redactions.map(r => r.text)));
     if (!redactions || redactions.length === 0) return { originalText: null, replacements: [] };
     const cur = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' ? element.value : (element.innerText || '');
+    
+    const threadId = (typeof VIGIL_THREAD_REGISTRY !== 'undefined' && VIGIL_THREAD_REGISTRY.resolveThreadId)
+      ? VIGIL_THREAD_REGISTRY.resolveThreadId(element)
+      : 'default_thread';
+
     // Vault entries get their stable per-site pseudonym here (assigned once,
     // persisted, then reused so conversations stay coherent)
     const enriched = redactions.map(r => {
-      if (!r.vaultId) return r;
-      let fake = vaultPseudos[r.vaultId];
-      if (!fake) {
-        fake = pickVaultFake(r.vaultKind, r.vaultId, r.text);
-        vaultPseudos[r.vaultId] = fake;
-        try { chrome.runtime.sendMessage({ type: 'PSEUDO_RECORD', entryId: r.vaultId, site: location.hostname, fake }, () => {}); } catch (e) {}
+      if (r.vaultId) {
+        let fake = vaultPseudos[r.vaultId];
+        if (!fake) {
+          fake = pickVaultFake(r.vaultKind, r.vaultId, r.text);
+          vaultPseudos[r.vaultId] = fake;
+          try { chrome.runtime.sendMessage({ type: 'PSEUDO_RECORD', entryId: r.vaultId, site: location.hostname, fake }, () => {}); } catch (e) {}
+        }
+        const opaquePointer = r.opaquePointer || ((typeof VIGIL_FAKE !== 'undefined' && VIGIL_FAKE.createOpaquePointer)
+          ? VIGIL_FAKE.createOpaquePointer(r.vaultKind, r.vaultId)
+          : `{{PTR:VAULT_${r.vaultId.slice(0, 8)}}}`);
+        return { ...r, vaultFake: fake, opaquePointer };
       }
-      const opaquePointer = r.opaquePointer || ((typeof VIGIL_FAKE !== 'undefined' && VIGIL_FAKE.createOpaquePointer)
-        ? VIGIL_FAKE.createOpaquePointer(r.vaultKind, r.vaultId)
-        : `{{PTR:VAULT_${r.vaultId.slice(0, 8)}}}`);
-      return { ...r, vaultFake: fake, opaquePointer };
+
+      // Conversational Polymorphic & Referential Mapping
+      if (typeof VIGIL_POLYMORPHIC_LEXICON !== 'undefined' && typeof VIGIL_THREAD_REGISTRY !== 'undefined') {
+        const entityText = r.text || r.original;
+        let entry = VIGIL_THREAD_REGISTRY.getThreadEntity(threadId, entityText);
+        if (!entry) {
+          const poly = VIGIL_POLYMORPHIC_LEXICON.generateSurrogate(entityText, r.type, threadId);
+          VIGIL_THREAD_REGISTRY.recordThreadEntity(threadId, entityText, poly);
+          entry = poly;
+        }
+        if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION.recordSubstitution) {
+          VIGIL_REHYDRATION.recordSubstitution(entry.surrogate, entityText);
+          if (Array.isArray(entry.subEntities)) {
+            entry.subEntities.forEach(sub => {
+              VIGIL_REHYDRATION.recordSubstitution(sub.surrogate, sub.original);
+            });
+          }
+        }
+        return { ...r, fake: entry.surrogate, subEntities: entry.subEntities };
+      }
+
+      return r;
     });
-    const result = VIGIL_FAKE.redactText(cur, enriched, settings.useFakeData);
-    const txt = result.text; const reps = result.replacements; const orig = cur;
+
+    let txt, reps;
+    if (typeof VIGIL_POLYMORPHIC_LEXICON !== 'undefined' && enriched.some(e => e.subEntities && e.subEntities.length)) {
+      const flatSubs = enriched.filter(e => e.fake).map(e => ({
+        original: e.text || e.original,
+        surrogate: e.fake,
+        subEntities: e.subEntities
+      }));
+      txt = VIGIL_POLYMORPHIC_LEXICON.applyReplacements(cur, flatSubs);
+      reps = flatSubs.map(s => ({ original: s.original, fake: s.surrogate, type: 'PII' }));
+    } else {
+      const result = VIGIL_FAKE.redactText(cur, enriched, settings.useFakeData);
+      txt = result.text;
+      reps = result.replacements;
+    }
+
+    const orig = cur;
     if (txt !== orig) {
       applySanitizedText(element, txt);
       reps.forEach(r => {
@@ -3081,9 +3124,31 @@ function resumeHeldSubmission(promptText, pending) {
   pendingSubmission = null;
 }
 
-function executeMaskAndSend(activeEl, pending) {
+function showUndoToast(message, originalText, targetEl) {
+  try {
+    document.querySelectorAll('[data-vigil="undo-toast"]').forEach(el => el.remove());
+    const toast = document.createElement('div');
+    toast.setAttribute('data-vigil', 'undo-toast');
+    toast.style.cssText = 'position:fixed!important;bottom:20px!important;right:20px!important;z-index:2147483647!important;background:rgba(24,24,27,0.94)!important;color:#f4f4f5!important;border:1px solid rgba(16,185,129,0.4)!important;border-radius:10px!important;padding:10px 16px!important;font-size:12px!important;box-shadow:0 8px 24px rgba(0,0,0,0.4)!important;display:flex!important;align-items:center!important;gap:12px!important;backdrop-filter:blur(12px)!important;animation:vigil-fadeIn 0.2s ease-out!important;';
+    toast.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="color:#10b981;">🛡️</span> ${escapeHtml(message || 'Prompt masked & sent safely')}</span><button id="vigil-toast-undo" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:#e4e4e7;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">Undo</button>`;
+    document.body.appendChild(toast);
+    const timer = setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5000);
+    const undoBtn = toast.querySelector('#vigil-toast-undo');
+    if (undoBtn) {
+      undoBtn.onclick = (ev) => {
+        ev.preventDefault();
+        clearTimeout(timer);
+        toast.remove();
+        if (targetEl && originalText) applySanitizedText(targetEl, originalText);
+      };
+    }
+  } catch (_) {}
+}
+
+function executeMaskAndSend(activeEl, pending, showToast = false) {
   const targetEl = activeEl || (pending && pending.element) || getActiveInputElement();
   let sanitizedPrompt = '';
+  let redResult = null;
   if (targetEl) {
     let reds = (popup && popup.activeAlerts && popup.activeAlerts.flatMap(a => a.redactions)) || [];
     if (!reds.length) {
@@ -3098,12 +3163,15 @@ function executeMaskAndSend(activeEl, pending) {
       }
     }
     if (reds.length) {
-      const redResult = performRedaction(targetEl, reds);
+      redResult = performRedaction(targetEl, reds);
       if (redResult && redResult.error) {
         console.error('[VIGIL] Redaction failed — aborting submission to prevent leak');
         return false;
       }
       sanitizedPrompt = redResult.sanitizedText || '';
+      if (showToast && redResult.originalText) {
+        showUndoToast('Masked & Sent with consistent pseudonyms', redResult.originalText, targetEl);
+      }
     }
     allowCurrentPrompt(targetEl);
   }
@@ -3219,6 +3287,21 @@ function setupSubmissionGuard() {
       executeMaskAndSend(activeEl, pending);
       return;
     }
+    if (target.id === 'vigil-modal-sticky' || target.closest('#vigil-modal-sticky')) {
+      e.preventDefault();
+      e.stopPropagation();
+      const pending = pendingSubmission;
+      pendingSubmission = null;
+      const modal = document.querySelector('[data-vigil="submission-modal"]');
+      if (modal) modal.remove();
+      const activeEl = getActiveInputElement() || (pending && pending.element);
+      if (typeof VIGIL_THREAD_REGISTRY !== 'undefined' && activeEl) {
+        const tid = VIGIL_THREAD_REGISTRY.resolveThreadId(activeEl);
+        VIGIL_THREAD_REGISTRY.setStickyConsent(tid, true);
+      }
+      executeMaskAndSend(activeEl, pending, true);
+      return;
+    }
     if (target.id === 'vigil-modal-confirm' || target.closest('#vigil-modal-confirm')) {
       e.preventDefault();
       e.stopPropagation();
@@ -3251,6 +3334,13 @@ function setupSubmissionGuard() {
         const promptText = getPromptTextFromElement(activeEl);
         checkOutboundShopping(promptText);
         if (hasUnprotectedPII(activeEl || button)) {
+          const tid = (typeof VIGIL_THREAD_REGISTRY !== 'undefined') ? VIGIL_THREAD_REGISTRY.resolveThreadId(activeEl || button) : null;
+          if (tid && typeof VIGIL_THREAD_REGISTRY !== 'undefined' && VIGIL_THREAD_REGISTRY.isStickyConsentActive(tid)) {
+            e.preventDefault();
+            e.stopPropagation();
+            executeMaskAndSend(activeEl || button, { type: 'button', element: button }, true);
+            return;
+          }
           e.preventDefault();
           e.stopPropagation();
           pendingSubmission = { type: 'button', element: button };
@@ -3281,6 +3371,13 @@ function setupSubmissionGuard() {
           const promptText = getPromptTextFromElement(editableHost);
           checkOutboundShopping(promptText);
           if (hasUnprotectedPII(editableHost)) {
+            const tid = (typeof VIGIL_THREAD_REGISTRY !== 'undefined') ? VIGIL_THREAD_REGISTRY.resolveThreadId(editableHost) : null;
+            if (tid && typeof VIGIL_THREAD_REGISTRY !== 'undefined' && VIGIL_THREAD_REGISTRY.isStickyConsentActive(tid)) {
+              e.preventDefault();
+              e.stopPropagation();
+              executeMaskAndSend(editableHost, { type: 'enter', element: editableHost }, true);
+              return;
+            }
             e.preventDefault();
             e.stopPropagation();
             pendingSubmission = { type: 'enter', element: editableHost };
@@ -3308,6 +3405,13 @@ function setupSubmissionGuard() {
       const promptText = getPromptTextFromElement(activeEl);
       checkOutboundShopping(promptText);
       if (hasUnprotectedPII(activeEl || e.target)) {
+        const tid = (typeof VIGIL_THREAD_REGISTRY !== 'undefined') ? VIGIL_THREAD_REGISTRY.resolveThreadId(activeEl || e.target) : null;
+        if (tid && typeof VIGIL_THREAD_REGISTRY !== 'undefined' && VIGIL_THREAD_REGISTRY.isStickyConsentActive(tid)) {
+          e.preventDefault();
+          e.stopPropagation();
+          executeMaskAndSend(activeEl || e.target, { type: 'form', element: e.target }, true);
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         pendingSubmission = { type: 'form', element: e.target };
@@ -3392,6 +3496,7 @@ function showSubmissionConfirmation() {
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <button id="vigil-modal-mask-send" style="padding:8px 16px;background:linear-gradient(135deg, #10b981 0%, #059669 100%);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px;box-shadow:0 2px 8px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:5px;">⚡ Mask & Send (Recommended)</button>
+        <button id="vigil-modal-sticky" style="padding:8px 12px;background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.4);border-radius:8px;cursor:pointer;font-weight:600;font-size:11.5px;display:inline-flex;align-items:center;gap:4px;">🛡️ Always Mask in Chat</button>
         <button id="vigil-modal-confirm" style="padding:8px 12px;background:transparent;color:#f87171;border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;font-weight:600;font-size:11.5px;" aria-label="Send anyway">${t('sendAnyway')}</button>
         <button id="vigil-modal-cancel" style="padding:8px 12px;background:rgba(255,255,255,0.08);color:#d1d5db;border:1px solid rgba(255,255,255,0.14);border-radius:8px;cursor:pointer;font-weight:500;font-size:11.5px;" aria-label="Cancel submission">${t('cancel')}</button>
       </div>
@@ -3404,6 +3509,7 @@ function showSubmissionConfirmation() {
   document.body.appendChild(modal);
 
   const maskSendBtn = document.getElementById('vigil-modal-mask-send');
+  const stickyBtn = document.getElementById('vigil-modal-sticky');
   const cancelBtn = document.getElementById('vigil-modal-cancel');
   const confirmBtn = document.getElementById('vigil-modal-confirm');
 
@@ -3416,6 +3522,23 @@ function showSubmissionConfirmation() {
       modal.remove();
       const activeEl = getActiveInputElement() || (pending && pending.element);
       executeMaskAndSend(activeEl, pending);
+      return false;
+    };
+  }
+
+  if (stickyBtn) {
+    stickyBtn.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const pending = pendingSubmission;
+      pendingSubmission = null;
+      modal.remove();
+      const activeEl = getActiveInputElement() || (pending && pending.element);
+      if (typeof VIGIL_THREAD_REGISTRY !== 'undefined' && activeEl) {
+        const tid = VIGIL_THREAD_REGISTRY.resolveThreadId(activeEl);
+        VIGIL_THREAD_REGISTRY.setStickyConsent(tid, true);
+      }
+      executeMaskAndSend(activeEl, pending, true);
       return false;
     };
   }
