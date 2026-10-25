@@ -103,8 +103,10 @@ describe('VIGIL Autonomous Bidirectional Rehydration Engine', () => {
       streamP.textContent = 'Streaming reply for Alex Mercer...';
       chatContainer.appendChild(streamP);
 
-      // Wait for microtask / MutationObserver dispatch
-      await new Promise(res => setTimeout(res, 50));
+      // Wait for MutationObserver & batch rAF dispatch
+      for (let i = 0; i < 20 && streamP.textContent.includes('Alex Mercer'); i++) {
+        await new Promise(res => setTimeout(res, 20));
+      }
 
       expect(streamP.textContent).toBe('Streaming reply for Sarah Mitchell...');
     });

@@ -342,3 +342,4 @@
     _getStoreSize: () => threadStore.size
   };
 });
+

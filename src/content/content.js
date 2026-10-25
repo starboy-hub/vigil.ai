@@ -1801,54 +1801,105 @@ function applySanitizedText(element, txt) {
   } else {
     // Robust ContentEditable replacement (Lexical, ProseMirror, Slate, DraftJS, etc.)
     element.focus();
-    let replaced = false;
-    try {
-      const sel = window.getSelection();
-      if (sel) {
+
+    // 1. Target deepest editable element (e.g. <p>) if present
+    const editableTarget = element.querySelector('p') || element.firstElementChild || element;
+    const sel = window.getSelection();
+    if (sel) {
+      try {
         const range = document.createRange();
-        range.selectNodeContents(element);
+        range.selectNodeContents(editableTarget);
         sel.removeAllRanges();
         sel.addRange(range);
-      }
-      // 1. Dispatch beforeinput for modern rich-text editors (Lexical, ProseMirror, Slate)
-      try {
-        element.dispatchEvent(new InputEvent('beforeinput', {
+      } catch (_) {}
+    }
+
+    let replaced = false;
+
+    // 2. Synthetic ClipboardEvent('paste') with DataTransfer
+    // Meta's Lexical (ChatGPT) and ProseMirror (Claude) natively intercept paste events
+    try {
+      if (typeof DataTransfer !== 'undefined') {
+        const dt = new DataTransfer();
+        dt.setData('text/plain', txt);
+
+        try {
+          element.dispatchEvent(new InputEvent('beforeinput', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            inputType: 'insertFromPaste',
+            data: txt,
+            dataTransfer: dt
+          }));
+        } catch (_) {}
+
+        const pasteEv = new ClipboardEvent('paste', {
+          clipboardData: dt,
           bubbles: true,
           cancelable: true,
-          composed: true,
-          inputType: 'insertText',
-          data: txt
-        }));
-      } catch (_) {}
-
-      // 2. Direct execCommand (do NOT gate on deprecated queryCommandSupported)
-      if (typeof document.execCommand === 'function') {
-        replaced = document.execCommand('insertText', false, txt);
+          composed: true
+        });
+        replaced = element.dispatchEvent(pasteEv);
       }
     } catch (_) {}
 
-    // 3. Fallback if execCommand did not update the inner text
-    const currentText = (element.innerText || element.textContent || '').trim();
-    if (!replaced || currentText !== txt.trim()) {
+    // Check if paste event successfully updated text
+    let currentText = (element.innerText || element.textContent || '').trim();
+    if (currentText === txt.trim()) {
+      replaced = true;
+    }
+
+    // 3. Fallback: Native execCommand('insertText')
+    if (!replaced) {
       try {
         if (typeof document.execCommand === 'function') {
-          const sel = window.getSelection();
           if (sel) {
-            const range = document.createRange();
-            range.selectNodeContents(element);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            document.execCommand('delete', false, null);
-            replaced = document.execCommand('insertText', false, txt);
+            try {
+              const range = document.createRange();
+              range.selectNodeContents(editableTarget);
+              sel.removeAllRanges();
+              sel.addRange(range);
+            } catch (_) {}
           }
+          try {
+            element.dispatchEvent(new InputEvent('beforeinput', {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              inputType: 'insertText',
+              data: txt
+            }));
+          } catch (_) {}
+          replaced = document.execCommand('insertText', false, txt);
         }
       } catch (_) {}
-      if (!replaced || (element.innerText || element.textContent || '').trim() !== txt.trim()) {
+    }
+
+    // 4. Fallback if still not matching: selectAll + delete + insertText
+    currentText = (element.innerText || element.textContent || '').trim();
+    if (currentText !== txt.trim()) {
+      try {
+        if (typeof document.execCommand === 'function') {
+          document.execCommand('selectAll', false, null);
+          document.execCommand('delete', false, null);
+          document.execCommand('insertText', false, txt);
+        }
+      } catch (_) {}
+    }
+
+    // 5. DOM paragraph fallback if still not matching
+    currentText = (element.innerText || element.textContent || '').trim();
+    if (currentText !== txt.trim()) {
+      const p = element.querySelector('p');
+      if (p) {
+        p.textContent = txt;
+      } else {
         element.innerText = txt;
       }
     }
 
-    // 4. Dispatch InputEvent, input, and change events
+    // 6. Full input event notification
     try {
       element.dispatchEvent(new InputEvent('input', {
         bubbles: true,
@@ -3120,7 +3171,7 @@ function resumeHeldSubmission(promptText, pending) {
     } finally {
       setTimeout(() => { submissionGuardEnabled = true; }, 500);
     }
-  }, 80);
+  }, 140);
   pendingSubmission = null;
 }
 
