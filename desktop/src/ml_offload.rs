@@ -9,6 +9,7 @@ pub struct MlClassificationResult {
     pub provider: String,
 }
 
+#[allow(dead_code)]
 pub struct NativeMlEngine {
     pub provider_name: String,
     pub is_gpu_accelerated: bool,

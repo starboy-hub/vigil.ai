@@ -38,3 +38,4 @@ jobs:
       - name: Run JS ReDoS & Adversarial Fuzz Suites
         run: |
           npx jest tests/fuzz-detection.test.js --verbose
+

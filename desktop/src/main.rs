@@ -42,6 +42,7 @@ use zeroize::Zeroize;
 const SESSION_TTL_SECS: u64 = 900;
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 struct SessionInfo {
     extension_id: String,
     created_at: u64,

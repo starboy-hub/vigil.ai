@@ -37,7 +37,7 @@
     "data-protection"
   ],
   "author": "Vigil AI Contributors",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "https://github.com/starboy-hub/vigil.ai.git"

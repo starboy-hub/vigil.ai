@@ -3,6 +3,7 @@ name = "vigil-desktop-companion"
 version = "1.0.0"
 edition = "2021"
 authors = ["Vigil AI Security Team <temur.khalid@gmail.com>"]
+license = "AGPL-3.0-or-later"
 description = "Vigil AI Native Desktop Security Companion: Native Messaging Host, E2E-Encrypted Channel, OS Keychain, Audio Spectral Canary, SIEM Export"
 
 [dependencies]
