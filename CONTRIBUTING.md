@@ -117,7 +117,9 @@ To ensure compatibility, reliability, and auditability:
 
 ---
 
-## Reporting Bugs & Requesting Features
+## Community & Communication Channels
 
+* **Community Discussions:** Join [GitHub Discussions](https://github.com/starboy-hub/vigil.ai/discussions) for general questions, feature ideation, and architecture talk.
 * **Bug Reports:** Open an issue on [GitHub Issues](https://github.com/starboy-hub/vigil.ai/issues).
-* **Feature Suggestions:** Describe the motivation, threat scenario, and proposed user experience.
+* **Security Advisories:** Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/starboy-hub/vigil.ai/security/advisories/new).
+* **Feature Suggestions:** Open a topic under Discussions or submit a proposal issue.

@@ -228,7 +228,7 @@
       return { salt: s, indices };
     }
 
-    // ---- Blueprint #15: Burner Identity Mode (Ephemeral 24h Session Pseudonyms) ----
+    // ---- Security Policy: Burner Identity Mode (Ephemeral 24h Session Pseudonyms) ----
     const BURNER_TTL_MS = 86400000; // 24 hours
 
     async function getBurnerPseudoMap() {
@@ -440,7 +440,7 @@
         }
       }
 
-      // 3. Resolve opaque pointer tokens (Blueprint #1). When a redaction
+      // 3. Resolve opaque pointer tokens (Security Policy). When a redaction
       // shipped a provenance token instead of a pseudonym, the AI echoes the
       // token back; restore it for display the same way pseudonyms are.
       restored = restored.replace(/\{\{(?:PTR:[A-Z0-9]+_|VAULT:)([A-Za-z0-9+/]{8})\}\}/g, (token, id) => {
@@ -450,7 +450,7 @@
       return { text: restored };
     }
 
-    // ---- Blueprint 5: Vault Key Rotation Mechanism ----
+    // ---- Security Policy: Vault Key Rotation Mechanism ----
     async function rotateMasterKey() {
       // 1. Load current plaintext vault and trusted entries with existing key
       const currentVault = await loadVault();
@@ -481,7 +481,7 @@
       return { success: true, version: Date.now() };
     }
 
-    // ---- Blueprint 6: Encrypted Backup & Recovery Protocol ----
+    // ---- Security Policy: Encrypted Backup & Recovery Protocol ----
     async function exportVaultEncrypted(passphrase) {
       if (!passphrase || typeof passphrase !== 'string' || passphrase.length < 8) {
         throw new Error('Passphrase must be at least 8 characters');

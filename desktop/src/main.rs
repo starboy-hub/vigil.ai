@@ -5,6 +5,7 @@ mod ide_proxy;
 mod installer;
 mod ml_offload;
 mod phash;
+mod sentinel;
 mod siem_exporter;
 
 use audio_canary::{VoiceCanaryResult, VoiceSpectralCanary};
@@ -19,6 +20,7 @@ use ide_proxy::IdeProxyEngine;
 use installer::VigilInstaller;
 use keyring::Entry;
 use ml_offload::NativeMlEngine;
+use sentinel::SentinelEngine;
 use p256::ecdh::diffie_hellman;
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 use p256::{PublicKey as P256PublicKey, SecretKey as P256SecretKey};
@@ -70,6 +72,7 @@ lazy_static::lazy_static! {
     static ref PROXY_ENGINE: Mutex<IdeProxyEngine> = Mutex::new(IdeProxyEngine::new(8383));
     static ref ML_ENGINE: NativeMlEngine = NativeMlEngine::new();
     static ref ENCLAVE_ENGINE: HardwareEnclaveManager = HardwareEnclaveManager::new();
+    static ref SENTINEL_ENGINE: SentinelEngine = SentinelEngine::new();
     static ref ACTIVE_SESSIONS: Mutex<std::collections::HashMap<String, SessionInfo>> = Mutex::new(std::collections::HashMap::new());
 }
 
@@ -759,6 +762,43 @@ fn dispatch_privileged(req: &JsonRpcRequest, _session: &SessionInfo) -> JsonRpcR
             match phash::perceptual_hash(&pixels, width, height) {
                 Some(hash) => Ok(json!({ "hash": format!("{:016x}", hash) })),
                 None => Err(json!({ "code": -32010, "message": "Invalid pixel buffer for perceptual hashing" })),
+            }
+        }
+        "vigil.sentinelEvaluatePolicy" => {
+            let action = &params["action"];
+            let profile = params["profile"].as_str();
+            let workspace_root = params["workspace_root"].as_str();
+            match SENTINEL_ENGINE.evaluate_policy(action, profile, workspace_root) {
+                Ok(decision) => Ok(decision),
+                Err(e) => Err(json!({ "code": -32020, "message": format!("Sentinel evaluation failed: {}", e) })),
+            }
+        }
+        "vigil.sentinelGetApprovalStatus" => {
+            let target = params["target"].as_str().unwrap_or("");
+            Ok(SENTINEL_ENGINE.get_approval_status(target))
+        }
+        "vigil.sentinelSubmitApproval" => {
+            let target = params["target"].as_str().unwrap_or("");
+            let action_hash = params["action_hash"].as_str().unwrap_or(target);
+            let decision = params["decision"].as_str().unwrap_or("approve");
+            let approver = params["approver"].as_str().unwrap_or("operator");
+            let token = params["token"].as_str();
+            let ttl_secs = params["ttl_secs"].as_u64().unwrap_or(300);
+            match SENTINEL_ENGINE.submit_approval(target, action_hash, decision, approver, token, ttl_secs) {
+                Ok(res) => Ok(res),
+                Err(e) => Err(json!({ "code": -32021, "message": format!("Sentinel approval submission failed: {}", e) })),
+            }
+        }
+        "vigil.sentinelRegisterEnforcementPoint" => {
+            let adapter_id = params["adapter_id"].as_str().unwrap_or("");
+            let adapter_type = params["adapter_type"].as_str().unwrap_or("generic");
+            let capabilities: Vec<String> = params["capabilities"]
+                .as_array()
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                .unwrap_or_default();
+            match SENTINEL_ENGINE.register_enforcement_point(adapter_id, adapter_type, capabilities) {
+                Ok(res) => Ok(res),
+                Err(e) => Err(json!({ "code": -32022, "message": format!("Sentinel adapter registration failed: {}", e) })),
             }
         }
         _ => Err(json!({ "code": -32601, "message": format!("Method not found: {}", method) })),

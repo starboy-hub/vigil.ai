@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #18: Token Budget Enforcement for Agentic AI
+ * VIGIL Security Policy: Token Budget Enforcement for Agentic AI
  *
  * Problem: Autonomous AI agents (AutoGPT, Devins, Claude Code, Tool Use agents)
  * can enter infinite reasoning loops, catastrophic recursion, or prompt injection

@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #14: Adversarial Red-Team Mode ("Pentest My Prompt")
+ * VIGIL Security Policy: Adversarial Red-Team Mode ("Pentest My Prompt")
  *
  * Problem: Users, system prompt developers, and security engineers have no way
  * to test whether their prompts or system instructions are vulnerable to adversarial

@@ -172,7 +172,7 @@
         { name: 'ECDH', public: peerPublicKey },
         privateKey,
         { name: 'AES-GCM', length: 256 },
-        false, // non-extractable (Blueprint 02)
+        false, // non-extractable (Security Policy)
         ['encrypt', 'decrypt']
       );
     }
@@ -278,7 +278,7 @@
 
       // Establish the session exactly once before the first privileged
       // request. performCryptoHandshake establishes the E2E-encrypted channel.
-      // If the cryptographic handshake fails, fail closed (Blueprint 01).
+      // If the cryptographic handshake fails, fail closed (Security Policy).
       if (!isAuthMethod && !skipSession && !this.sessionEstablished && !this.handshakePromise) {
         this.handshakePromise = this.performCryptoHandshake().catch((err) => {
           this.handshakePromise = null;
@@ -518,6 +518,45 @@
     /** Get 1-Click Desktop & Extension Setup Status */
     getSetupStatus() {
       return this.sendRequest('vigil.getSetupStatus', {});
+    }
+
+    /**
+     * Sentinel Stage 5: Evaluate action policy via native companion
+     */
+    sentinelEvaluatePolicy(action, profile = null, workspaceRoot = null) {
+      return this.sendRequest('vigil.sentinelEvaluatePolicy', {
+        action,
+        profile,
+        workspace_root: workspaceRoot
+      });
+    }
+
+    /**
+     * Sentinel Stage 5: Query status of human approval from native anchor
+     */
+    sentinelGetApprovalStatus(target) {
+      return this.sendRequest('vigil.sentinelGetApprovalStatus', { target });
+    }
+
+    /**
+     * Sentinel Stage 5: Submit human approval decision to native anchor
+     */
+    sentinelSubmitApproval(target, decision = 'approve', details = {}) {
+      return this.sendRequest('vigil.sentinelSubmitApproval', {
+        target,
+        action_hash: details.actionHash || target,
+        decision,
+        approver: details.approver || 'operator',
+        token: details.token || null,
+        ttl_secs: details.ttlSecs || 300
+      });
+    }
+
+    /**
+     * Sentinel Stage 5: Register active enforcement adapter
+     */
+    sentinelRegisterEnforcementPoint(adapterInfo) {
+      return this.sendRequest('vigil.sentinelRegisterEnforcementPoint', adapterInfo);
     }
 
     notifyStateChange(state) {

@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #6: Self-Healing File Integrity Monitor
+ * VIGIL Security Policy: Self-Healing File Integrity Monitor
  *
  * Problem: Attackers with local access, malware, or compromised scripts can alter
  * extension JavaScript files, manifest rules, or ONNX neural models to disable security

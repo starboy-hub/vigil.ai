@@ -40,7 +40,7 @@ Version: 11.0.0
 Section: utils
 Priority: optional
 Architecture: amd64
-Maintainer: Vigil AI Security Team <security@vigilai.io>
+Maintainer: Vigil AI Contributors <https://github.com/starboy-hub/vigil.ai>
 Description: Vigil AI Guardian — Local-First AI Threat Firewall & Privacy Enclave
  Vigil provides real-time local protection against prompt injection, data leaks,
  and scam threats across Chrome, Brave, Edge, and Firefox.

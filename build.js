@@ -17,7 +17,43 @@ const FIREFOX_OUT = 'dist-firefox';
 function firefoxManifest(manifest) {
   const m = JSON.parse(JSON.stringify(manifest));
   m.background = {
-    scripts: ['vigil-shared.js', 'vigil-vault.js', 'reality-engine.js', 'signing-engine.js', 'threat-store.js', 'shopping-detector.js', 'semantic-drift.js', 'consensus-firewall.js', 'token-budget.js', 'file-integrity.js', 'compute-boundary.js', 'forensics-replay.js', 'redteam-agent.js', 'zk-compliance.js', 'prompt-git.js', 'local-lora.js', 'semantic-engine.js', 'semantic-abstractor.js', 'native-bridge.js', 'background.js']
+    scripts: [
+      'vigil-shared.js',
+      'phash.js',
+      'adversarial-normalizer.js',
+      'vigil-vault.js',
+      'reality-engine.js',
+      'signing-engine.js',
+      'threat-store.js',
+      'fake-data.js',
+      'redos-engine.js',
+      'detection-engine.js',
+      'secret-engine.js',
+      'sentinel-engine.js',
+      'injection-engine.js',
+      'shopping-detector.js',
+      'semantic-drift.js',
+      'consensus-firewall.js',
+      'token-budget.js',
+      'file-integrity.js',
+      'compute-boundary.js',
+      'forensics-replay.js',
+      'redteam-agent.js',
+      'semantic-engine.js',
+      'leakage-detector.js',
+      'siem-exporter.js',
+      'zk-compliance.js',
+      'prompt-git.js',
+      'local-lora.js',
+      'enterprise-policy.js',
+      'semantic-abstractor.js',
+      'rehydration-engine.js',
+      'k-anonymity-auditor.js',
+      'honeytoken-canary-generator.js',
+      'adaptive-router.js',
+      'native-bridge.js',
+      'background.js'
+    ]
   };
   m.browser_specific_settings = { gecko: { id: 'vigil@starboy-hub.github.io', strict_min_version: '115.0' } };
   // No chrome.offscreen in Firefox: the in-browser AI model + its permission
@@ -148,6 +184,22 @@ function vendorAIRuntime(out) {
   return true;
 }
 
+/** Bundle scanner-worker.js with all required modules into a self-contained worker script */
+function bundleScannerWorker(out) {
+  const workerDepFiles = [
+    'src/shared/vigil-shared.js',
+    'src/background/vigil-vault.js',
+    'src/content/modules/fake-data.js',
+    'src/content/modules/redos-engine.js',
+    'src/content/modules/detection-engine.js',
+    'src/content/modules/secret-engine.js',
+    'src/content/modules/k-anonymity-auditor.js',
+    'src/content/scanner-worker.js'
+  ];
+  const bundledContent = workerDepFiles.map(f => fs.readFileSync(f, 'utf8')).join('\n;\n');
+  fs.writeFileSync(path.join(out, 'scanner-worker.js'), bundledContent);
+}
+
 /** Build the Chromium target into `out` (default dist). Returns file count. */
 function buildChromium(out = CHROME_OUT) {
   if (fs.existsSync(out)) fs.rmSync(out, { recursive: true });
@@ -216,6 +268,8 @@ function buildChromium(out = CHROME_OUT) {
   ];
   const written = copySources(out, files);
   copyIcons(out);
+  bundleScannerWorker(out);
+  written.push('scanner-worker.js');
   const hasAI = vendorAIRuntime(out);
   if (!hasAI) console.warn('! in-browser AI runtime omitted');
   const hasModel = vendorFineTunedModel(out);
@@ -289,6 +343,8 @@ function buildFirefox(out = FIREFOX_OUT) {
   ];
   const written = copySources(out, files);
   copyIcons(out);
+  bundleScannerWorker(out);
+  written.push('scanner-worker.js');
   writeIntegrityManifest(out);
   return written.length;
 }

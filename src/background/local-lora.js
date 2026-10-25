@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #16 — Asynchronous Local LoRA Fine-Tuning
+ * VIGIL Security Policy — Asynchronous Local LoRA Fine-Tuning
  *
  * Implements a rank-4 Low-Rank Adaptation (LoRA) layer on top of the base
  * classifier logits.  All training happens on-device, only when the device is
@@ -38,7 +38,7 @@
   const BATCH_SIZE  = 8;
   const MAX_SAMPLES = 512;            // ring-buffer capacity
 
-  // Blueprint #17: differential-privacy parameters (Gaussian mechanism)
+  // Security Policy: differential-privacy parameters (Gaussian mechanism)
   const DP_EPSILON = 1.0;             // privacy budget ε
   const DP_DELTA = 1e-5;              // failure probability δ
   const DP_CLIP_NORM = 5.0;           // L2 clip of the raw flattened delta
@@ -105,7 +105,7 @@
       this._samples = [];  // { embedding: number[], label: number }
       this._preferencePairs = []; // { embedding: number[], chosen: number, rejected: number }
 
-      // Blueprint #17: aggregated, DP-noised federated delta from the swarm,
+      // Security Policy: aggregated, DP-noised federated delta from the swarm,
       // applied as an additive per-embedding bias on the logits
       this.federatedDelta = new Float32Array(N_CLASSES * D_IN);
 
@@ -379,7 +379,7 @@
       return true; // No Battery API → allow (desktop / test)
     }
 
-    // ── Blueprint #17: Differential-Privacy Federated Contributions ─────────
+    // ── Security Policy: Differential-Privacy Federated Contributions ─────────
     /**
      * Builds a DP-protected adapter contribution for swarm sharing.
      *

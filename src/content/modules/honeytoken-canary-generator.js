@@ -1,5 +1,5 @@
 /**
- * VIGIL AI — System 5: Active Counter-Surveillance & Dynamic Honeytoken Canary Generator
+ * VIGIL AI — System 5: Active Counter-Surveillance & Dynamic Decoy Credential System
  *
  * Dynamically synthesizes zero-value high-fidelity decoy canaries (API keys,
  * cloud credentials, session JWTs, database URLs) tailored to user workflows.

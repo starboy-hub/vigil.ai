@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #2: ReDoS Hardening Engine
+ * VIGIL Security Policy: ReDoS Hardening Engine
  *
  * Problem: The JavaScript regular expression engine uses backtracking NFA algorithms.
  * Exponential backtracking (O(2^n)) occurs when patterns contain nested quantifiers

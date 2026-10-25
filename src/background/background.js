@@ -1,37 +1,41 @@
-importScripts('vigil-shared.js');
-importScripts('phash.js');
-importScripts('adversarial-normalizer.js');
-importScripts('vigil-vault.js');
-importScripts('reality-engine.js');
-importScripts('signing-engine.js');
-importScripts('threat-store.js');
-importScripts('fake-data.js');
-importScripts('redos-engine.js');
-importScripts('detection-engine.js');
-importScripts('secret-engine.js');
-importScripts('sentinel-engine.js');
-importScripts('injection-engine.js');
-importScripts('shopping-detector.js');
-importScripts('semantic-drift.js');
-importScripts('consensus-firewall.js');
-importScripts('token-budget.js');
-importScripts('file-integrity.js');
-importScripts('compute-boundary.js');
-importScripts('forensics-replay.js');
-importScripts('redteam-agent.js');
-importScripts('semantic-engine.js');
-importScripts('leakage-detector.js');
-importScripts('siem-exporter.js');
-importScripts('zk-compliance.js');
-importScripts('prompt-git.js');
-importScripts('local-lora.js');
-importScripts('enterprise-policy.js');
-importScripts('semantic-abstractor.js');
-importScripts('rehydration-engine.js');
-importScripts('k-anonymity-auditor.js');
-importScripts('honeytoken-canary-generator.js');
-importScripts('adaptive-router.js');
-importScripts('native-bridge.js');
+// Environment-adaptive script loading: Service Worker (Chromium) uses importScripts;
+// Background Page (Firefox) loads scripts in manifest order in window context.
+if (typeof importScripts === 'function') {
+  importScripts('vigil-shared.js');
+  importScripts('phash.js');
+  importScripts('adversarial-normalizer.js');
+  importScripts('vigil-vault.js');
+  importScripts('reality-engine.js');
+  importScripts('signing-engine.js');
+  importScripts('threat-store.js');
+  importScripts('fake-data.js');
+  importScripts('redos-engine.js');
+  importScripts('detection-engine.js');
+  importScripts('secret-engine.js');
+  importScripts('sentinel-engine.js');
+  importScripts('injection-engine.js');
+  importScripts('shopping-detector.js');
+  importScripts('semantic-drift.js');
+  importScripts('consensus-firewall.js');
+  importScripts('token-budget.js');
+  importScripts('file-integrity.js');
+  importScripts('compute-boundary.js');
+  importScripts('forensics-replay.js');
+  importScripts('redteam-agent.js');
+  importScripts('semantic-engine.js');
+  importScripts('leakage-detector.js');
+  importScripts('siem-exporter.js');
+  importScripts('zk-compliance.js');
+  importScripts('prompt-git.js');
+  importScripts('local-lora.js');
+  importScripts('enterprise-policy.js');
+  importScripts('semantic-abstractor.js');
+  importScripts('rehydration-engine.js');
+  importScripts('k-anonymity-auditor.js');
+  importScripts('honeytoken-canary-generator.js');
+  importScripts('adaptive-router.js');
+  importScripts('native-bridge.js');
+}
 
 
 // Initialize Native Desktop Companion bridge connection
@@ -74,7 +78,7 @@ async function ensureSession() {
   return session;
 }
 
-// ---- Multi-Provider Jailbreak Shopping Detector (Blueprint #10) ----
+// ---- Multi-Provider Jailbreak Shopping Detector (Security Policy) ----
 const sessionShoppingStorage = {
   get: (keys) => new Promise((res) => {
     if (chrome.storage && chrome.storage.session) chrome.storage.session.get(keys, res);
@@ -111,12 +115,12 @@ const ensureOffscreen = async () => {
   await offscreenCreating;
 };
 
-// ---- Multi-Turn Semantic Drift & Behavioral Grooming Tracker (Blueprint #7) ----
+// ---- Multi-Turn Semantic Drift & Behavioral Grooming Tracker (Security Policy) ----
 const driftTracker = typeof VIGIL_DRIFT !== 'undefined'
   ? new VIGIL_DRIFT.SemanticDriftTracker()
   : null;
 
-// ---- Multi-Model Consensus Firewall (Blueprint #19) ----
+// ---- Multi-Model Consensus Firewall (Security Policy) ----
 const consensusFirewall = typeof VIGIL_CONSENSUS !== 'undefined'
   ? new VIGIL_CONSENSUS.ConsensusFirewall({
       runners: {
@@ -166,22 +170,22 @@ const consensusFirewall = typeof VIGIL_CONSENSUS !== 'undefined'
     })
   : null;
 
-// ---- Token Budget Enforcement for Agentic AI (Blueprint #18) ----
-const tokenBudget = typeof TokenBudgetModule !== 'undefined'
-  ? TokenBudgetModule.tokenBudgetManager
-  : null;
 
-// ---- Self-Healing File Integrity Monitor (Blueprint #6) ----
+// ---- Self-Healing File Integrity Monitor (Security Policy) ----
 const integrityMonitor = typeof VIGIL_INTEGRITY !== 'undefined'
   ? VIGIL_INTEGRITY.integrityClient
   : null;
 
-// Blueprint #6 periodic schedule: audit the packaged extension files against
+// Security Policy periodic schedule: audit the packaged extension files against
 // the baseline manifest. chrome.alarms survives service-worker suspension,
 // which setTimeout does not.
 if (typeof chrome !== 'undefined' && chrome.alarms && chrome.alarms.create) {
   chrome.alarms.create('vigil-integrity-scan', { delayInMinutes: 1, periodInMinutes: 60 });
   chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm && alarm.name === 'pause_protection') {
+      chrome.storage.local.set({ protection_paused: false, protection_pause_until: 0 }, () => {});
+      return;
+    }
     if (!alarm || alarm.name !== 'vigil-integrity-scan') return;
     if (!integrityMonitor || typeof integrityMonitor.selfAudit !== 'function') return;
     integrityMonitor.selfAudit().then((report) => {
@@ -196,12 +200,9 @@ if (typeof chrome !== 'undefined' && chrome.alarms && chrome.alarms.create) {
   });
 }
 
-// ---- Dynamic Compute Boundary & Hardware Budgeting (Blueprint #4) ----
-const computeManager = typeof ComputeBoundaryModule !== 'undefined'
-  ? ComputeBoundaryModule.computeBoundaryManager
-  : null;
 
-// ---- Adversarial Replay Mode (Forensics Replay) (Blueprint #12) ----
+
+// ---- Adversarial Replay Mode (Forensics Replay) (Security Policy) ----
 const forensicsStorage = {
   get: (keys) => new Promise((res) => chrome.storage.local.get(keys, res)),
   set: (obj) => new Promise((res) => chrome.storage.local.set(obj, res))
@@ -225,7 +226,7 @@ const forensicsEngine = typeof VIGIL_FORENSICS !== 'undefined'
     })
   : null;
 
-// ---- Prompt Git (Conversation Version Control) (Blueprint #13) ----
+// ---- Prompt Git (Conversation Version Control) (Security Policy) ----
 const promptGitStorage = {
   get: (keys) => new Promise((res) => chrome.storage.local.get(keys, res)),
   set: (obj) => new Promise((res) => chrome.storage.local.set(obj, res))
@@ -237,7 +238,7 @@ if (promptGit) {
   promptGit.loadFromStorage().catch(() => {});
 }
 
-// ---- Async Local LoRA Fine-Tuning (Blueprint #16) ----
+// ---- Async Local LoRA Fine-Tuning (Security Policy) ----
 const loraStorage = {
   get: (keys) => new Promise((res) => chrome.storage.local.get(keys, res)),
   set: (obj)  => new Promise((res) => chrome.storage.local.set(obj, res))
@@ -302,16 +303,13 @@ const isStr = (v, max) => typeof v === 'string' && v.length > 0 && v.length <= m
 function validateMessage(request) {
   if (typeof request !== 'object' || request === null || typeof request.type !== 'string') return false;
   switch (request.type) {
-    case 'GET_SETTINGS': case 'CHECK_OLLAMA': case 'OPEN_OPTIONS': case 'THREAT_EXPORT': case 'OFFSCREEN_ERROR': case 'OFFSCREEN_LOADED': case 'WEBGPU_PROGRESS': case 'WEBGPU_WARMUP': case 'SENTINEL_WEBGPU': case 'GET_NATIVE_STATUS': case 'GET_SESSION_GUARD': case 'SESSION_EVENT':
+    case 'GET_SETTINGS': case 'CHECK_OLLAMA': case 'OPEN_OPTIONS': case 'THREAT_EXPORT': case 'OFFSCREEN_ERROR': case 'WEBGPU_PROGRESS': case 'WEBGPU_WARMUP': case 'SENTINEL_WEBGPU': case 'GET_SESSION_GUARD': case 'SESSION_EVENT':
     case 'THREAT_COUNT': case 'VAULT_LIST': case 'VAULT_CORPUS': case 'VAULT_CLEAR':
     case 'VAULT_BLIND_INDEX': case 'VAULT_ROTATE_BURNER': case 'VAULT_GET_BURNER_STATUS': case 'VAULT_ROTATE_KEY':
-    case 'INTEGRITY_AUDIT': case 'INTEGRITY_DAEMON_SCAN':
-    case 'COMPUTE_GET_STATUS': case 'FORENSICS_GET_HISTORY': case 'FORENSICS_CLEAR_HISTORY':
-    case 'ZK_GENERATE_DLP_PROOF': case 'ZK_VERIFY_PROOF':
+    case 'ZK_GENERATE_DLP_PROOF':
     case 'PROMPT_GIT_LOG': case 'PROMPT_GIT_STATUS':
-    case 'LORA_GET_STATUS': case 'LORA_TRIGGER_TRAIN': case 'LORA_BUILD_CONTRIBUTION': case 'LORA_SYNC_FEDERATED':
-    case 'LORA_TRIGGER_DPO_TRAIN': case 'REDTEAM_TRIGGER_SELF_PLAY':
-    case 'AUDIT_QUASI_IDENTIFIERS': case 'GENERATE_WORKFLOW_CANARIES': case 'INSPECT_CANARY_LEAK':
+    case 'LORA_GET_STATUS': case 'LORA_TRIGGER_TRAIN':
+    case 'GENERATE_WORKFLOW_CANARIES': case 'INSPECT_CANARY_LEAK':
     case 'SWARM_SYNC':
       return true;
     case 'INTEGRITY_DAEMON_RESTORE':
@@ -328,14 +326,12 @@ function validateMessage(request) {
       return isStr(request.original, 200) && isStr(request.safe, 200);
     case 'GENERATE_SAFE_PARAPHRASE':
       return isStr(request.text, 20000);
-    case 'FORENSICS_REPLAY_PROMPT': case 'REDTEAM_PENTEST_PROMPT': case 'PROMPT_GIT_COMMIT':
+    case 'REDTEAM_PENTEST_PROMPT': case 'PROMPT_GIT_COMMIT':
       return isStr(request.prompt, 50000);
     case 'PROMPT_GIT_BRANCH':
       return isStr(request.name, 100);
     case 'PROMPT_GIT_CHECKOUT':
       return isStr(request.target, 100);
-    case 'PROMPT_GIT_DIFF':
-      return isStr(request.commitA, 64) && isStr(request.commitB, 64);
     case 'LORA_RECORD_CORRECTION':
       return typeof request.label === 'number' && [0, 1, 2].includes(request.label) &&
         ((Array.isArray(request.embedding) && request.embedding.length >= 1) || isStr(request.text, 2000));
@@ -352,14 +348,12 @@ function validateMessage(request) {
     case 'SAVE_TRUSTED_SITES':
       return Array.isArray(request.sites) && request.sites.length <= 500 &&
         request.sites.every(s => isStr(s, 200));
-    case 'CLASSIFY_TEXT': case 'SENTINEL_LLM': case 'CONSENSUS_EVALUATE': case 'SIGN_SIGN': case 'SIGN_WATERMARK':
+    case 'SENTINEL_LLM': case 'CONSENSUS_EVALUATE': case 'SIGN_SIGN':
       return isStr(request.text, 20000);
     case 'PIMAGE_HASH': case 'PIMAGE_HASH_CHECK':
       return Array.isArray(request.pixels) && request.pixels.length <= 65536 &&
         Number.isInteger(request.width) && request.width > 0 && request.width <= 64 &&
         Number.isInteger(request.height) && request.height > 0 && request.height <= 64;
-    case 'PIMAGE_HASH_BLOCK':
-      return isStr(request.hash, 16) && (!request.label || isStr(request.label, 120));
     case 'SIGN_VERIFY':
       return isStr(request.blockText, 50000);
     case 'SIGN_VERIFY_WATERMARK':
@@ -368,18 +362,10 @@ function validateMessage(request) {
       return isStr(request.prompt, 50000) && (!request.site || isStr(request.site, 200));
     case 'DRIFT_RECORD_TURN':
       return isStr(request.sessionId, 128) && isStr(request.text, 50000) && (!request.site || isStr(request.site, 200));
-    case 'DRIFT_RESET_SESSION': case 'DRIFT_GET_TRAJECTORY':
+    case 'DRIFT_RESET_SESSION':
       return isStr(request.sessionId, 128);
-    case 'LEAKAGE_GET_FINGERPRINTS':
-      return true;
     case 'LEAKAGE_CHECK':
       return isStr(request.text, 50000);
-    case 'LEAKAGE_REGISTER_FINGERPRINT':
-      return isStr(request.id, 64) && isStr(request.name, 128) && isStr(request.text, 50000);
-    case 'TOKEN_BUDGET_STATUS': case 'TOKEN_BUDGET_RESET': case 'TOKEN_BUDGET_SET_LIMITS':
-      return true;
-    case 'TOKEN_BUDGET_RECORD': case 'TOKEN_BUDGET_CHECK':
-      return typeof request.tokens === 'number' || isStr(request.text, 50000);
     case 'VAULT_ADD':
       return isStr(request.value, 1000) && VAULT_KINDS.includes(request.kind);
     case 'VAULT_ADD_TRUSTED':
@@ -622,16 +608,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return false;
     }
     
-    if (request.type === 'AUDIT_QUASI_IDENTIFIERS') {
-      const text = request.text || '';
-      let audit = { isHighRisk: false, cumulativeEntropy: 0, estimatedK: 1000000, riskScore: 0, quasiIdentifiers: [] };
-      if (typeof VIGIL_K_ANONYMITY !== 'undefined' && VIGIL_K_ANONYMITY.auditPrompt) {
-        audit = VIGIL_K_ANONYMITY.auditPrompt(text);
-      }
-      sendResponse({ ok: true, audit });
-      return false;
-    }
-
     if (request.type === 'GENERATE_WORKFLOW_CANARIES') {
       let bundle = null;
       if (typeof VIGIL_CANARY_GENERATOR !== 'undefined') {
@@ -768,7 +744,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch((e) => sendResponse({ ok: false, error: e.message }));
       return true;
     }
-    // ---- Synthetic-media provenance (Blueprint #6): pHash + blocklist ----
+    // ---- Synthetic-media provenance (Security Policy): pHash + blocklist ----
     const PHASH_KEY = 'vigil_phash_blocklist';
     const PHASH_MATCH_DISTANCE = 8;
 
@@ -813,16 +789,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch((e) => sendResponse({ ok: false, error: e.message }));
       return true;
     }
-    if (request.type === 'PIMAGE_HASH_BLOCK') {
-      chrome.storage.local.get([PHASH_KEY], (s) => {
-        const list = s[PHASH_KEY] || [];
-        const entry = { hash: request.hash, label: (isStr(request.label, 120) ? request.label : 'synthetic'), addedAt: new Date().toISOString() };
-        const updated = [...list.filter((e) => e.hash !== entry.hash), entry].slice(-1000);
-        chrome.storage.local.set({ [PHASH_KEY]: updated }, () => sendResponse({ ok: true, total: updated.length }));
-      });
-      return true;
-    }
-
     if (request.type === 'CONSENSUS_EVALUATE') {
       const kind = request.kind === 'scam' ? 'scam' : 'injection';
       const isStrict = Boolean(request.strict);
@@ -921,11 +887,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    if (request.type === 'GET_NATIVE_STATUS') {
-      sendResponse({ isConnected: typeof VIGIL_NATIVE_BRIDGE !== 'undefined' && VIGIL_NATIVE_BRIDGE.isConnected });
-      return true;
-    }
-
     // ---- Session Guard: per-browser-session defense context ----
     if (request.type === 'GET_SESSION_GUARD') {
       ensureSession().then((session) => sendResponse({ session }));
@@ -954,12 +915,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch((e) => sendResponse({ valid: false, reason: e.message }));
       return true;
     }
-    if (request.type === 'SIGN_WATERMARK') {
-      signer.signInvisible(request.text)
-        .then((watermarkedText) => sendResponse({ ok: true, watermarkedText }))
-        .catch((e) => sendResponse({ ok: false, error: e.message }));
-      return true;
-    }
     if (request.type === 'SIGN_VERIFY_WATERMARK') {
       signer.verifyInvisible(request.text)
         .then((result) => sendResponse(result))
@@ -967,7 +922,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    // ---- Multi-Provider Jailbreak Shopping Detection (Blueprint #10) ----
+    // ---- Multi-Provider Jailbreak Shopping Detection (Security Policy) ----
     if (request.type === 'CHECK_PROMPT_SHOPPING') {
       if (!shoppingDetector) {
         sendResponse({ tracked: false, shoppingDetected: false, reason: 'detector_unavailable' });
@@ -993,7 +948,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    // ---- Multi-Turn Semantic Drift & Behavioral Grooming (Blueprint #7) ----
+    // ---- Multi-Turn Semantic Drift & Behavioral Grooming (Security Policy) ----
     if (request.type === 'DRIFT_RECORD_TURN') {
       if (!driftTracker) {
         sendResponse({ driftDetected: false, reason: 'drift_tracker_unavailable' });
@@ -1030,18 +985,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(() => sendResponse({ success: false }));
       return true;
     }
-    if (request.type === 'DRIFT_GET_TRAJECTORY') {
-      if (!driftTracker) {
-        sendResponse({ session: null });
-        return false;
-      }
-      driftTracker.getSession(request.sessionId)
-        .then((session) => sendResponse({ session }))
-        .catch(() => sendResponse({ session: null }));
-      return true;
-    }
-
-    // ---- Training Data Leakage & Copyleft Code Regurgitation (Blueprint #11) ----
+    // ---- Training Data Leakage & Copyleft Code Regurgitation (Security Policy) ----
     if (request.type === 'LEAKAGE_CHECK') {
       if (typeof VIGIL_LEAKAGE === 'undefined') {
         sendResponse({ isLeakage: false, reason: 'leakage_detector_unavailable' });
@@ -1067,130 +1011,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
       return true;
     }
-    if (request.type === 'LEAKAGE_GET_FINGERPRINTS') {
-      chrome.storage.local.get(['vigil_custom_leakage_fingerprints'], (stored) => {
-        const customFPs = (stored && stored.vigil_custom_leakage_fingerprints) || [];
-        const builtin = typeof VIGIL_LEAKAGE !== 'undefined' ? VIGIL_LEAKAGE.BUILTIN_FINGERPRINTS : [];
-        sendResponse({ builtin, custom: customFPs });
-      });
-      return true;
-    }
-    if (request.type === 'LEAKAGE_REGISTER_FINGERPRINT') {
-      if (typeof VIGIL_LEAKAGE === 'undefined') {
-        sendResponse({ success: false, reason: 'leakage_detector_unavailable' });
-        return false;
-      }
-      chrome.storage.local.get(['vigil_custom_leakage_fingerprints'], (stored) => {
-        const customFPs = (stored && stored.vigil_custom_leakage_fingerprints) || [];
-        const fp = VIGIL_LEAKAGE.registerFingerprint(request.id, request.name, request.category, request.text);
-        if (fp) {
-          const updated = customFPs.filter(f => f.id !== fp.id).concat(fp);
-          chrome.storage.local.set({ vigil_custom_leakage_fingerprints: updated }, () => {
-            sendResponse({ success: true, fingerprint: fp });
-          });
-        } else {
-          sendResponse({ success: false, reason: 'invalid_fingerprint' });
-        }
-      });
-      return true;
-    }
 
-    // ---- Token Budget Enforcement for Agentic AI (Blueprint #18) ----
-    if (request.type === 'TOKEN_BUDGET_RECORD') {
-      if (!tokenBudget) {
-        sendResponse({ allowed: true, reason: 'token_budget_unavailable' });
-        return false;
-      }
-      const verdict = tokenBudget.recordUsage(request.agentId || 'default', request.tokens !== undefined ? request.tokens : request.text);
-      if (verdict.hardBlocked || verdict.softAlert) {
-        try {
-          if (typeof VIGIL_SIEM !== 'undefined' && VIGIL_SIEM.exportEvent) {
-            VIGIL_SIEM.exportEvent(verdict.hardBlocked ? 'TOKEN_BUDGET_EXCEEDED_BLOCKED' : 'TOKEN_BUDGET_SOFT_ALERT', {
-              agentId: verdict.agentId,
-              sessionTokens: verdict.sessionTokens,
-              sessionLimit: verdict.sessionLimit,
-              dailyTokens: verdict.dailyTokens,
-              dailyLimit: verdict.dailyLimit,
-              isRunawayLoop: verdict.isRunawayLoop,
-              reason: verdict.reason
-            });
-          }
-        } catch (e) {}
-      }
-      sendResponse(verdict);
-      return true;
-    }
-    if (request.type === 'TOKEN_BUDGET_CHECK') {
-      if (!tokenBudget) {
-        sendResponse({ allowed: true, reason: 'token_budget_unavailable' });
-        return false;
-      }
-      const verdict = tokenBudget.checkBudget(request.agentId || 'default', request.tokens !== undefined ? request.tokens : request.text);
-      sendResponse(verdict);
-      return true;
-    }
-    if (request.type === 'TOKEN_BUDGET_STATUS') {
-      if (!tokenBudget) {
-        sendResponse({ status: null, reason: 'token_budget_unavailable' });
-        return false;
-      }
-      sendResponse(tokenBudget.getStatus(request.agentId));
-      return true;
-    }
-    if (request.type === 'TOKEN_BUDGET_RESET') {
-      if (!tokenBudget) {
-        sendResponse({ success: false });
-        return false;
-      }
-      const success = request.resetDaily
-        ? tokenBudget.resetDaily(request.agentId || 'default')
-        : tokenBudget.resetSession(request.agentId || 'default');
-      sendResponse({ success });
-      return true;
-    }
-    if (request.type === 'TOKEN_BUDGET_SET_LIMITS') {
-      if (!tokenBudget) {
-        sendResponse({ success: false });
-        return false;
-      }
-      const updatedConfig = tokenBudget.setLimits(request.limits || {});
-      sendResponse({ success: true, config: updatedConfig });
-      return true;
-    }
-
-    // ---- Self-Healing File Integrity Monitor (Blueprint #6) ----
-    if (request.type === 'INTEGRITY_AUDIT') {
-      if (!integrityMonitor) {
-        sendResponse({ isValid: false, reason: 'integrity_monitor_unavailable' });
-        return false;
-      }
-      integrityMonitor.auditFiles(request.filesMap || {}, request.manifest)
-        .then((report) => {
-          if (!report.isValid) {
-            try {
-              if (typeof VIGIL_SIEM !== 'undefined' && VIGIL_SIEM.exportEvent) {
-                VIGIL_SIEM.exportEvent('FILE_INTEGRITY_TAMPER_DETECTED', {
-                  tamperedCount: report.tamperedCount,
-                  tamperedFiles: report.tamperedFiles
-                });
-              }
-            } catch (e) {}
-          }
-          sendResponse(report);
-        })
-        .catch((err) => sendResponse({ isValid: false, error: err.message }));
-      return true;
-    }
-    if (request.type === 'INTEGRITY_DAEMON_SCAN') {
-      if (!integrityMonitor) {
-        sendResponse({ success: false, reason: 'integrity_monitor_unavailable' });
-        return false;
-      }
-      integrityMonitor.scanViaNativeDaemon(typeof VIGIL_NATIVE_BRIDGE !== 'undefined' ? VIGIL_NATIVE_BRIDGE : null, request.targetDir, request.manifest)
-        .then((res) => sendResponse(res))
-        .catch((err) => sendResponse({ success: false, error: err.message }));
-      return true;
-    }
+    // ---- Self-Healing File Integrity Monitor (Security Policy) ----
     if (request.type === 'INTEGRITY_DAEMON_RESTORE') {
       if (!integrityMonitor) {
         sendResponse({ success: false, reason: 'integrity_monitor_unavailable' });
@@ -1202,17 +1024,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    // ---- Dynamic Compute Boundary & Hardware Budgeting (Blueprint #4) ----
-    if (request.type === 'COMPUTE_GET_STATUS') {
-      if (!computeManager) {
-        sendResponse({ status: null, reason: 'compute_manager_unavailable' });
-        return false;
-      }
-      sendResponse(computeManager.getStatus());
-      return true;
-    }
-
-    // ---- Adversarial Replay Mode (Forensics Replay) (Blueprint #12) ----
+    // ---- Adversarial Replay Mode (Forensics Replay) (Security Policy) ----
     if (request.type === 'FORENSICS_REPLAY_PROMPT') {
       if (!forensicsEngine) {
         sendResponse({ ok: false, error: 'forensics_unavailable' });
@@ -1244,7 +1056,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    // ---- Adversarial Red-Team Mode (Blueprint #14) ----
+    // ---- Adversarial Red-Team Mode (Security Policy) ----
     if (request.type === 'REDTEAM_PENTEST_PROMPT') {
       if (typeof VIGIL_REDTEAM === 'undefined' || !VIGIL_REDTEAM.redTeamAgent) {
         sendResponse({ ok: false, error: 'redteam_unavailable' });
@@ -1263,7 +1075,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return false;
     }
 
-    // ---- Zero-Knowledge Proof of DLP Compliance (Blueprint #9) ----
+    // ---- Zero-Knowledge Proof of DLP Compliance (Security Policy) ----
     if (request.type === 'ZK_GENERATE_DLP_PROOF') {
       if (typeof VIGIL_ZK === 'undefined') {
         sendResponse({ ok: false, error: 'zk_engine_unavailable' });
@@ -1291,24 +1103,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
       return true;
     }
-    if (request.type === 'ZK_VERIFY_PROOF') {
-      if (typeof VIGIL_ZK === 'undefined') {
-        sendResponse({ ok: false, error: 'zk_engine_unavailable' });
-        return false;
-      }
-      const ZK_KEY_V = VIGIL.KEYS.ZK_ATTESTATION_KEY || 'vigil_zk_attestation_key';
-      chrome.storage.local.get([ZK_KEY_V], (stored) => {
-        try {
-          const verification = VIGIL_ZK.verifyDlpProof(request.proofPackage, { attestationKey: stored[ZK_KEY_V] });
-          sendResponse({ ok: true, verification });
-        } catch (err) {
-          sendResponse({ ok: false, error: err.message });
-        }
-      });
-      return true;
-    }
 
-    // ---- Prompt Git (Conversation Version Control) (Blueprint #13) ----
+    // ---- Prompt Git (Conversation Version Control) (Security Policy) ----
     if (request.type === 'PROMPT_GIT_COMMIT') {
       if (!promptGit) {
         sendResponse({ ok: false, error: 'prompt_git_unavailable' });
@@ -1365,21 +1161,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch((err) => sendResponse({ ok: false, error: err.message }));
       return true;
     }
-    if (request.type === 'PROMPT_GIT_DIFF') {
-      if (!promptGit) {
-        sendResponse({ ok: false, error: 'prompt_git_unavailable' });
-        return false;
-      }
-      try {
-        const diffRes = promptGit.diff(request.commitA, request.commitB, request.options || {});
-        sendResponse({ ok: true, diff: diffRes });
-      } catch (err) {
-        sendResponse({ ok: false, error: err.message });
-      }
-      return false;
-    }
-
-    // ---- Local LoRA Fine-Tuning (Blueprint #16) ----
+    // ---- Local LoRA Fine-Tuning (Security Policy) ----
     if (request.type === 'LORA_GET_STATUS') {
       if (!loraAdapter) {
         sendResponse({ ok: false, error: 'lora_unavailable' });
@@ -1430,55 +1212,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         loraAdapter.saveAdapter(loraStorage).catch(() => {});
         sendResponse({ ok: true, loss: result.loss, steps: result.steps });
       }).catch((err) => sendResponse({ ok: false, error: err.message }));
-      return true;
-    }
-
-    // ---- Federated LoRA with Differential Privacy (Blueprint #17) ----
-    if (request.type === 'LORA_BUILD_CONTRIBUTION') {
-      if (!loraAdapter) {
-        sendResponse({ ok: false, error: 'lora_unavailable' });
-        return false;
-      }
-      try {
-        // The contribution is DP-noised LOCALLY before it ever leaves the
-        // device — the relay never sees raw corrections.
-        const contribution = loraAdapter.buildFederatedContribution(request.options || {});
-        sendResponse({ ok: true, contribution });
-      } catch (err) {
-        sendResponse({ ok: false, error: err.message });
-      }
-      return false;
-    }
-    if (request.type === 'LORA_SYNC_FEDERATED') {
-      if (!loraAdapter) {
-        sendResponse({ ok: false, error: 'lora_unavailable' });
-        return false;
-      }
-      chrome.storage.sync.get(['settings'], (s) => {
-        const settings = s.settings || {};
-        if (!settings.federatedSharing) {
-          sendResponse({ ok: false, reason: 'federated_sharing_disabled' });
-          return;
-        }
-        const relayBase = (settings.relayUrl || 'http://127.0.0.1:8787').replace(/\/$/, '');
-        const push = loraAdapter.buildFederatedContribution({});
-        const pushPromise = push
-          ? fetch(`${relayBase}/federated`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(push),
-              signal: AbortSignal.timeout(5000)
-            }).then((r) => ({ pushed: r.ok }))
-          : Promise.resolve({ pushed: false, reason: 'not_enough_samples' });
-        pushPromise
-          .then((pushRes) => fetch(`${relayBase}/federated/aggregate?classes=3&dIn=128`, { signal: AbortSignal.timeout(5000) })
-            .then((r) => r.json())
-            .then((aggregate) => {
-              const applied = loraAdapter.applyFederatedDelta(aggregate);
-              sendResponse({ ok: true, ...pushRes, applied, contributors: aggregate.contributors || 0 });
-            }))
-          .catch((err) => sendResponse({ ok: false, error: err.message }));
-      });
       return true;
     }
 
@@ -1535,16 +1268,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    if (request.type === 'OFFSCREEN_ERROR') {
-      chrome.storage.local.set({ offscreen_last_error: request.message });
-      return false;
-    }
-
-    if (request.type === 'OFFSCREEN_LOADED') {
-      chrome.storage.local.set({ offscreen_loaded: Date.now() });
-      console.log('[VIGIL] Offscreen document loaded');
-      return false;
-    }
     if (request.type === 'OFFSCREEN_ERROR') {
       chrome.storage.local.set({ offscreen_last_error: request.message });
       console.error('[VIGIL] Offscreen error:', request.message);
@@ -1612,57 +1335,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const recorded = loraAdapter.recordPreferencePair(embedding, request.chosen, request.rejected);
       if (recorded) loraAdapter.saveAdapter(loraStorage).catch(() => {});
       sendResponse({ ok: recorded });
-      return false;
-    }
-
-    // ---- DPO Training Trigger (on-demand from UI) ----
-    if (request.type === 'LORA_TRIGGER_DPO_TRAIN') {
-      if (!loraAdapter) {
-        sendResponse({ ok: false, error: 'lora_unavailable' });
-        return false;
-      }
-      if (!loraAdapter._preferencePairs || loraAdapter._preferencePairs.length === 0) {
-        sendResponse({ ok: false, reason: 'no_preference_pairs' });
-        return false;
-      }
-      const dpoResult = loraAdapter.trainDPOBatch();
-      loraAdapter.saveAdapter(loraStorage).catch(() => {});
-      sendResponse({ ok: true, loss: dpoResult.loss, pairs: dpoResult.pairs, steps: dpoResult.steps });
-      return false;
-    }
-
-    // ---- Red-Team Self-Play Manual Trigger ----
-    if (request.type === 'REDTEAM_TRIGGER_SELF_PLAY') {
-      if (typeof VIGIL_REDTEAM === 'undefined' || !VIGIL_REDTEAM.redTeamAgent) {
-        sendResponse({ ok: false, error: 'redteam_unavailable' });
-        return false;
-      }
-      try {
-        const fuzzRes = VIGIL_REDTEAM.redTeamAgent.runFuzzingCycle({
-          threatStore: typeof VIGIL_THREAT !== 'undefined' ? VIGIL_THREAT.threatStore : null
-        });
-        let harvestCount = 0;
-        if (fuzzRes && fuzzRes.results && loraAdapter) {
-          fuzzRes.results.filter(r => r.bypassed).forEach(evasion => {
-            if (typeof VIGIL_DRIFT !== 'undefined') {
-              const vec = Array.from(VIGIL_DRIFT.vectorizeText(evasion.payload));
-              loraAdapter.recordCorrection(vec, 2);
-              harvestCount++;
-            }
-          });
-          if (harvestCount > 0) {
-            const trainRes = loraAdapter.trainEpoch();
-            loraAdapter.saveAdapter(loraStorage).catch(() => {});
-            sendResponse({ ok: true, mutations: fuzzRes.results.length, harvested: harvestCount, loss: trainRes.loss });
-          } else {
-            sendResponse({ ok: true, mutations: (fuzzRes.results || []).length, harvested: 0 });
-          }
-        } else {
-          sendResponse({ ok: true, mutations: (fuzzRes && fuzzRes.results ? fuzzRes.results.length : 0), harvested: 0 });
-        }
-      } catch (err) {
-        sendResponse({ ok: false, error: err.message });
-      }
       return false;
     }
 

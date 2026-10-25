@@ -1,6 +1,6 @@
 /**
  * VIGIL - Storage Access Audit Proxy
- * Blueprint #14: Zero-Trust Local Storage Telemetry & Compliance Ring Buffer
+ * Security Policy: Zero-Trust Local Storage Telemetry & Compliance Ring Buffer
  * Tracks all local storage read/write operations without persisting sensitive secret payloads.
  */
 (function (root) {

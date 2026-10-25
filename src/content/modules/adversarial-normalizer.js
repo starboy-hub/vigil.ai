@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #3: Adversarial Pre-Processing Engine
+ * VIGIL Security Policy: Adversarial Pre-Processing Engine
  *
  * Attackers evade keyword classifiers with zero-width character smuggling,
  * Cyrillic/Greek homoglyph substitution, fullwidth forms, and separator

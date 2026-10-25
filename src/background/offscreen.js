@@ -111,7 +111,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
   if (msg.type === 'COMPUTE_SIMD_FFT') {
-    // Blueprint #4: heavy canvas analysis runs HERE, isolated from the DOM —
+    // Security Policy: heavy canvas analysis runs HERE, isolated from the DOM —
     // content only ships a (downsampled) RGBA pixel sample. Uses the REAL
     // vision-canary math via dynamic import (this document is a module
     // context; the canary IIFE registers itself on self on import).

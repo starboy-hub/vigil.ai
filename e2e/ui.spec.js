@@ -12,6 +12,23 @@ const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'm
 
 test.describe.configure({ mode: 'serial' });
 
+function getLaunchOptions() {
+  const isHeadless = process.env.CI || !process.env.DISPLAY;
+  return {
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || (fs.existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' : undefined),
+    headless: isHeadless,
+    args: [
+      ...(isHeadless ? ['--headless=new'] : []),
+      `--disable-extensions-except=${EXT}`,
+      `--load-extension=${EXT}`,
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ]
+  };
+}
+
 async function openPopup(context, extensionId) {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/popup.html`);
@@ -38,17 +55,7 @@ test.describe('popup controls', () => {
   let context, page, extensionId;
 
   test.beforeAll(async () => {
-    context = await chromium.launchPersistentContext('', {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${EXT}`,
-        `--load-extension=${EXT}`,
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
-    });
+    context = await chromium.launchPersistentContext('', getLaunchOptions());
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });
     extensionId = new URL(sw.url()).host;
@@ -185,17 +192,7 @@ test.describe('options controls', () => {
   let context, page, extensionId;
 
   test.beforeAll(async () => {
-    context = await chromium.launchPersistentContext('', {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${EXT}`,
-        `--load-extension=${EXT}`,
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
-    });
+    context = await chromium.launchPersistentContext('', getLaunchOptions());
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });
     extensionId = new URL(sw.url()).host;
@@ -320,17 +317,7 @@ test.describe('engineering checks (service worker)', () => {
   let context, sw;
 
   test.beforeAll(async () => {
-    context = await chromium.launchPersistentContext('', {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${EXT}`,
-        `--load-extension=${EXT}`,
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
-    });
+    context = await chromium.launchPersistentContext('', getLaunchOptions());
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20000 });
     sw = worker;
@@ -385,17 +372,7 @@ test.describe('popup presets and site grade', () => {
   let context, page, extensionId;
 
   test.beforeAll(async () => {
-    context = await chromium.launchPersistentContext('', {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${EXT}`,
-        `--load-extension=${EXT}`,
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
-    });
+    context = await chromium.launchPersistentContext('', getLaunchOptions());
     let [sw] = context.serviceWorkers();
     if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });
     extensionId = new URL(sw.url()).host;

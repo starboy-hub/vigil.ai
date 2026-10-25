@@ -3,7 +3,7 @@
 (function() {
   'use strict';
 
-  // Sensitive Context Gatekeeper (Blueprint #13: Enterprise Injection Policy)
+  // Sensitive Context Gatekeeper (Security Policy: Enterprise Injection Policy)
   if (typeof window !== 'undefined' && window.location) {
     const policy = (typeof globalThis !== 'undefined' && globalThis.VIGIL_INJECTION_POLICY) ||
                    (typeof VIGIL_INJECTION_POLICY !== 'undefined' ? VIGIL_INJECTION_POLICY : null);
@@ -152,6 +152,9 @@ function allowCurrentPrompt(element) {
     popup.dismissAlert();
   }
   removeComposerPill();
+  removeYellowBanner();
+  removeGreenShield();
+  if (element) clearHighlights(element);
 }
 
 function isPromptAllowed(element, text) {
@@ -204,6 +207,9 @@ chrome.storage.onChanged.addListener((changes, ns) => {
       if (!settings.trustedSites) settings.trustedSites = [];
       const host = window.location.hostname.toLowerCase();
       isWhitelisted = settings.trustedSites.some(t => host === t || host.endsWith('.' + t));
+      if (typeof scannerWorker !== 'undefined' && scannerWorker) {
+        scannerWorker.postMessage({ type: 'UPDATE_SETTINGS', payload: settings });
+      }
     }
     if (changes[VIGIL.KEYS.THEME]) { currentTheme = changes[VIGIL.KEYS.THEME].newValue || 'light'; if (typeof popup !== 'undefined' && popup) popup.render(); }
     if (changes.manualLanguage) {
@@ -291,6 +297,12 @@ async function refreshVault() {
       // Cleartext vault values never held in DOM memory during blind index mode
       vaultCorpus = [];
       vaultMatchers = [];
+      if (typeof scannerWorker !== 'undefined' && scannerWorker && vaultSalt) {
+        scannerWorker.postMessage({
+          type: 'UPDATE_VAULT',
+          payload: { salt: vaultSalt, indices: res.indices, trusted: (res && res.trusted) || [] }
+        });
+      }
     } else {
       // Blind index unavailable (vault error): stay safe — no vault matching
       // at all rather than pulling cleartext entries into the page context.
@@ -316,7 +328,7 @@ function pickVaultFake(kind, entryId, value) {
   const pool = VIGIL_FAKE.FAKE_DATA[pools[kind]];
 
   if (settings && settings.burnerIdentityMode) {
-    // Blueprint #15: 24h rolling epoch bucket breaks cross-session/cross-day profiling
+    // Security Policy: 24h rolling epoch bucket breaks cross-session/cross-day profiling
     const epochDay = Math.floor(Date.now() / 86400000).toString();
     const seed = VIGIL.strHash(String(value || '').trim().toLowerCase() + '|' + location.hostname + '|burner:' + epochDay);
     if (pool && pool.length) return pool[Math.abs(seed) % pool.length];
@@ -335,7 +347,7 @@ function vaultKindLabel(kind) {
   return 'Vault ' + kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
-// ---- Blueprint #1: blind-index vault scanning ----
+// ---- Security Policy: blind-index vault scanning ----
 // Vault detection without cleartext: page text is broken into candidates
 // (emails, phone runs, word n-grams), each candidate is normalized the same
 // way the vault normalizes entries, blind-hashed with the vault salt, and
@@ -913,15 +925,15 @@ function sentinelPass() {
   });
 }
 
-// ---- Training Data Leakage & Copyleft Code Regurgitation (Blueprint #11) ----
+// ---- Training Data Leakage & Copyleft Code Regurgitation (Security Policy) ----
 const leakageAnalyzed = new Set();
-// ---- Blueprint #21: multimodal steganography screening (canvas layers) ----
+// ---- Security Policy: multimodal steganography screening (canvas layers) ----
 // Inspects on-page canvases for hidden alpha-channel text, adversarial
 // high-frequency noise, and micro-image/aspect-ratio concealment.
 const visionSeen = new Set();
 let visionScanning = false;
 
-// Blueprint #4: heavy pixel analysis runs in the offscreen document — content
+// Security Policy: heavy pixel analysis runs in the offscreen document — content
 // ships only a downsampled RGBA sample. Falls back to in-content inspection
 // when the offscreen document is unavailable.
 function inspectCanvasViaOffscreen(canvas) {
@@ -985,7 +997,7 @@ async function visionPass() {
   } catch (e) {} finally {
     visionScanning = false;
   }
-  // Synthetic-media provenance (Blueprint #6): hash inbound images and
+  // Synthetic-media provenance (Security Policy): hash inbound images and
   // cross-reference the local known-synthetic blocklist via the daemon
   // (or the identical JS fallback). CORS-tainted images are skipped.
   try {
@@ -1095,7 +1107,7 @@ function isInvisibleText(el) {
 
 // ---- Webmail profiles: Gmail/Outlook sender extraction + email checks ----
 
-// Blind own-address check (Blueprint #1): a sender email is recognized as the
+// Blind own-address check (Security Policy): a sender email is recognized as the
 // user's own by hashing it with the vault salt and comparing against the
 // email-kind blind indices — no cleartext email needed in the page.
 const userEmailBlindMemo = new Map();
@@ -1434,7 +1446,143 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return false;
 });
 
+let scannerWorker = null;
+let pendingWorkerScans = new Map();
+let nextScanId = 1;
+
+async function initScannerWorker() {
+  if (typeof Worker === 'undefined' || typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL) return;
+  try {
+    const workerUrl = chrome.runtime.getURL('scanner-worker.js');
+    let workerTargetUrl = workerUrl;
+    let blobUrlToRevoke = null;
+
+    // Cross-Origin Worker policy in Chromium content scripts:
+    // Chromium restricts content scripts running on webpage origins (e.g. chatgpt.com)
+    // from constructing a Worker directly with a chrome-extension:// URL.
+    // Fetching the bundled worker script and spawning via a Blob URL executes under
+    // the webpage origin, complying with CSP worker-src ('self' blob:) and eliminating lag.
+    if (typeof fetch === 'function' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+      try {
+        const resp = await fetch(workerUrl);
+        if (resp.ok) {
+          const scriptText = await resp.text();
+          const blob = new Blob([scriptText], { type: 'application/javascript' });
+          workerTargetUrl = URL.createObjectURL(blob);
+          blobUrlToRevoke = workerTargetUrl;
+        }
+      } catch (_) {
+        // Fallback to direct URL if fetch fails
+      }
+    }
+
+    scannerWorker = new Worker(workerTargetUrl);
+    if (blobUrlToRevoke) {
+      setTimeout(() => {
+        try { URL.revokeObjectURL(blobUrlToRevoke); } catch (_) {}
+      }, 10000);
+    }
+
+    scannerWorker.onmessage = (e) => {
+      const { type, id, result, error } = e.data || {};
+      if (type === 'SCAN_RESULT' && id && pendingWorkerScans.has(id)) {
+        const { resolve } = pendingWorkerScans.get(id);
+        pendingWorkerScans.delete(id);
+        resolve(result);
+      } else if (type === 'SCAN_ERROR' && id && pendingWorkerScans.has(id)) {
+        const { reject } = pendingWorkerScans.get(id);
+        pendingWorkerScans.delete(id);
+        reject(new Error(error));
+      }
+    };
+    scannerWorker.onerror = (err) => {
+      console.warn('[VIGIL] Scanner worker error, falling back to local thread:', err);
+      scannerWorker = null;
+    };
+    if (settings) {
+      scannerWorker.postMessage({ type: 'UPDATE_SETTINGS', payload: settings });
+    }
+    if (vaultSalt) {
+      scannerWorker.postMessage({
+        type: 'UPDATE_VAULT',
+        payload: {
+          salt: vaultSalt,
+          indices: Array.from(vaultBlindMap.values()),
+          trusted: (typeof trustMatchers !== 'undefined' && trustMatchers) ? [] : []
+        }
+      });
+    }
+  } catch (err) {
+    console.info('[VIGIL] Web Worker unavailable (CSP/origin restriction), using in-thread scanner:', err.message);
+    scannerWorker = null;
+  }
+}
+
 async function scanText(text, element) {
+  if (!text || text.length < 5 || isWhitelisted || isPaused || isThreadPaused() || isPromptAllowed(element, text)) {
+    return { alerts: [], redactions: [] };
+  }
+
+  // Offload detection to Web Worker off the main thread
+  if (scannerWorker) {
+    try {
+      const scanId = ++nextScanId;
+      const isTel = element && element.tagName === 'INPUT' && element.type === 'tel';
+      const workerPromise = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          pendingWorkerScans.delete(scanId);
+          reject(new Error('Scanner worker timeout'));
+        }, 500);
+        pendingWorkerScans.set(scanId, {
+          resolve: (res) => { clearTimeout(timer); resolve(res); },
+          reject: (err) => { clearTimeout(timer); reject(err); }
+        });
+      });
+
+      scannerWorker.postMessage({
+        type: 'SCAN_TEXT',
+        id: scanId,
+        payload: {
+          text,
+          options: {
+            sensitivity: settings.sensitivity || 'medium',
+            customPatterns: settings.customPatterns || '',
+            isTel
+          }
+        }
+      });
+
+      const workerRes = await workerPromise;
+      if (workerRes && Array.isArray(workerRes.alerts)) {
+        const alerts = workerRes.alerts.filter(a => !isTextIgnored(a.text || ''));
+        const redactions = workerRes.redactions.filter(r => !isTextIgnored(r.text || ''));
+        if (element && typeof VIGIL_ENGINE !== 'undefined' && VIGIL_ENGINE.applyContextMultiplier) {
+          VIGIL_ENGINE.applyContextMultiplier(alerts.filter(a => a.source !== 'vault'), element);
+        }
+        try {
+          if (alerts.length) {
+            const signal = alerts.some(a =>
+              a.severity === 'critical' || a.severity === 'high' ||
+              a.source === 'injection' || a.source === 'sentinel');
+            if (signal) {
+              lastScanThreatSignals.set(VIGIL.strHash(String(text || '')), Date.now());
+              if (lastScanThreatSignals.size > 200) {
+                lastScanThreatSignals.delete(lastScanThreatSignals.keys().next().value);
+              }
+            }
+          }
+        } catch (_) {}
+        return { alerts, redactions };
+      }
+    } catch (err) {
+      console.warn('[VIGIL] Scanner worker communication failed, falling back to local thread:', err.message);
+    }
+  }
+
+  return scanTextLocal(text, element);
+}
+
+async function scanTextLocal(text, element) {
   const ct = VIGIL_ENGINE.cleanText(text);
   const alerts = [], redactions = [], seen = new Set();
   const sensitivity = settings.sensitivity || 'medium';
@@ -1547,7 +1695,7 @@ async function scanText(text, element) {
     console.warn('[VIGIL] Scan internal error:', err.message);
   }
 
-  // Blueprint #1: remember whether this text produced a local threat signal
+  // Security Policy: remember whether this text produced a local threat signal
   // so the submission-time consensus gate only consults the firewall for
   // texts the deterministic tiers actually flagged.
   try {
@@ -1675,7 +1823,7 @@ function performRedaction(element, redactions) {
 }
 function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
-// Blueprint #16 data input: user accept/reject decisions on detections are
+// Security Policy data input: user accept/reject decisions on detections are
 // recorded as LoRA corrections (label 1 = confirmed threat, 0 = false
 // positive). The background vectorizes the text and stores the sample.
 function recordLoraCorrection(texts, label) {
@@ -1741,7 +1889,7 @@ class VIGILPopup {
     document.body.appendChild(this.container);
     this.render();
   }
-  showAlert(alerts, redactions, element, originalText, replacements = null, source = 'input') {
+  showAlert(alerts, redactions, element, originalText, replacements = null, source = 'input', shouldExpand = false) {
     if (isThreadPaused()) return;
     const curText = element ? (element.value || element.innerText || '') : (originalText || '');
     if (isPromptAllowed(element, curText)) return;
@@ -1752,25 +1900,30 @@ class VIGILPopup {
       return;
     }
     const renderSig = source + '|' + filteredAlerts.map(a => a.type + a.severity).join(',') + '|' + filteredRedactions.map(r => r.text).join(',');
-    if (renderSig === this.lastRenderSig && this.state === 'alert') return;
+    if (renderSig === this.lastRenderSig && (shouldExpand ? this.state === 'alert' : true)) return;
     this.lastRenderSig = renderSig;
     const newAlert = { id: Date.now() + Math.random(), alerts: filteredAlerts, redactions: filteredRedactions, timestamp: new Date(), replacements: replacements || [], source, element, originalText };
     this.activeAlerts = this.activeAlerts.filter(a => a.source !== source);
     this.activeAlerts.push(newAlert);
     if (this.activeAlerts.length > 10) this.activeAlerts.shift();
     trackAnalytics('triggered', filteredAlerts.map(a => a.type));
-    this.state = 'alert';
-    this.render();
-    if (element && source === 'input') {
-      renderComposerPill(element, newAlert);
+    if (shouldExpand) {
+      this.state = 'alert';
+      removeComposerPill();
+      removeYellowBanner();
     }
+    this.render();
   }
   dismissAlert(alertId = null) {
     if (alertId) this.activeAlerts = this.activeAlerts.filter(a => a.id !== alertId);
     else this.activeAlerts = [];
     this.lastRenderSig = null;
     this.state = this.activeAlerts.length > 0 ? this.state : 'minimized';
-    if (this.activeAlerts.length === 0) removeComposerPill();
+    if (this.activeAlerts.length === 0) {
+      removeComposerPill();
+      removeYellowBanner();
+      removeGreenShield();
+    }
     this.render();
   }
   minimize() { this.state = 'minimized'; this.render(); }
@@ -2126,7 +2279,7 @@ function setupPasteGuardian() {
   }, true);
 }
 async function monitorClipboard() { setupPasteGuardian(); }
-let lastScannedText = '', scanDebounce = null, _scanInterval = null, lastActiveTarget = null;
+let lastScannedText = '', lastActiveTarget = null;
 function getActiveInputElement() {
   let active = document.activeElement;
   while (active && active.shadowRoot && active.shadowRoot.activeElement) active = active.shadowRoot.activeElement;
@@ -2149,161 +2302,406 @@ function renderComposerPill(element, alert) {
     removeComposerPill();
     return;
   }
+  removeYellowBanner();
+  removeGreenShield();
   let pill = document.querySelector('[data-vigil="composer-pill"]');
   if (!pill) {
     pill = document.createElement('div');
     pill.setAttribute('data-vigil', 'composer-pill');
+    pill.setAttribute('role', 'alert');
+    pill.setAttribute('aria-live', 'assertive');
     document.body.appendChild(pill);
   }
   
+  while (pill.firstChild) {
+    pill.removeChild(pill.firstChild);
+  }
+
   const rect = element.getBoundingClientRect();
   const top = Math.max(10, rect.top - 42 + window.scrollY);
   const left = Math.max(10, Math.min(window.innerWidth - 380, rect.left + window.scrollX));
   
   const count = alert.alerts ? alert.alerts.length : (alert.redactions ? alert.redactions.length : 1);
-  const types = (alert.alerts || []).map(a => a.type).slice(0, 2).join(', ') || 'Sensitive';
-  const bg = 'rgba(24, 24, 27, 0.94)';
-  const text = '#f4f4f5';
-  const border = 'rgba(255, 255, 255, 0.14)';
+  const types = (alert.alerts || []).map(a => a.type).slice(0, 2).join(', ') || 'Critical Secret';
+  const bg = 'rgba(28, 10, 10, 0.96)';
+  const text = '#fef2f2';
+  const border = 'rgba(239, 68, 68, 0.85)';
   
-  pill.style.cssText = `position:absolute!important;top:${top}px!important;left:${left}px!important;background:${bg}!important;color:${text}!important;border:1px solid ${border}!important;border-radius:8px!important;padding:4px 8px!important;font-size:11px!important;font-family:-apple-system,BlinkMacSystemFont,sans-serif!important;box-shadow:0 8px 24px rgba(0,0,0,0.3)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;z-index:2147483646!important;display:flex!important;align-items:center!important;gap:6px!important;animation:vigil-fadeIn 0.2s ease-out!important;`;
-  
-  pill.innerHTML = `
-    <span style="font-weight:700;color:#fbbf24;display:inline-flex;align-items:center;gap:5px;">
-      ${getVigilSpinningLogo(14)} <span>${count} ${escapeHtml(types)}</span>
-    </span>
-    <div style="display:flex;align-items:center;gap:4px;">
-      <button data-pill-action="sanitize" style="background:#10b981;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:10.5px;font-weight:600;cursor:pointer;">Mask</button>
-      <button data-pill-action="paraphrase" style="background:#6366f1;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:10.5px;font-weight:600;cursor:pointer;" title="Rewrite safely using local AI">✨ Paraphrase</button>
-      <button data-pill-action="allow" style="background:transparent;color:${text};border:1px solid ${border};padding:3px 6px;border-radius:4px;font-size:10.5px;cursor:pointer;" title="Allow for this prompt">Allow</button>
-      <button data-pill-action="whitelist" style="background:transparent;color:#818cf8;border:1px solid ${border};padding:3px 6px;border-radius:4px;font-size:10.5px;cursor:pointer;" title="Whitelist this entity">Whitelist</button>
-      <button data-pill-action="pause" style="background:transparent;color:#94a3b8;border:1px solid ${border};padding:3px 6px;border-radius:4px;font-size:10.5px;cursor:pointer;" title="Pause 15m on this thread">15m</button>
-    </div>
-  `;
-  
-  const sanitizeBtn = pill.querySelector('[data-pill-action="sanitize"]');
-  if (sanitizeBtn) {
-    sanitizeBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (alert.element && alert.redactions) {
-        const result = performRedaction(alert.element, alert.redactions);
-        if (result && result.originalText) {
-          highlightProtected(alert.element, result.replacements);
-          alert.originalText = result.originalText;
-          alert.replacements = result.replacements;
-          alert.isProtected = true;
-          const newText = alert.element.tagName === 'INPUT' || alert.element.tagName === 'TEXTAREA' ? alert.element.value : (alert.element.innerText || '');
-          if (typeof lastScannedText !== 'undefined') lastScannedText = newText;
-        }
-      }
-      // DPO: user chose to Mask → positive preference pair (chosen=2 block, rejected=0 allow)
-      if (alert.redactions && alert.redactions[0] && alert.redactions[0].text) {
-        try {
-          chrome.runtime.sendMessage({ type: 'LORA_RECORD_PREFERENCE', text: alert.redactions[0].text, chosen: 2, rejected: 0 }, () => {});
-        } catch (_) {}
-      }
-      removeComposerPill();
-      if (typeof popup !== 'undefined' && popup) popup.render();
-    };
-  }
+  pill.style.cssText = `position:absolute!important;top:${top}px!important;left:${left}px!important;background:${bg}!important;color:${text}!important;border:1px solid ${border}!important;border-radius:8px!important;padding:4px 8px!important;font-size:11px!important;font-family:-apple-system,BlinkMacSystemFont,sans-serif!important;box-shadow:0 8px 24px rgba(239,68,68,0.35)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;z-index:2147483646!important;display:flex!important;align-items:center!important;gap:6px!important;animation:vigil-fadeIn 0.2s ease-out!important;`;
 
-  // ✨ Paraphrase: rewrite the prompt safely via local Ollama → tier-2 fallback
-  const paraphraseBtn = pill.querySelector('[data-pill-action="paraphrase"]');
-  if (paraphraseBtn) {
-    paraphraseBtn.onclick = (e) => {
-      e.stopPropagation();
-      const el = alert.element;
-      if (!el) return;
-      const rawText = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ? el.value : (el.innerText || '');
-      if (!rawText.trim()) return;
-      paraphraseBtn.disabled = true;
-      paraphraseBtn.textContent = '⏳';
+  const badgeSpan = document.createElement('span');
+  badgeSpan.style.cssText = 'font-weight:700;color:#ef4444;display:inline-flex;align-items:center;gap:5px;';
+  
+  const shieldSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  shieldSvg.setAttribute('width', '14');
+  shieldSvg.setAttribute('height', '14');
+  shieldSvg.setAttribute('viewBox', '0 0 24 24');
+  shieldSvg.setAttribute('fill', 'none');
+  shieldSvg.setAttribute('stroke', '#ef4444');
+  shieldSvg.setAttribute('stroke-width', '2');
+  const shieldPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  shieldPath.setAttribute('d', 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z');
+  shieldSvg.appendChild(shieldPath);
+  badgeSpan.appendChild(shieldSvg);
+
+  const textNode = document.createElement('span');
+  textNode.textContent = `${count} ${types}`;
+  badgeSpan.appendChild(textNode);
+  pill.appendChild(badgeSpan);
+
+  const actionsDiv = document.createElement('div');
+  actionsDiv.style.cssText = 'display:flex;align-items:center;gap:4px;';
+
+  const sanitizeBtn = document.createElement('button');
+  sanitizeBtn.setAttribute('data-pill-action', 'sanitize');
+  sanitizeBtn.setAttribute('aria-label', 'Mask detected sensitive data');
+  sanitizeBtn.textContent = 'Mask';
+  sanitizeBtn.style.cssText = 'background:#ef4444;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:10.5px;font-weight:600;cursor:pointer;';
+  sanitizeBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (alert.element && alert.redactions) {
+      const result = performRedaction(alert.element, alert.redactions);
+      if (result && result.originalText) {
+        highlightProtected(alert.element, result.replacements);
+        alert.originalText = result.originalText;
+        alert.replacements = result.replacements;
+        alert.isProtected = true;
+        const newText = alert.element.tagName === 'INPUT' || alert.element.tagName === 'TEXTAREA' ? alert.element.value : (alert.element.innerText || '');
+        if (typeof lastScannedText !== 'undefined') lastScannedText = newText;
+      }
+    }
+    if (alert.redactions && alert.redactions[0] && alert.redactions[0].text) {
       try {
-        chrome.runtime.sendMessage({ type: 'GENERATE_SAFE_PARAPHRASE', text: rawText }, (resp) => {
-          paraphraseBtn.disabled = false;
-          paraphraseBtn.textContent = '✨ Paraphrase';
-          if (resp && resp.ok && resp.text) {
-            // Apply the safe paraphrase directly into the element
-            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-              el.value = resp.text;
-              el.dispatchEvent(new Event('input', { bubbles: true }));
-            } else if (el.isContentEditable) {
-              el.innerText = resp.text;
-              el.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-            if (typeof lastScannedText !== 'undefined') lastScannedText = resp.text;
-            removeComposerPill();
-          } else {
-            // Tier-2 fallback: apply regex redactions as pseudonymised text
-            if (alert.redactions && alert.redactions.length > 0 && typeof VIGIL_FAKE !== 'undefined') {
-              const { text: redacted } = VIGIL_FAKE.redactText(rawText, alert.redactions, true);
-              if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                el.value = redacted;
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-              } else if (el.isContentEditable) {
-                el.innerText = redacted;
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-              }
-              if (typeof lastScannedText !== 'undefined') lastScannedText = redacted;
-              removeComposerPill();
-            }
-          }
-        });
-      } catch (_) {
+        chrome.runtime.sendMessage({ type: 'LORA_RECORD_PREFERENCE', text: alert.redactions[0].text, chosen: 2, rejected: 0 }, () => {});
+      } catch (_) {}
+    }
+    removeComposerPill();
+    if (typeof popup !== 'undefined' && popup) popup.render();
+  };
+  actionsDiv.appendChild(sanitizeBtn);
+
+  const paraphraseBtn = document.createElement('button');
+  paraphraseBtn.setAttribute('data-pill-action', 'paraphrase');
+  paraphraseBtn.setAttribute('title', 'Rewrite safely using local AI');
+  paraphraseBtn.setAttribute('aria-label', 'Paraphrase safely using local AI');
+  paraphraseBtn.textContent = '✨ Paraphrase';
+  paraphraseBtn.style.cssText = 'background:#6366f1;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:10.5px;font-weight:600;cursor:pointer;';
+  paraphraseBtn.onclick = (e) => {
+    e.stopPropagation();
+    const el = alert.element;
+    if (!el) return;
+    const rawText = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ? el.value : (el.innerText || '');
+    if (!rawText.trim()) return;
+    paraphraseBtn.disabled = true;
+    paraphraseBtn.textContent = '⏳';
+    try {
+      chrome.runtime.sendMessage({ type: 'GENERATE_SAFE_PARAPHRASE', text: rawText }, (resp) => {
         paraphraseBtn.disabled = false;
         paraphraseBtn.textContent = '✨ Paraphrase';
-      }
-    };
-  }
-  
-  const allowBtn = pill.querySelector('[data-pill-action="allow"]');
-  if (allowBtn) {
-    allowBtn.onclick = (e) => {
-      e.stopPropagation();
-      // DPO: user chose to Allow → negative preference pair (chosen=0 allow, rejected=2 block)
-      if (alert.redactions && alert.redactions[0] && alert.redactions[0].text) {
-        try {
-          chrome.runtime.sendMessage({ type: 'LORA_RECORD_PREFERENCE', text: alert.redactions[0].text, chosen: 0, rejected: 2 }, () => {});
-        } catch (_) {}
-      }
-      allowCurrentPrompt(element);
-    };
-  }
-  
-  const whitelistBtn = pill.querySelector('[data-pill-action="whitelist"]');
-  if (whitelistBtn) {
-    whitelistBtn.onclick = (e) => {
-      e.stopPropagation();
-      const txt = alert.redactions && alert.redactions[0] && alert.redactions[0].text;
-      if (txt) {
-        whitelistEntity(txt);
-        ignoreText(txt, 24 * 60 * 60 * 1000);
-      }
-      allowCurrentPrompt(element);
-    };
-  }
-  
-  const pauseBtn = pill.querySelector('[data-pill-action="pause"]');
-  if (pauseBtn) {
-    pauseBtn.onclick = (e) => {
-      e.stopPropagation();
-      pauseThread(15 * 60 * 1000);
-    };
-  }
+        if (resp && resp.ok && resp.text) {
+          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.value = resp.text;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+          } else if (el.isContentEditable) {
+            el.innerText = resp.text;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          if (typeof lastScannedText !== 'undefined') lastScannedText = resp.text;
+          removeComposerPill();
+        } else {
+          if (alert.redactions && alert.redactions.length > 0 && typeof VIGIL_FAKE !== 'undefined') {
+            const { text: redacted } = VIGIL_FAKE.redactText(rawText, alert.redactions, true);
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+              el.value = redacted;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (el.isContentEditable) {
+              el.innerText = redacted;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            if (typeof lastScannedText !== 'undefined') lastScannedText = redacted;
+            removeComposerPill();
+          }
+        }
+      });
+    } catch (_) {
+      paraphraseBtn.disabled = false;
+      paraphraseBtn.textContent = '✨ Paraphrase';
+    }
+  };
+  actionsDiv.appendChild(paraphraseBtn);
+
+  const allowBtn = document.createElement('button');
+  allowBtn.setAttribute('data-pill-action', 'allow');
+  allowBtn.setAttribute('title', 'Allow for this prompt');
+  allowBtn.setAttribute('aria-label', 'Deliberately allow this prompt');
+  allowBtn.textContent = 'Allow';
+  allowBtn.style.cssText = `background:transparent;color:${text};border:1px solid rgba(239, 68, 68, 0.45);padding:3px 6px;border-radius:4px;font-size:10.5px;cursor:pointer;`;
+  allowBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (alert.redactions && alert.redactions[0] && alert.redactions[0].text) {
+      try {
+        chrome.runtime.sendMessage({ type: 'LORA_RECORD_PREFERENCE', text: alert.redactions[0].text, chosen: 0, rejected: 2 }, () => {});
+      } catch (_) {}
+    }
+    allowCurrentPrompt(element);
+  };
+  actionsDiv.appendChild(allowBtn);
+
+  const whitelistBtn = document.createElement('button');
+  whitelistBtn.setAttribute('data-pill-action', 'whitelist');
+  whitelistBtn.setAttribute('title', 'Whitelist this entity');
+  whitelistBtn.setAttribute('aria-label', 'Whitelist this entity');
+  whitelistBtn.textContent = 'Whitelist';
+  whitelistBtn.style.cssText = 'background:transparent;color:#fca5a5;border:1px solid rgba(239, 68, 68, 0.45);padding:3px 6px;border-radius:4px;font-size:10.5px;cursor:pointer;';
+  whitelistBtn.onclick = (e) => {
+    e.stopPropagation();
+    const txt = alert.redactions && alert.redactions[0] && alert.redactions[0].text;
+    if (txt) {
+      whitelistEntity(txt);
+      ignoreText(txt, 24 * 60 * 60 * 1000);
+    }
+    allowCurrentPrompt(element);
+  };
+  actionsDiv.appendChild(whitelistBtn);
+
+  const pauseBtn = document.createElement('button');
+  pauseBtn.setAttribute('data-pill-action', 'pause');
+  pauseBtn.setAttribute('title', 'Pause 15m on this thread');
+  pauseBtn.setAttribute('aria-label', 'Pause 15 minutes on this thread');
+  pauseBtn.textContent = '15m';
+  pauseBtn.style.cssText = 'background:transparent;color:#94a3b8;border:1px solid rgba(255, 255, 255, 0.2);padding:3px 6px;border-radius:4px;font-size:10.5px;cursor:pointer;';
+  pauseBtn.onclick = (e) => {
+    e.stopPropagation();
+    pauseThread(15 * 60 * 1000);
+  };
+  actionsDiv.appendChild(pauseBtn);
+
+  pill.appendChild(actionsDiv);
 }
 
 function removeComposerPill() {
   document.querySelectorAll('[data-vigil="composer-pill"]').forEach(el => el.remove());
 }
 
+function renderYellowBanner(element, alertData) {
+  if (!element || !alertData || alertData.isProtected || isThreadPaused()) {
+    removeYellowBanner();
+    return;
+  }
+  removeComposerPill();
+  removeGreenShield();
+  let banner = document.querySelector('[data-vigil="yellow-banner"]');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.setAttribute('data-vigil', 'yellow-banner');
+    banner.setAttribute('role', 'alert');
+    banner.setAttribute('aria-live', 'polite');
+    document.body.appendChild(banner);
+  }
+
+  while (banner.firstChild) {
+    banner.removeChild(banner.firstChild);
+  }
+
+  const rect = element.getBoundingClientRect();
+  const top = rect.bottom + 4 + window.scrollY;
+  const left = Math.max(10, Math.min(window.innerWidth - 380, rect.left + window.scrollX));
+
+  banner.style.cssText = `position:absolute!important;top:${top}px!important;left:${left}px!important;background:rgba(30, 27, 24, 0.95)!important;color:#fef3c7!important;border:1px solid #f59e0b!important;border-radius:6px!important;padding:6px 12px!important;font-size:12px!important;font-family:-apple-system,BlinkMacSystemFont,sans-serif!important;box-shadow:0 4px 16px rgba(0,0,0,0.3)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important;z-index:2147483645!important;display:flex!important;align-items:center!important;gap:10px!important;animation:vigil-fadeIn 0.2s ease-out!important;`;
+
+  const rawTypes = (alertData.alerts || []).map(a => a.type).filter(Boolean);
+  const typeLabel = rawTypes.length ? rawTypes.slice(0, 2).join(', ') : 'Sensitive data';
+
+  const textSpan = document.createElement('span');
+  textSpan.style.cssText = 'font-weight:500;display:inline-flex;align-items:center;gap:6px;';
+  
+  const icon = document.createElement('span');
+  icon.textContent = '⚠️';
+  textSpan.appendChild(icon);
+
+  const msgSpan = document.createElement('span');
+  msgSpan.textContent = `Vigil detected ${typeLabel}.`;
+  textSpan.appendChild(msgSpan);
+  banner.appendChild(textSpan);
+
+  const btnGroup = document.createElement('div');
+  btnGroup.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+  const reviewBtn = document.createElement('button');
+  reviewBtn.setAttribute('type', 'button');
+  reviewBtn.setAttribute('aria-label', `Review detected ${typeLabel}`);
+  reviewBtn.textContent = 'Review';
+  reviewBtn.style.cssText = 'background:#f59e0b;color:#18181b;border:none;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;';
+  reviewBtn.onclick = (e) => {
+    e.stopPropagation();
+    removeYellowBanner();
+    removeComposerPill();
+    if (element && alertData.redactions) {
+      highlightSensitive(element, alertData.redactions);
+    }
+    if (typeof popup !== 'undefined' && popup) {
+      const raw = element.value || element.innerText || '';
+      popup.showAlert(alertData.alerts, alertData.redactions, element, raw, null, 'input', true);
+    }
+  };
+  btnGroup.appendChild(reviewBtn);
+
+  const allowOnceBtn = document.createElement('button');
+  allowOnceBtn.setAttribute('type', 'button');
+  allowOnceBtn.setAttribute('aria-label', 'Allow once for this input');
+  allowOnceBtn.textContent = 'Allow Once';
+  allowOnceBtn.style.cssText = 'background:transparent;color:#fef3c7;border:1px solid rgba(254,243,199,0.3);padding:3px 8px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;';
+  allowOnceBtn.onclick = (e) => {
+    e.stopPropagation();
+    allowCurrentPrompt(element);
+    removeYellowBanner();
+  };
+  btnGroup.appendChild(allowOnceBtn);
+
+  banner.appendChild(btnGroup);
+}
+
+function removeYellowBanner() {
+  document.querySelectorAll('[data-vigil="yellow-banner"]').forEach(el => el.remove());
+}
+
+function renderGreenShield(element) {
+  if (!element || !element.getBoundingClientRect) return;
+  removeComposerPill();
+  removeYellowBanner();
+  let shield = document.querySelector('[data-vigil="green-shield"]');
+  if (!shield) {
+    shield = document.createElement('div');
+    shield.setAttribute('data-vigil', 'green-shield');
+    shield.setAttribute('role', 'status');
+    shield.setAttribute('aria-label', 'Vigil: Protected with silent masking');
+    shield.setAttribute('title', 'Vigil: Protected with silent masking');
+    document.body.appendChild(shield);
+  }
+
+  while (shield.firstChild) {
+    shield.removeChild(shield.firstChild);
+  }
+
+  const rect = element.getBoundingClientRect();
+  const isMultiLine = element.tagName === 'TEXTAREA' || element.isContentEditable || rect.height > 40;
+  const top = isMultiLine
+    ? (rect.top + window.scrollY + 8)
+    : (rect.top + window.scrollY + Math.max(2, (rect.height - 16) / 2));
+  const left = Math.max(10, rect.right + window.scrollX - 24);
+
+  shield.style.cssText = `position:absolute!important;top:${top}px!important;left:${left}px!important;width:16px!important;height:16px!important;z-index:2147483646!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:default!important;pointer-events:auto!important;animation:vigil-fadeIn 0.2s ease-out!important;`;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '14');
+  svg.setAttribute('height', '14');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', '#10b981');
+  svg.setAttribute('stroke', '#047857');
+  svg.setAttribute('stroke-width', '1.5');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z');
+  svg.appendChild(path);
+
+  const check = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  check.setAttribute('points', '9 12 11 14 15 10');
+  check.setAttribute('fill', 'none');
+  check.setAttribute('stroke', '#ffffff');
+  check.setAttribute('stroke-width', '2');
+  svg.appendChild(check);
+
+  shield.appendChild(svg);
+}
+
+function removeGreenShield() {
+  document.querySelectorAll('[data-vigil="green-shield"]').forEach(el => el.remove());
+}
+
+let activeToastTimeout = null;
+
+function formatMaskedToastMessage(redactions) {
+  if (!redactions || redactions.length === 0) return 'Masked sensitive data';
+  const count = redactions.length;
+  const firstType = String(redactions[0].type || 'email').toLowerCase();
+  if (firstType.includes('email')) {
+    return count === 1 ? 'Masked 1 email address' : `Masked ${count} email addresses`;
+  }
+  if (firstType.includes('phone')) {
+    return count === 1 ? 'Masked 1 phone number' : `Masked ${count} phone numbers`;
+  }
+  if (firstType.includes('name')) {
+    return count === 1 ? 'Masked 1 name' : `Masked ${count} names`;
+  }
+  if (firstType.includes('address')) {
+    return count === 1 ? 'Masked 1 address' : `Masked ${count} addresses`;
+  }
+  return count === 1 ? `Masked 1 ${firstType}` : `Masked ${count} ${firstType}s`;
+}
+
+function showSilentToast(message) {
+  let toast = document.querySelector('[data-vigil="silent-toast"]');
+  if (toast) {
+    if (activeToastTimeout) clearTimeout(activeToastTimeout);
+    toast.remove();
+  }
+
+  toast = document.createElement('div');
+  toast.setAttribute('data-vigil', 'silent-toast');
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
+
+  toast.style.cssText = 'position:fixed!important;bottom:20px!important;right:20px!important;background:rgba(24, 24, 27, 0.94)!important;color:#f4f4f5!important;border:1px solid rgba(16, 185, 129, 0.5)!important;border-radius:8px!important;padding:8px 14px!important;font-size:12px!important;font-family:-apple-system,BlinkMacSystemFont,sans-serif!important;box-shadow:0 8px 24px rgba(0,0,0,0.3)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;z-index:2147483647!important;display:flex!important;align-items:center!important;gap:8px!important;transition:opacity 0.3s ease, transform 0.3s ease!important;opacity:1!important;transform:translateY(0)!important;animation:vigil-fadeIn 0.2s ease-out!important;';
+
+  const iconSpan = document.createElement('span');
+  iconSpan.style.cssText = 'color:#10b981;display:flex;align-items:center;';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '14');
+  svg.setAttribute('height', '14');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', '#10b981');
+  svg.setAttribute('stroke-width', '2.5');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z');
+  svg.appendChild(path);
+  iconSpan.appendChild(svg);
+  toast.appendChild(iconSpan);
+
+  const textSpan = document.createElement('span');
+  textSpan.textContent = message || 'Protected with silent masking';
+  textSpan.style.cssText = 'font-weight:500;';
+  toast.appendChild(textSpan);
+
+  document.body.appendChild(toast);
+
+  activeToastTimeout = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(6px)';
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, 2000);
+}
+
 async function performScan(target) {
-  if (isWhitelisted || isPaused || isThreadPaused() || !isSiteProtected(window.location.hostname, settings)) return;
+  if (isWhitelisted || isPaused || isThreadPaused() || !isSiteProtected(window.location.hostname, settings)) {
+    removeComposerPill();
+    removeYellowBanner();
+    removeGreenShield();
+    return;
+  }
   const element = (target && (document.contains(target) || (target.getRootNode && target.getRootNode() instanceof ShadowRoot))) ? target : getActiveInputElement();
   if (!element) return;
   const text = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' ? (element.value || '') : (element.innerText || '');
   if (text === lastScannedText || text.length < 5) return;
   if (isPromptAllowed(element, text)) {
     removeComposerPill();
+    removeYellowBanner();
     return;
   }
   if (/\[REDACTED-|user_[a-z0-9]+@example\.com|555-01\d{2}-\d{4}/.test(text)) {
@@ -2314,13 +2712,45 @@ async function performScan(target) {
   try {
     const { alerts, redactions } = await scanText(text, element);
     if (alerts.length > 0) {
-      highlightSensitive(element, redactions);
-      if (typeof popup !== 'undefined' && popup) popup.showAlert(alerts, redactions, element, text, null, 'input');
-      renderComposerPill(element, { alerts, redactions, element, isProtected: false });
+      let maxSeverity = 'LOW';
+      for (const a of alerts) {
+        const sev = (typeof VIGIL !== 'undefined' && VIGIL.getSeverity)
+          ? VIGIL.getSeverity(a.type)
+          : (a.severity === 'critical' ? 'CRITICAL' : a.severity === 'high' ? 'MEDIUM' : 'LOW');
+        if (sev === 'CRITICAL') {
+          maxSeverity = 'CRITICAL';
+          break;
+        } else if (sev === 'MEDIUM') {
+          maxSeverity = 'MEDIUM';
+        }
+      }
+
       chrome.runtime.sendMessage({ type: 'UPDATE_STATS', alerts, site: window.location.hostname });
+
+      if (maxSeverity === 'CRITICAL') {
+        removeYellowBanner();
+        removeGreenShield();
+        highlightSensitive(element, redactions);
+        if (typeof popup !== 'undefined' && popup) popup.showAlert(alerts, redactions, element, text, null, 'input', false);
+        renderComposerPill(element, { alerts, redactions, element, isProtected: false, severity: 'CRITICAL' });
+      } else if (maxSeverity === 'MEDIUM') {
+        removeComposerPill();
+        removeGreenShield();
+        highlightSensitive(element, redactions);
+        if (typeof popup !== 'undefined' && popup) popup.showAlert(alerts, redactions, element, text, null, 'input', false);
+        renderYellowBanner(element, { alerts, redactions, element, severity: 'MEDIUM' });
+      } else {
+        removeComposerPill();
+        removeYellowBanner();
+        clearHighlights(element);
+        if (typeof popup !== 'undefined' && popup) popup.showAlert(alerts, redactions, element, text, null, 'input', false);
+        renderGreenShield(element);
+      }
     } else {
       clearHighlights(element);
       removeComposerPill();
+      removeYellowBanner();
+      removeGreenShield();
       if (typeof popup !== 'undefined' && popup && popup.activeAlerts && popup.activeAlerts.some(a => a.source === 'input')) {
         popup.activeAlerts = popup.activeAlerts.filter(a => a.source !== 'input');
         if (popup.activeAlerts.length === 0) popup.dismissAlert();
@@ -2331,28 +2761,63 @@ async function performScan(target) {
   }
 }
 
+function debounce(func, wait = 300) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+const debouncedPerformScan = debounce((element) => {
+  performScan(element);
+}, 300);
+
+function getEditableTarget(el) {
+  if (!el || !(el instanceof Element)) return null;
+  if (isEditableElement(el)) return el;
+  return el.closest ? el.closest('input, textarea, [contenteditable="true"], [contenteditable=""]') : null;
+}
+
 let lastInputTimestamp = Date.now(), lastInputLength = 0;
 function handleInputEvent(e) {
-  const target = (e && e.composedPath && e.composedPath()[0]) || (e ? e.target : null);
-  if (target && isEditableElement(target)) {
-    lastActiveTarget = target;
+  // ONLY trigger when user types (input or keyup events)
+  if (!e || (e.type !== 'input' && e.type !== 'keyup')) return;
+
+  const raw = (e.composedPath && e.composedPath()[0]) || e.target;
+  const target = raw instanceof Element ? raw : (raw && raw.parentElement instanceof Element ? raw.parentElement : null);
+  const editable = getEditableTarget(target) || (target && isEditableElement(target) ? target : null);
+  if (!editable) return;
+
+  // ONLY trigger when: (a) An input, textarea, or contenteditable element is focused
+  let active = document.activeElement;
+  while (active && active.shadowRoot && active.shadowRoot.activeElement) {
+    active = active.shadowRoot.activeElement;
   }
+  const isFocused = editable === active || (active && active.contains(editable)) || (editable.contains && editable.contains(active)) || (e.composedPath && e.composedPath().includes(editable));
+  if (!isFocused) return;
+
+  lastActiveTarget = editable;
+
   const now = Date.now();
   const dt = now - lastInputTimestamp;
   lastInputTimestamp = now;
-  const element = (target && (document.contains(target) || (target.getRootNode && target.getRootNode() instanceof ShadowRoot))) ? target : getActiveInputElement();
-  const currentLength = element ? (element.value || element.innerText || '').length : 0;
+  const currentLength = (editable.value || editable.innerText || '').length;
   const deltaLength = currentLength - lastInputLength;
   lastInputLength = currentLength;
 
-  clearTimeout(scanDebounce);
   // Non-Human Agentic Burst Injection Detector:
   // If >2000 chars arrive in <25ms, execute deep scan immediately without debounce
   if (deltaLength > 2000 && dt < 25) {
     trackAnalytics('burst_injection', ['AGENTIC_BURST']);
-    performScan(element);
+    performScan(editable);
   } else {
-    scanDebounce = setTimeout(() => performScan(element), 250);
+    // Strict 300ms debounce delay
+    debouncedPerformScan(editable);
   }
 }
 
@@ -2396,7 +2861,7 @@ function showOnboarding() {
 
 let submissionGuardEnabled = true, pendingSubmission = null, hasUserInteracted = false;
 
-// ---- Blueprint #1: fail-closed consensus gate -------------------------------
+// ---- Security Policy: fail-closed consensus gate -------------------------------
 // When the local tiers flagged a text, the send is held and the background
 // multi-model consensus firewall is consulted. Verdicts: blocked (hard — no
 // override), soft_block (explicit user override required), allowed (auto-
@@ -2466,7 +2931,7 @@ function consensusHoldSubmission(promptText, element, pending) {
       }
     );
     // Safety net: a hung background must not swallow the send forever in standard mode.
-    // In strict mode (Blueprint #1), timeout enforces a soft_block requiring user confirmation.
+    // In strict mode (Security Policy), timeout enforces a soft_block requiring user confirmation.
     setTimeout(() => {
       const modal = document.querySelector('[data-vigil="consensus-modal"]');
       if (modal && modal.dataset.verdict === 'checking') {
@@ -2530,7 +2995,7 @@ function showConsensusModal(promptText, verdict, details, pending) {
   if (verdict !== 'checking') updateConsensusModal(verdict, details, promptText, pending);
 }
 
-// Blueprint #8: the intervention UI shows the honest per-classifier
+// Security Policy: the intervention UI shows the honest per-classifier
 // forensics breakdown — every vote, including abstentions.
 function renderConsensusVoteChips(votes) {
   if (!votes || !votes.length) return '';
@@ -2954,7 +3419,7 @@ function getPromptTextFromElement(el) {
 
 function checkOutboundShopping(promptText) {
   if (!promptText || typeof promptText !== 'string' || promptText.length < 15) return;
-  // Multi-Turn Semantic Drift & Behavioral Grooming (Blueprint #7)
+  // Multi-Turn Semantic Drift & Behavioral Grooming (Security Policy)
   recordConversationDriftTurn(promptText);
 
   if (promptText.length < 25) return;
@@ -3175,8 +3640,38 @@ function checkFileForUpload(file, source, overrideName) {
   console.log(`[VIGIL] File upload via ${source}: ${fileName} | ${fileSize}MB | ${fileType}`);
   const fileNameLower = fileName.toLowerCase(); const hasSensitiveName = SENSITIVE_FILE_KEYWORDS.some(keyword => fileNameLower.includes(keyword));
   const isImage = fileType.startsWith('image/') || ['.jpg','.jpeg','.png','.tiff','.tif','.bmp','.webp','.gif'].some(ext => fileNameLower.endsWith(ext));
-  if (hasSensitiveName) { showAttachmentWarning('️ ' + t('sensitiveFilename'), `The file "<strong>${fileName}</strong>" ${t('containsKeywords')}`, fileName, fileSize, fileType); }
-  else if (isImage) { if (window.vigilSkipImageWarnings) return; showAttachmentWarning('️ ' + t('imageUpload'), `${t('aiCanRead')} Does "<strong>${fileName}</strong>" contain IDs or sensitive info?`, fileName, fileSize, fileType); }
+  if (hasSensitiveName) {
+    showAttachmentWarning('️ ' + t('sensitiveFilename'), `The file "<strong>${fileName}</strong>" ${t('containsKeywords')}`, fileName, fileSize, fileType);
+  } else if (isImage) {
+    const fileScanner = typeof window !== 'undefined' ? window.VIGIL_FILE_SCANNER : null;
+    if (fileScanner && typeof fileScanner.scanImageMetadataForInjection === 'function') {
+      fileScanner.scanImageMetadataForInjection(file).then(res => {
+        if (res && res.hasInjection) {
+          showAttachmentWarning('⚠️ Prompt Injection in Metadata', `Concealed prompt injection detected in "<strong>${fileName}</strong>" metadata: ${res.matchedKeyword || ''}`, fileName, fileSize, fileType);
+        } else if (!window.vigilSkipImageWarnings) {
+          showAttachmentWarning('️ ' + t('imageUpload'), `${t('aiCanRead')} Does "<strong>${fileName}</strong>" contain IDs or sensitive info?`, fileName, fileSize, fileType);
+        }
+      }).catch(() => {
+        if (!window.vigilSkipImageWarnings) {
+          showAttachmentWarning('️ ' + t('imageUpload'), `${t('aiCanRead')} Does "<strong>${fileName}</strong>" contain IDs or sensitive info?`, fileName, fileSize, fileType);
+        }
+      });
+    } else {
+      if (window.vigilSkipImageWarnings) return;
+      showAttachmentWarning('️ ' + t('imageUpload'), `${t('aiCanRead')} Does "<strong>${fileName}</strong>" contain IDs or sensitive info?`, fileName, fileSize, fileType);
+    }
+  } else {
+    const fileScanner = typeof window !== 'undefined' ? window.VIGIL_FILE_SCANNER : null;
+    if (fileScanner && typeof fileScanner.isTextFile === 'function' && fileScanner.isTextFile(file)) {
+      const secEngine = typeof VIGIL_SECRETS !== 'undefined' ? VIGIL_SECRETS : null;
+      const fakeEngine = typeof window !== 'undefined' ? window.VIGIL_FAKEDATA : null;
+      fileScanner.scanFileForLeaks(file, secEngine, fakeEngine).then(res => {
+        if (res && res.hasLeak) {
+          showAttachmentWarning('⚠️ Sensitive Content in File', `Sensitive secrets or credentials detected inside "<strong>${fileName}</strong>".`, fileName, fileSize, fileType);
+        }
+      }).catch(() => {});
+    }
+  }
 }
 function showAttachmentWarning(title, message, fileName, fileSize, fileType) {
   document.querySelectorAll('[data-vigil="attachment-modal"]').forEach(el => el.remove());
@@ -3212,6 +3707,7 @@ function showAttachmentWarning(title, message, fileName, fileSize, fileType) {
 async function init() {
   console.log('[VIGIL] Starting protection pipeline...');
   await historyStore.load(); await loadSettings(); await loadTheme(); await refreshVault(); plantAgentCanary();
+  await initScannerWorker();
   if (settings.webgpuAI) { try { chrome.runtime.sendMessage({ type: 'WEBGPU_WARMUP' }, () => {}); } catch (e) {} } // warm the bundled model at page open, not on first consult
   chrome.storage.sync.get(['manualLanguage'], (result) => {
     const manualLang = result.manualLanguage || 'auto';
@@ -3224,18 +3720,12 @@ async function init() {
     // Quiet guardian: the bubble only shows when there is something to say
     const originalRender = popup.render.bind(popup);
     popup.render = function () { originalRender(); updateBubbleVisibility(); };
-  document.addEventListener('input', handleInputEvent, true); document.addEventListener('keyup', handleInputEvent, true);
-  document.addEventListener('change', handleInputEvent, true); // autofill + pickers fire change, not input
-  document.addEventListener('focusout', (e) => { const el = e.target; if (el && isEditableElement(el)) handleInputEvent(); }, true); // last look before submit
-  // CSS-autofill detection: Chrome marks autofilled inputs with :-webkit-autofill —
-  // a 1ms animation on that state surfaces fills that fire no input event
-  try {
-    const style = document.createElement('style');
-    style.textContent = '@keyframes vigilAutofillFill { from { opacity: 0.999; } to { opacity: 1; } } input:-webkit-autofill { animation: vigilAutofillFill 0.01s; }';
-    document.head.appendChild(style);
-    document.addEventListener('animationstart', (e) => { if (e.animationName === 'vigilAutofillFill') { scanDebounce && clearTimeout(scanDebounce); scanDebounce = setTimeout(performScan, 50); } }, true);
-  } catch (e) {}
-  document.addEventListener('focusin', (e) => { const el = e.target; if (el && isEditableElement(el)) handleInputEvent(); }, true);
+
+  // Performance-optimized event triggers:
+  // ONLY trigger scanning when an editable element is focused AND the user types
+  document.addEventListener('input', handleInputEvent, true);
+  document.addEventListener('keyup', handleInputEvent, true);
+
   // Page passes are CHANGE-DRIVEN (verified external audit): a 2s full-page
   // poll burned CPU on complex pages. The MutationObserver runs the page
   // passes when content actually changes (throttled to 4s, debounced 800ms);
@@ -3265,12 +3755,11 @@ async function init() {
     try {
       pageObserver.observe(sr, { childList: true, subtree: true, characterData: true });
       sr.addEventListener('input', handleInputEvent, true);
-      sr.addEventListener('change', handleInputEvent, true);
       sr.addEventListener('keyup', handleInputEvent, true);
     } catch (e) {}
   });
   observeShadowRoots();
-  _scanInterval = setInterval(() => { if (!pagePassPending && Date.now() - lastPagePass >= 10000) runPagePasses(); }, 10000);
+  setInterval(() => { if (!pagePassPending && Date.now() - lastPagePass >= 10000) runPagePasses(); }, 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastPagePass >= 4000) runPagePasses(); });
   document.addEventListener('mousemove', (e) => popup.onDrag(e)); document.addEventListener('mouseup', () => popup.endDrag());
   setupKeyboardShortcuts(); setupSubmissionGuard(); setupAttachmentGuard(); setupPasteGuardian(); setupSpaNavigationListener();
@@ -3287,7 +3776,7 @@ if (document.readyState === 'loading') {
   init();
 }
 
-// Expose submission helpers for test and verification harnesses
+// Expose submission & UI helpers for test and verification harnesses
 if (typeof globalThis !== 'undefined') {
   globalThis.__VIGIL_SUBMISSION_HELPERS__ = {
     isEditableElement,
@@ -3296,6 +3785,18 @@ if (typeof globalThis !== 'undefined') {
     NON_SUBMISSION_EXCLUSION_REGEX,
     getPromptTextFromElement,
     getActiveInputElement
+  };
+  globalThis.__VIGIL_UI_HELPERS__ = {
+    renderComposerPill,
+    removeComposerPill,
+    renderYellowBanner,
+    removeYellowBanner,
+    renderGreenShield,
+    removeGreenShield,
+    showSilentToast,
+    formatMaskedToastMessage,
+    performScan,
+    debounce
   };
 }
 

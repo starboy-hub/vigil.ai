@@ -1,5 +1,5 @@
 /**
- * VIGIL perceptual image hashing (Blueprint #6 companion: synthetic media
+ * VIGIL perceptual image hashing (Security Policy companion: synthetic media
  * provenance). The canonical 64-bit pHash implementation — the Rust daemon
  * (desktop/src/phash.rs) computes the identical algorithm; this JS fallback
  * keeps provenance checks working when the daemon is not connected.

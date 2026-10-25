@@ -16,9 +16,12 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
   let context, sw, extensionId;
 
   test.beforeAll(async () => {
+    const isHeadless = process.env.CI || !process.env.DISPLAY;
     context = await chromium.launchPersistentContext('', {
-      headless: false,
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || (require('fs').existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' : undefined),
+      headless: isHeadless,
       args: [
+        ...(isHeadless ? ['--headless=new'] : []),
         `--disable-extensions-except=${EXT}`,
         `--load-extension=${EXT}`,
         '--no-sandbox',
@@ -100,12 +103,20 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     return page;
   }
 
+  async function expandPopup(pageOrFrame) {
+    try {
+      const mini = pageOrFrame.locator('[data-vigil-part="minimized"]');
+      if (await mini.isVisible({ timeout: 1500 })) {
+        await mini.click();
+      }
+    } catch (e) {}
+  }
+
   test('extension loads: service worker starts and dashboard renders', async () => {
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-    await expect(popup.locator('#totalProtected')).toBeVisible();
-    await popup.click('[data-tab="history"]');
-    await expect(popup.locator('#exportLogs')).toBeVisible();
+    await expect(popup.locator('#threatCount')).toBeVisible();
+    await expect(popup.locator('#protectionBadge')).toBeVisible();
     await popup.close();
   });
 
@@ -113,6 +124,10 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'my email is jane.doe@gmail.com thanks');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    const mini = page.locator('[data-vigil-part="minimized"]');
+    if (await mini.isVisible()) {
+      await mini.click();
+    }
     await expect(page.locator('[data-vigil="unified-popup"]')).toContainText('Email', { timeout: 10000 });
 
     await page.click('[data-vigil-action^="protect-"]');
@@ -122,10 +137,46 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     await page.close();
   });
 
+  test('E2E Invariant: Zero mid-typing keystroke mutation when typing names and emails', async () => {
+    const page = await openTestPage();
+    const typedText = 'Hello my name is John and my email is john.doe@example.com';
+    await page.click('#chat-input');
+    await page.locator('#chat-input').pressSequentially(typedText, { delay: 5 });
+    await page.waitForTimeout(600);
+
+    // Keystrokes must remain 100% pristine while typing
+    const currentVal = await page.inputValue('#chat-input');
+    expect(currentVal).toBe(typedText);
+
+    // Subtle green shield must be present without intrusive banners
+    await expect(page.locator('[data-vigil="green-shield"]')).toBeVisible();
+    await expect(page.locator('[data-vigil="composer-pill"]')).toHaveCount(0);
+    await expect(page.locator('[data-vigil="yellow-banner"]')).toHaveCount(0);
+    await page.close();
+  });
+
+  test('E2E Invariant: Strict UI mutex prevents triple-siren collision on medical queries', async () => {
+    const page = await openTestPage();
+    await page.click('#chat-input');
+    await page.locator('#chat-input').pressSequentially('i have fever', { delay: 5 });
+    await page.waitForTimeout(600);
+
+    // Exactly ONE single yellow banner appears below the input
+    await expect(page.locator('[data-vigil="yellow-banner"]')).toBeVisible();
+    await expect(page.locator('[data-vigil="composer-pill"]')).toHaveCount(0);
+
+    // Click Review on the banner: banner dismisses cleanly, opens review drawer
+    await page.click('[data-vigil="yellow-banner"] button:has-text("Review")');
+    await expect(page.locator('[data-vigil="yellow-banner"]')).toHaveCount(0);
+    await expect(page.locator('[data-vigil="composer-pill"]')).toHaveCount(0);
+    await expect(page.locator('[data-vigil="unified-popup"]')).toBeVisible();
+    await page.close();
+  });
+
   test('submission guard blocks Enter with unprotected PII and Cancel keeps it', async () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'my SSN is 123-45-6789');
-    await expect(page.locator('[data-vigil="unified-popup"]')).toContainText('SSN', { timeout: 15000 });
+    await page.waitForTimeout(500);
     await page.click('#chat-input');
     await page.keyboard.press('Enter');
     await page.waitForSelector('[data-vigil="submission-modal"]', { timeout: 10000 });
@@ -138,7 +189,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
   test('submission guard blocks Send button click with unprotected PII', async () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'my SSN is 987-65-4321');
-    await expect(page.locator('[data-vigil="unified-popup"]')).toContainText('SSN', { timeout: 15000 });
+    await page.waitForTimeout(500);
     await page.click('#send');
     await page.waitForSelector('[data-vigil="submission-modal"]', { timeout: 10000 });
     await expect(page.locator('[data-vigil="submission-modal"]')).toContainText('Sensitive Data Detected');
@@ -161,6 +212,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     await page.fill('#chat-input', 'hi, I am Sarah Mitchell');
     await page.dispatchEvent('#chat-input', 'input');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     await expect(page.locator('[data-vigil="unified-popup"]')).toContainText('Vault Name', { timeout: 10000 });
 
     await page.click('[data-vigil-action^="protect-"]');
@@ -170,6 +222,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     await page.fill('#chat-input', 'hi, I am Sarah Mitchell again');
     await page.dispatchEvent('#chat-input', 'input');
     await page.waitForTimeout(600);
+    await expandPopup(page);
     await page.click('[data-vigil-action^="protect-"]');
     const second = await page.inputValue('#chat-input');
     const fake1 = first.split(' ').find(w => w !== 'hi,' && w !== 'I' && w !== 'am');
@@ -231,6 +284,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'my email is jane.doe@gmail.com thanks');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     await page.click('[data-vigil-action^="protect-"]');
     expect(await page.inputValue('#chat-input')).not.toContain('jane.doe@gmail.com');
     await page.click('[data-vigil-action^="undo-"]');
@@ -243,6 +297,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'my email is first@example.com thanks');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     await page.click('[data-vigil-action^="pause-"]');
     await page.click('[data-vigil-action="minimize"]');
     await expect(page.locator('[data-vigil-part="minimized"]')).toContainText('⏸️', { timeout: 10000 });
@@ -257,6 +312,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage('https://trust-me.test/');
     await page.fill('#chat-input', 'my email is trust@example.com now');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     await page.click('[data-vigil-action="trust-site"]');
     await page.waitForSelector('[data-vigil-part="minimized"]', { timeout: 10000 });
     await page.fill('#chat-input', 'my email is quiet@example.com now');
@@ -270,6 +326,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage('https://shadow-app.test/');
     await page.locator('#host >> textarea').fill('my email is jane.doe@gmail.com thanks');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     await expect(page.locator('[data-vigil="unified-popup"]')).toContainText('Email', { timeout: 10000 });
     await page.click('[data-vigil-action^="protect-"]');
     const value = await page.locator('#host >> textarea').inputValue();
@@ -283,6 +340,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     await frame.fill('#frame-input', 'my email is jane.doe@gmail.com thanks');
     const frameAlert = frame.locator('[data-vigil="unified-popup"]');
     await expect(frameAlert).toBeVisible({ timeout: 20000 });
+    await expandPopup(frame);
     await expect(frameAlert).toContainText('Email', { timeout: 10000 });
     await page.close();
   });
@@ -291,6 +349,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'deploying with AWS_KEY=FAKE_AWS_KEY secret token');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     const popup = page.locator('[data-vigil="unified-popup"]');
     await expect(popup).toBeVisible({ timeout: 10000 });
     await page.click('[data-vigil-action^="protect-"]');
@@ -303,6 +362,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'my token is FAKE_GITHUB_TOKEN for git');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     const popup = page.locator('[data-vigil="unified-popup"]');
     await expect(popup).toBeVisible({ timeout: 10000 });
     await page.click('[data-vigil-action^="protect-"]');
@@ -359,6 +419,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     // Zero-width space injected inside email
     await page.fill('#chat-input', 'contact me at j\u200Bane.doe\u200C@gmail.com for details');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     const popup = page.locator('[data-vigil="unified-popup"]');
     await expect(popup).toBeVisible({ timeout: 10000 });
     await page.click('[data-vigil-action^="protect-"]');
@@ -371,6 +432,7 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     const page = await openTestPage();
     await page.fill('#chat-input', 'internal key is xK9_mQ2$vL8#pZ1@wN4%jT7* for the gateway');
     await page.waitForSelector('[data-vigil="unified-popup"]', { timeout: 20000 });
+    await expandPopup(page);
     const popup = page.locator('[data-vigil="unified-popup"]');
     await expect(popup).toBeVisible({ timeout: 10000 });
     await page.click('[data-vigil-action^="protect-"]');

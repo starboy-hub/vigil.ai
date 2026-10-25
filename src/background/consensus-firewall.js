@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #19: Multi-Model Consensus Firewall
+ * VIGIL Security Policy: Multi-Model Consensus Firewall
  *
  * Problem: Single-model classifiers can be bypassed or jailbroken using targeted
  * adversarial prompts tailored to that specific model's architecture, or produce
@@ -7,7 +7,7 @@
  *
  * Solution: Evaluates prompts against 3 independent, orthogonal local classifiers
  * in parallel (Heuristics, Neural/WebGPU fine-tuned head, and Local LLM / Semantic reasoner).
- * Enforces a 2-of-3 Byzantine consensus voting protocol: blocks only when at least
+ * Enforces a 2-of-3 multi-tier consensus voting protocol: blocks only when at least
  * 2 independent classifiers agree, suppressing single-model false alarms while raising
  * attack cost exponentially.
  */
@@ -221,7 +221,7 @@
     }
 
     /**
-     * Fail-Closed Byzantine Arbiter (Blueprint #1).
+     * Fail-Closed Multi-Tier Arbiter (Security Policy).
      *
      * Votes are block | allow | abstain. A classifier that is offline,
      * errored, timed out, or uncertain ABSTAINS — it never fabricates an

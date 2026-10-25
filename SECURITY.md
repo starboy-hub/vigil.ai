@@ -4,7 +4,7 @@
 
 **Do NOT open a public issue for security vulnerabilities.**
 
-Report privately through GitHub's **Security Advisories** (Repository → Security → Report a vulnerability) or by contacting the repository maintainers (`security@vigil-ai.org` / GitHub: `starboy-hub`).
+Report privately through GitHub's **Security Advisories** at [Report a vulnerability](https://github.com/starboy-hub/vigil.ai/security/advisories/new) or by contacting the repository maintainers on GitHub (`starboy-hub`). For general technical feedback and community discussions, use [GitHub Discussions](https://github.com/starboy-hub/vigil.ai/discussions).
 
 - **Acknowledgment SLA:** Within **48 hours**.
 - **Triage & Patch SLA:** Critical within **7 business days**; High within **14 business days**.

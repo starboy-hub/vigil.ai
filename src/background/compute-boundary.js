@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #4: Dynamic Compute Boundary & Hardware Budgeting
+ * VIGIL Security Policy: Dynamic Compute Boundary & Hardware Budgeting
  *
  * Problem: Running heavy WebGPU neural models or Wasm SIMD routines directly
  * in content scripts exposes models and memory to untrusted DOM page scripts,

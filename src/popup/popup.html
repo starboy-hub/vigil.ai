@@ -7,240 +7,67 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <svg hidden xmlns="http://www.w3.org/2000/svg">
-    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
-    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 14l4-6M4 18a9 9 0 1 1 16 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
-    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 5.5l13 13" stroke="currentColor" stroke-width="2"/></symbol>
-    <symbol id="i-brain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M19 5l-3 3M5 19l3-3M19 19l-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4a3.5 3.5 0 0 1 0 7M21.5 20c-.5-2.5-2-4.3-4-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-clip" viewBox="0 0 24 24"><rect x="7" y="4" width="10" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 4a2 2 0 0 1 4 0" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
-    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
-    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19 12a7 7 0 0 0-.2-1.6l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.7-1.6L13.5 2h-4l-.4 2.9a7 7 0 0 0-2.6 1.6L4.2 5.4l-2 3.4 1.9 1.6A7 7 0 0 0 4 12c0 .5 0 1 .1 1.6l-1.9 1.5 2 3.4 2.3-1a7 7 0 0 0 2.6 1.6l.4 2.9h4l.4-2.9a7 7 0 0 0 2.6-1.6l2.3 1 2-3.4-1.9-1.5A7 7 0 0 0 19 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
-    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 8h11l-3-3M17 16H6l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V7a4 4 0 1 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
-    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12L18 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-firewall" viewBox="0 0 24 24"><path d="M4 4h16v16H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9h16M4 15h16M9 4v5M15 4v5M12 9v6M6 15v5M18 15v5" stroke="currentColor" stroke-width="1.5"/></symbol>
-    <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 1V4M15 1V4M9 20V23M15 20V23M1 9H4M1 15H4M20 9H23M20 15H23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-family" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 9 9c0 5-4 9-9 9s-9-4-9-9a9 9 0 0 1 9-9z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 17c.5-2.5 2.2-4 4.5-4s4 1.5 4.5 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-  </svg>
+  <div class="popup-container">
+    <!-- Header: Vigil AI branding + Settings Gear icon -->
+    <header class="header">
+      <div class="brand">
+        <svg class="brand-shield" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+        <h1 class="brand-title">Vigil AI</h1>
+      </div>
+      <button id="openOptions" class="icon-button" aria-label="Open Settings" title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </header>
 
-  <div class="app">
-
-    <header class="hero">
-      <div class="hero-left">
-        <div class="logo-wrap">
-          <svg class="lattice-svg" viewBox="0 0 32 32">
-            <defs>
-              <linearGradient id="quantumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#10b981" />
-                <stop offset="50%" stop-color="#06b6d4" />
-                <stop offset="100%" stop-color="#3b82f6" />
-              </linearGradient>
-              <radialGradient id="quantumGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#10b981" stop-opacity="0.6"/>
-                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
-              </radialGradient>
-            </defs>
-            <circle cx="16" cy="16" r="14" fill="url(#quantumGlow)" />
-            <circle cx="16" cy="16" r="13" stroke="url(#quantumGrad)" stroke-width="1.2" stroke-dasharray="3 2" class="spin-ring"/>
-            <path d="M16 4 L26 10 L26 22 L16 28 L6 22 L6 10 Z" stroke="url(#quantumGrad)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
-            <path d="M16 8 L22 12 V18 C22 22 16 24.5 16 24.5 C16 24.5 10 22 10 18 V12 L16 8 Z" fill="url(#quantumGrad)"/>
-            <circle cx="16" cy="15" r="2" fill="#ffffff" />
+    <!-- Main Status: Minimalist at-a-glance dashboard -->
+    <main class="main-status">
+      <div class="status-card">
+        <div class="status-icon-wrap" aria-hidden="true">
+          <svg class="shield-pulse" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <polyline points="9 12 11 14 15 10"/>
           </svg>
         </div>
-        <div class="hero-title">
-          <h1>VIGIL AI</h1>
-          <span class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">Active (Protected)</span></span>
+        <div class="counter-display">
+          <div id="threatCount" class="counter-number">0</div>
+          <div id="threatLabel" class="counter-label">Threats Blocked Today</div>
+        </div>
+        <div class="status-badge" id="protectionBadge">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Protection Active</span>
         </div>
       </div>
-      <div class="hero-grade" id="gradeBadge" title="Site safety score"><span id="gradeLetter">–</span></div>
-      <div class="hero-actions">
-        <label class="icon-toggle" title="Dark mode">
-          <input type="checkbox" id="themeToggle">
-          <span class="icon-btn"><svg width="14" height="14"><use href="#i-moon"/></svg></span>
-        </label>
-        <button class="icon-btn" id="openOptions" title="Settings"><svg width="14" height="14"><use href="#i-gear"/></svg></button>
+
+      <!-- Action Button: Pause Protection (1 Hour) -->
+      <div class="action-wrapper">
+        <button id="pauseButton" class="pause-button" aria-live="polite">
+          Pause Protection (1 Hour)
+        </button>
       </div>
-    </header>
-    <div class="family-badge" id="familyBadge" hidden><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-family"/></svg> Family Guardian active — maximum protection</div>
-    <div class="family-badge" id="apexBadge" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);" hidden><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-chip"/></svg> ⚡ Apex Guardian Active · Local AI Connected</div>
 
-    <nav class="tabs">
-      <button class="tab active" data-tab="overview">Overview</button>
-      <button class="tab" data-tab="alerts">Alerts <span class="tab-badge" id="alertsBadge" hidden>0</span></button>
-      <button class="tab" data-tab="history">History</button>
-      <button class="tab" data-tab="forensics">Forensics</button>
-    </nav>
-
-    <section class="tab-page" id="tab-overview">
-      <section class="card">
-        <div class="switch-row" style="border-bottom:none;padding:0">
-          <div class="switch-info">
-            <span class="switch-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-lock"/></svg> Session Guard</span>
-            <span class="switch-desc">Active · session <span id="sessionGuardId">…</span></span>
-          </div>
-        </div>
+      <!-- Recent Activity: Last 3 blocked/masked items -->
+      <section class="activity-section" aria-labelledby="activityTitle">
+        <h2 id="activityTitle" class="section-title">Recent Activity</h2>
+        <ul id="activityList" class="activity-list" role="list">
+          <li class="activity-empty">No activity recorded today</li>
+        </ul>
       </section>
+    </main>
 
-      <section class="card stats-card">
-        <div class="stat-hero">
-          <span class="stat-hero-number" id="todayProtected">0</span>
-          <span class="stat-hero-label">protected today</span>
-        </div>
-        <div class="stat-row">
-          <div class="stat-mini">
-            <span class="stat-mini-number" id="totalProtected">0</span>
-            <span class="stat-mini-label">All time</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-mini">
-            <span class="stat-mini-number" id="sitesVisited">0</span>
-            <span class="stat-mini-label">Sites</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">Protection level</h2>
-        <div class="preset-control" id="presetControl" role="radiogroup" aria-label="Protection level">
-          <button class="preset-btn" data-preset="standard">Standard</button>
-          <button class="preset-btn" data-preset="strict">Strict</button>
-          <button class="preset-btn" data-preset="family">Family</button>
-          <button class="preset-btn" data-preset="off">Off</button>
-        </div>
-        <div class="preset-note" id="presetNote"></div>
-        <details class="sub">
-          <summary>Individual layer toggles</summary>
-          <div class="switch-row">
-            <div class="switch-info"><span class="switch-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-shield"/></svg> Shield</span><span class="switch-desc">Detect &amp; swap PII as you type</span></div>
-            <label class="switch"><input type="checkbox" id="shieldToggle"><span class="track"></span></label>
-          </div>
-          <div class="switch-row">
-            <div class="switch-info"><span class="switch-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-radar"/></svg> Sentinel</span><span class="switch-desc">Scan incoming messages for scams</span></div>
-            <label class="switch"><input type="checkbox" id="sentinelToggle"><span class="track"></span></label>
-          </div>
-          <div class="switch-row">
-            <div class="switch-info"><span class="switch-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-firewall"/></svg> Injection Firewall</span><span class="switch-desc">Catch hidden AI-hijack instructions</span></div>
-            <label class="switch"><input type="checkbox" id="firewallToggle"><span class="track"></span></label>
-          </div>
-          <div class="switch-row">
-            <div class="switch-info"><span class="switch-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-chip"/></svg> Local AI analysis</span><span class="switch-desc" id="ollamaDesc">Second opinion via Ollama</span></div>
-            <label class="switch"><input type="checkbox" id="ollamaToggle"><span class="track"></span></label>
-          </div>
-          <div class="switch-row">
-            <div class="switch-info"><span class="switch-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-clip"/></svg> Paste scanning</span><span class="switch-desc">Check text you paste into AI chats</span></div>
-            <label class="switch"><input type="checkbox" id="clipboardToggle"><span class="track"></span></label>
-          </div>
-          <div class="switch-row">
-            <div class="switch-info"><span class="switch-label"><svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-family"/></svg> Family Guardian</span><span class="switch-desc">Strictest protection for loved ones</span></div>
-            <label class="switch"><input type="checkbox" id="familyToggle"><span class="track"></span></label>
-          </div>
-          <div class="sensitivity-row">
-            <span class="switch-label">🎯 Sensitivity</span>
-            <select id="sensitivity">
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        </details>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">Ask VIGIL</h2>
-        <textarea id="askInput" rows="3" placeholder="Paste a suspicious message… analyzed locally, never uploaded."></textarea>
-        <button id="askBtn" class="btn-primary">🔍 Analyze</button>
-        <div id="askResult"></div>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">This week</h2>
-        <div class="digest-bars" id="digestBars"></div>
-        <div class="digest-types" id="digestTypes"></div>
-      </section>
-    </section>
-
-    <section class="tab-page" id="tab-alerts" hidden>
-      <section class="card">
-        <h2 class="card-title">Findings on this page</h2>
-        <div id="alertsList"><div class="activity-empty">Nothing flagged on this page</div></div>
-      </section>
-    </section>
-
-    <section class="tab-page" id="tab-history" hidden>
-      <section class="card">
-        <h2 class="card-title">Recent history</h2>
-        <div id="historyList"><div class="activity-empty">Nothing yet</div></div>
-      </section>
-      <footer class="footer">
-        <span class="version" id="versionText">v—</span>
-        <div class="footer-actions">
-          <button id="clearStats" class="link-btn">Clear stats</button>
-          <button id="exportLogs" class="btn-primary">Export audit log</button>
-        </div>
-      </footer>
-    </section>
-
-    <section class="tab-page" id="tab-forensics" hidden>
-      <section class="card">
-        <h2 class="card-title">🔬 Adversarial Replay Pipeline</h2>
-        <div class="row-desc" style="margin-bottom:10px;">Test and instrument any prompt across all 4 defense tiers with sub-millisecond timeline diagnostics.</div>
-        
-        <label for="forensicsPresetSelect" style="font-size:11px;font-weight:600;color:var(--text-2);display:block;margin-bottom:4px;">Sample Adversarial Presets:</label>
-        <select id="forensicsPresetSelect" style="width:100%;margin-bottom:10px;padding:6px;border-radius:6px;background:var(--bg-card);color:var(--text-1);border:1px solid var(--border);">
-          <option value="">-- Choose a test vector --</option>
-          <option value="injection_sys">Jailbreak: System Prompt Exfiltration</option>
-          <option value="pii_leak">PII Exposure: SSN & Patient Health Record</option>
-          <option value="redos_cat">ReDoS Vulnerability: Nested Backtracking Regex</option>
-          <option value="scam_urgent">Sentinel Scam: Urgent Wire Transfer</option>
-          <option value="benign_code">Benign: Rust Async Mutex Implementation</option>
-        </select>
-
-        <textarea id="forensicsPromptInput" rows="3" placeholder="Enter adversarial payload or prompt to replay..."></textarea>
-        <button id="forensicsReplayBtn" class="btn-primary" style="margin-top:8px;">▶ Replay Pipeline</button>
-      </section>
-
-      <section class="card" id="forensicsResultsCard" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <h2 class="card-title" style="margin:0;">Execution Timeline</h2>
-          <span id="forensicsVerdictBadge" class="status-pill">PASS</span>
-        </div>
-        <div style="font-size:11px;color:var(--text-3);margin-bottom:12px;">Total Latency: <b id="forensicsTotalLatency">0.00ms</b></div>
-        <div id="forensicsTimelineList" class="timeline-container"></div>
-      </section>
-    </section>
-
-    <div class="onboard" id="onboard" hidden>
-      <div class="onboard-step" data-step="1">
-        <span class="onboard-icon"><svg width="34" height="34"><use href="#i-shield"/></svg></span>
-        <h2>Meet your guardian</h2>
-        <p>VIGIL watches everything you send to AI chats — and everything AI-generated aimed at you. Locally, forever.</p>
-      </div>
-      <div class="onboard-step" data-step="2" hidden>
-        <span class="onboard-icon">🔐</span>
-        <h2>Teach it your identity</h2>
-        <p>Add your name and email to the Vault — they get consistent pseudonyms, and replies un-mask them for your eyes only.</p>
-        <button id="onboardVault" class="btn-primary">Open Identity Vault</button>
-      </div>
-      <div class="onboard-step" data-step="3" hidden>
-        <span class="onboard-icon">🧪</span>
-        <h2>Try it now</h2>
-        <p>Type any email into an AI chat. VIGIL flags it, swaps it, and keeps you safe.</p>
-      </div>
-      <div class="onboard-dots"><span class="odot active"></span><span class="odot"></span><span class="odot"></span></div>
-      <div class="onboard-actions">
-        <button id="onboardSkip" class="link-btn">Skip</button>
-        <button id="onboardNext" class="btn-primary">Next</button>
-      </div>
-    </div>
-
+    <!-- Footer -->
+    <footer class="footer">
+      <span class="footer-badge">Local-First</span>
+      <span class="footer-text">Zero-Cloud Privacy Engine</span>
+    </footer>
   </div>
+
   <script src="vigil-shared.js"></script>
-  <script src="sentinel-engine.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

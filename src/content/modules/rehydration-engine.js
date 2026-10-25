@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint: Autonomous Dynamic Bidirectional Rehydration Engine
+ * VIGIL Security Policy: Autonomous Dynamic Bidirectional Rehydration Engine
  * 
  * Tracks session-scoped surrogate-to-real entity mappings and transparently
  * re-hydrates streaming cloud AI responses (ChatGPT, Claude, Gemini, etc.)

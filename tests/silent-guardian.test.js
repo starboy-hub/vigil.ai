@@ -28,6 +28,9 @@ if (!global.chrome) {
 
 // Load shared module and content script in jsdom environment
 const VIGIL = require('../src/shared/vigil-shared.js');
+eval(fs.readFileSync(path.join(__dirname, '..', 'src', 'content', 'modules', 'redos-engine.js'), 'utf8'));
+eval(fs.readFileSync(path.join(__dirname, '..', 'src', 'content', 'modules', 'detection-engine.js'), 'utf8'));
+eval(fs.readFileSync(path.join(__dirname, '..', 'src', 'content', 'modules', 'fake-data.js'), 'utf8'));
 
 // Evaluate content script to populate globalThis helpers
 eval(fs.readFileSync(path.join(__dirname, '..', 'src', 'content', 'content.js'), 'utf8'));
@@ -295,6 +298,75 @@ describe('Task 2: Severity-Based Interruption Engine', () => {
       expect(document.querySelector('[data-vigil="silent-toast"]')).toBeNull();
 
       jest.useRealTimers();
+    });
+  });
+
+  describe('Task 2.1: Strict UI Mutex & Zero Mid-Typing DOM Mutation', () => {
+    let inputEl;
+
+    beforeEach(() => {
+      document.body.innerHTML = '';
+      inputEl = document.createElement('textarea');
+      inputEl.value = 'Hello my name is John Doe';
+      document.body.appendChild(inputEl);
+      removeComposerPill();
+      removeYellowBanner();
+      removeGreenShield();
+    });
+
+    test('Strict UI Mutex: rendering composer pill dismisses yellow banner and green shield', () => {
+      renderYellowBanner(inputEl, { alerts: [{ type: 'Financial data' }], element: inputEl });
+      renderGreenShield(inputEl);
+      expect(document.querySelector('[data-vigil="yellow-banner"]')).toBeNull();
+      expect(document.querySelector('[data-vigil="green-shield"]')).not.toBeNull();
+
+      renderComposerPill(inputEl, { alerts: [{ type: 'API_KEY' }], element: inputEl });
+      expect(document.querySelector('[data-vigil="composer-pill"]')).not.toBeNull();
+      expect(document.querySelector('[data-vigil="yellow-banner"]')).toBeNull();
+      expect(document.querySelector('[data-vigil="green-shield"]')).toBeNull();
+    });
+
+    test('Strict UI Mutex: rendering yellow banner dismisses composer pill and green shield', () => {
+      renderComposerPill(inputEl, { alerts: [{ type: 'API_KEY' }], element: inputEl });
+      expect(document.querySelector('[data-vigil="composer-pill"]')).not.toBeNull();
+
+      renderYellowBanner(inputEl, { alerts: [{ type: 'Financial data' }], element: inputEl });
+      expect(document.querySelector('[data-vigil="yellow-banner"]')).not.toBeNull();
+      expect(document.querySelector('[data-vigil="composer-pill"]')).toBeNull();
+      expect(document.querySelector('[data-vigil="green-shield"]')).toBeNull();
+    });
+
+    test('Strict UI Mutex: review button on yellow banner dismisses banner and expands review', () => {
+      renderYellowBanner(inputEl, {
+        alerts: [{ type: 'MEDICAL' }],
+        redactions: [{ text: 'fever', type: 'MEDICAL' }],
+        element: inputEl
+      });
+
+      const banner = document.querySelector('[data-vigil="yellow-banner"]');
+      const reviewBtn = banner.querySelector('button');
+      reviewBtn.click();
+
+      // Yellow banner must be dismissed and no composer pill should appear
+      expect(document.querySelector('[data-vigil="yellow-banner"]')).toBeNull();
+      expect(document.querySelector('[data-vigil="composer-pill"]')).toBeNull();
+    });
+
+    test('Zero Mid-Typing Keystroke Mutation: typing names or emails never alters input value', async () => {
+      const originalTyped = 'Hi my name is John Doe, please contact me at john@example.com';
+      inputEl.value = originalTyped;
+
+      // Mock scanAndHighlight or performScan
+      const { performScan } = globalThis.__VIGIL_UI_HELPERS__;
+      await performScan(inputEl);
+
+      // Typing buffer must NOT be overwritten with fake names/pseudonyms!
+      expect(inputEl.value).toBe(originalTyped);
+      // Green shield indicator shows active silent protection
+      expect(document.querySelector('[data-vigil="green-shield"]')).not.toBeNull();
+      // No disruptive banners or pills
+      expect(document.querySelector('[data-vigil="composer-pill"]')).toBeNull();
+      expect(document.querySelector('[data-vigil="yellow-banner"]')).toBeNull();
     });
   });
 });

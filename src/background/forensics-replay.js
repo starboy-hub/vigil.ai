@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #12: Adversarial Replay Mode (Forensics Replay)
+ * VIGIL Security Policy: Adversarial Replay Mode (Forensics Replay)
  *
  * Problem: Security researchers, enterprise auditors, and power users cannot
  * inspect the internal step-by-step decision pathway of the VIGIL multi-tier

@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint: Semantic Scenario Abstraction & Homomorphic Prompt Translator
+ * VIGIL Security Policy: Semantic Scenario Abstraction & Homomorphic Prompt Translator
  * 
  * Based on 2025/2026 Type-Consistent Surrogate & Propagation-Aware Mediation research:
  * Instead of naive [REDACTED] masking, this engine translates proprietary, clinical,

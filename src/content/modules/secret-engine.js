@@ -42,7 +42,7 @@
       while ((m = re.exec(text)) !== null) {
         if (!m[0]) { re.lastIndex++; continue; }
         const matched = m[1] || m[0];
-        // Blueprint 11: Suppress mock/test keys and placeholder prefixes
+        // Security Policy: Suppress mock/test keys and placeholder prefixes
         if (/^(?:sk-test-|pk_test_|dummy|mock|placeholder|example)/i.test(matched)) {
           continue;
         }
@@ -58,7 +58,7 @@
     const candidateTokens = text.match(/[A-Za-z0-9_\-+/=!@#$%^&*]{18,128}/g) || [];
     candidateTokens.forEach(token => {
       if (seen.has(token)) return;
-      // Blueprint 11: Ignore git commit hashes, SHA-256 hex strings, or mock prefixes
+      // Security Policy: Ignore git commit hashes, SHA-256 hex strings, or mock prefixes
       if (/^[0-9a-fA-F]{32,64}$/.test(token)) return;
       if (/^(?:sk-test-|pk_test_|dummy|mock|placeholder|example)/i.test(token)) return;
 

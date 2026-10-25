@@ -1,6 +1,6 @@
 /**
  * VIGIL - Sensitive Context Injection Policy
- * Blueprint #13: Enterprise Gatekeeper & Sensitive Surface Deny-List
+ * Security Policy: Enterprise Gatekeeper & Sensitive Surface Deny-List
  * Prevents content script execution on security-sensitive domains such as
  * identity providers, password managers, and payment gateways.
  */

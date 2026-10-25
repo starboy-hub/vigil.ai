@@ -222,7 +222,101 @@
     return { week, byType, days: days.map(d => ({ label: d.label, count: d.count })) };
   }
 
-  const VIGIL = { KEYS, DEFAULT_SETTINGS, mergeSettings, statsFromHistory, isSameDay, flexiblePattern, maskSensitive, strHash, normalizeForSignature, canaryBundle, PRESETS, presetSettings, siteGrade, weeklyDigest };
+  /**
+   * Severity-based categorization for interruption management:
+   * CRITICAL: Hard interrupt (red pill)
+   * MEDIUM: Subtle non-blocking yellow banner below input
+   * LOW: Silent masking with green shield and 2s toast
+   */
+  const SEVERITY_MAP = {
+    CRITICAL: [
+      'Credit Cards',
+      'Credit Card',
+      'SSNs',
+      'SSN',
+      'Passwords',
+      'Password',
+      'API Keys',
+      'API Key',
+      'API_KEY',
+      'Private Keys',
+      'Private Key',
+      'PRIVATE_KEY',
+      'CREDENTIALS',
+      'DATABASE_URI',
+      'INJECTION',
+      'HONEYTOKEN',
+      'Vault Secret',
+      'VAULT_MATCH'
+    ],
+    MEDIUM: [
+      'Financial data',
+      'FINANCIAL',
+      'Bank Account',
+      'proprietary code snippets',
+      'CODE_SNIPPET',
+      'PROPRIETARY_CODE',
+      'medical context',
+      'MEDICAL',
+      'CONDITION',
+      'MEDICATION',
+      'Medical Record',
+      'LEGAL',
+      'EMPLOYMENT',
+      'QUASI_IDENTIFIER',
+      'K_ANONYMITY_RISK'
+    ],
+    LOW: [
+      'Names',
+      'Name',
+      'Emails',
+      'Email',
+      'Phone numbers',
+      'Phone',
+      'generic addresses',
+      'Address',
+      'IP Address',
+      'Date of Birth',
+      'Passport',
+      'Driver License',
+      'PERSONAL'
+    ]
+  };
+
+  /**
+   * Determine the severity tier ('CRITICAL', 'MEDIUM', 'LOW') for a detection type.
+   * @param {string} type
+   * @returns {'CRITICAL' | 'MEDIUM' | 'LOW'}
+   */
+  function getSeverity(type) {
+    if (!type) return 'LOW';
+    const norm = String(type).trim().toLowerCase();
+
+    for (const item of SEVERITY_MAP.CRITICAL) {
+      if (norm === item.toLowerCase()) return 'CRITICAL';
+    }
+    for (const item of SEVERITY_MAP.MEDIUM) {
+      if (norm === item.toLowerCase()) return 'MEDIUM';
+    }
+    for (const item of SEVERITY_MAP.LOW) {
+      if (norm === item.toLowerCase()) return 'LOW';
+    }
+
+    if (norm.includes('card') || norm.includes('ssn') || norm.includes('password') ||
+        norm.includes('api_key') || norm.includes('api key') || norm.includes('private_key') ||
+        norm.includes('private key') || norm.includes('credentials') || norm.includes('secret') ||
+        norm.includes('injection') || norm.includes('honeytoken') || norm.includes('vault')) {
+      return 'CRITICAL';
+    }
+    if (norm.includes('financial') || norm.includes('bank') || norm.includes('code') ||
+        norm.includes('medical') || norm.includes('condition') || norm.includes('medication') ||
+        norm.includes('legal') || norm.includes('employment')) {
+      return 'MEDIUM';
+    }
+    return 'LOW';
+  }
+
+  const VIGIL = { KEYS, DEFAULT_SETTINGS, mergeSettings, statsFromHistory, isSameDay, flexiblePattern, maskSensitive, strHash, normalizeForSignature, canaryBundle, PRESETS, presetSettings, siteGrade, weeklyDigest, SEVERITY_MAP, getSeverity };
   root.VIGIL = VIGIL;
   if (typeof module !== 'undefined' && module.exports) module.exports = VIGIL;
 })(typeof self !== 'undefined' ? self : globalThis);

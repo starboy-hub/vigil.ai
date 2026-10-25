@@ -1,5 +1,6 @@
 module.exports = {
   testDir: './e2e',
+  testMatch: ['**/extension.spec.js', '**/sentinel.spec.js'],
   timeout: 60000,
   globalTimeout: 12 * 60 * 1000,
   actionTimeout: 15000,

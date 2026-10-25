@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #13: Prompt Git (Conversation Version Control)
+ * VIGIL Security Policy: Prompt Git (Conversation Version Control)
  *
  * Problem: Users, AI engineers, and security red-teamers iterate extensively on
  * system prompts, adversarial vectors, and conversational contexts, but lack

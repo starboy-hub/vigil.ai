@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #11: Training Data Leakage Detector (Inbound)
+ * VIGIL Security Policy: Training Data Leakage Detector (Inbound)
  *
  * Problem: LLMs frequently regurgitate copyrighted code, GPL copyleft snippets,
  * or memorized training data without attribution, creating copyleft legal contamination

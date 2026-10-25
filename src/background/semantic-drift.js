@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #7: Gradual Manipulation Detection (Semantic Drift)
+ * VIGIL Security Policy: Gradual Manipulation Detection (Semantic Drift)
  *
  * Problem: Multi-turn conversational grooming (5-20+ turns) defeats single-message
  * detectors by incrementally nudging the conversation towards sensitive clusters

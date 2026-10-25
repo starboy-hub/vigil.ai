@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #10: Multi-Provider Jailbreak Shopping Detection
+ * VIGIL Security Policy: Multi-Provider Jailbreak Shopping Detection
  *
  * Problem: Attackers test identical jailbreak or prompt-injection payloads across
  * multiple AI providers within minutes to discover the weakest guardrails.

@@ -35,7 +35,7 @@
    */
   function analyzeInjection(text) {
     if (!text || text.length < 15) return { level: 'none', score: 0, signals: [], advice: LEVELS.none.advice };
-    // Blueprint #3: score the canonicalized copy — zero-width smuggling,
+    // Security Policy: score the canonicalized copy — zero-width smuggling,
     // homoglyphs, fullwidth forms and leet must not evade the patterns.
     const normalizer = typeof VIGIL_NORMALIZER !== 'undefined' ? VIGIL_NORMALIZER : null;
     const textNorm = normalizer ? normalizer.normalizeAdversarialText(text) : text;

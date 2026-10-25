@@ -22,7 +22,7 @@
     'Medical Record': /\b(?:MRN|medical\s*record)\s*-?\s*#?:?\s*(?:MRN\s+)?(\d{6,10})\b/gi
   };
 
-  // ---- Blueprint 11: Contextual Precision Engine (CPE) ----
+  // ---- Security Policy: Contextual Precision Engine (CPE) ----
   // Clause segmentation: split on punctuation, newlines, and coordinating conjunctions
   const CLAUSE_DELIMITER = /[,.;!?\n]+|\b(?:and|but|while|whereas|however|although)\b/i;
 

@@ -671,7 +671,7 @@ if (runPentestBtn) {
 }
 
 // ==========================================
-// Zero-Knowledge Proof of DLP Compliance (Blueprint #9)
+// Zero-Knowledge Proof of DLP Compliance (Security Policy)
 // ==========================================
 let currentZkProofPackage = null;
 const generateZkProofBtn = document.getElementById('generateZkProofBtn');
@@ -807,7 +807,7 @@ if (promptGitBranchBtn) {
 
 refreshPromptGitUI();
 
-// ---- Local LoRA Adapter UI (Blueprint #16) ----
+// ---- Local LoRA Adapter UI (Security Policy) ----
 function refreshLoraUI() {
   chrome.runtime.sendMessage({ type: 'LORA_GET_STATUS' }, (res) => {
     if (!res || !res.ok) return;

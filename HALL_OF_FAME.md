@@ -38,7 +38,7 @@ Vigil AI is an independent, community-driven open-source project maintained on a
 If you discover a security issue or potential weakness in Vigil AI:
 
 - **Preferred Channel:** Open a private advisory report via [GitHub Security Advisories](https://github.com/starboy-hub/vigil.ai/security/advisories/new).
-- **Email Contact:** Reach out directly to `security@vigil-ai.org` or repository maintainers (`starboy-hub`).
+- **Community & Discussions:** Participate in community discussions via [GitHub Discussions](https://github.com/starboy-hub/vigil.ai/discussions) or contact maintainers on GitHub (`starboy-hub`).
 - **Policy Details:** Review our full SLA commitments and scope in [SECURITY.md](SECURITY.md) and RFC 9116 [security.txt](.well-known/security.txt).
 
 Thank you for helping keep Vigil AI secure for everyone!

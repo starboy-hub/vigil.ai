@@ -1,5 +1,5 @@
 /**
- * VIGIL Blueprint #9: Keyed Merkle Attestation of DLP Compliance
+ * VIGIL Security Policy: Keyed Merkle Attestation of DLP Compliance
  * (honest adaptation of the original "ZK-SNARK" blueprint)
  *
  * Problem: Enterprises need to prove to auditors (SOC2, GDPR, HIPAA) that

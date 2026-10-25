@@ -479,4 +479,122 @@ describe('VIGIL Native Messaging Bridge', () => {
       expect(manifest.allowed_extensions).toContain('vigil@starboy-hub.github.io');
     });
   });
+
+  describe('Sentinel Stage 5: Native Companion RPC Extensions', () => {
+    beforeEach(() => {
+      VIGIL_NATIVE_BRIDGE.connect();
+    });
+
+    test('sentinelEvaluatePolicy sends vigil.sentinelEvaluatePolicy request', async () => {
+      const action = {
+        action_type: 'fs:read',
+        resource: 'README.md',
+        request_id: 'req-test-1'
+      };
+
+      const reqPromise = VIGIL_NATIVE_BRIDGE.sentinelEvaluatePolicy(action, 'strict', '/app/workspace');
+      const sentPayload = mockPort.postMessage.mock.calls[0][0];
+
+      expect(sentPayload.method).toBe('vigil.sentinelEvaluatePolicy');
+      expect(sentPayload.params.action).toEqual(action);
+      expect(sentPayload.params.profile).toBe('strict');
+      expect(sentPayload.params.workspace_root).toBe('/app/workspace');
+
+      // Simulate native companion response
+      const onMessageListener = mockPort.onMessage.addListener.mock.calls[0][0];
+      onMessageListener({
+        jsonrpc: '2.0',
+        id: sentPayload.id,
+        result: {
+          decision: 'require_approval',
+          reason_code: 'REQUIRE_APPROVAL_WORKSPACE_WRITE',
+          action_hash: 'mockhash123'
+        }
+      });
+
+      const res = await reqPromise;
+      expect(res.decision).toBe('require_approval');
+      expect(res.reason_code).toBe('REQUIRE_APPROVAL_WORKSPACE_WRITE');
+    });
+
+    test('sentinelGetApprovalStatus queries native anchor for target status', async () => {
+      const reqPromise = VIGIL_NATIVE_BRIDGE.sentinelGetApprovalStatus('hash-12345');
+      const sentPayload = mockPort.postMessage.mock.calls[0][0];
+
+      expect(sentPayload.method).toBe('vigil.sentinelGetApprovalStatus');
+      expect(sentPayload.params.target).toBe('hash-12345');
+
+      const onMessageListener = mockPort.onMessage.addListener.mock.calls[0][0];
+      onMessageListener({
+        jsonrpc: '2.0',
+        id: sentPayload.id,
+        result: {
+          found: true,
+          status: 'approved',
+          action_hash: 'hash-12345'
+        }
+      });
+
+      const res = await reqPromise;
+      expect(res.found).toBe(true);
+      expect(res.status).toBe('approved');
+    });
+
+    test('sentinelSubmitApproval submits human decision to native companion', async () => {
+      const reqPromise = VIGIL_NATIVE_BRIDGE.sentinelSubmitApproval('appr-999', 'approve', {
+        actionHash: 'hash-999',
+        approver: 'admin@sentinel.test',
+        token: 'token-abc'
+      });
+      const sentPayload = mockPort.postMessage.mock.calls[0][0];
+
+      expect(sentPayload.method).toBe('vigil.sentinelSubmitApproval');
+      expect(sentPayload.params.target).toBe('appr-999');
+      expect(sentPayload.params.decision).toBe('approve');
+      expect(sentPayload.params.approver).toBe('admin@sentinel.test');
+      expect(sentPayload.params.token).toBe('token-abc');
+
+      const onMessageListener = mockPort.onMessage.addListener.mock.calls[0][0];
+      onMessageListener({
+        jsonrpc: '2.0',
+        id: sentPayload.id,
+        result: {
+          success: true,
+          status: 'approved'
+        }
+      });
+
+      const res = await reqPromise;
+      expect(res.success).toBe(true);
+      expect(res.status).toBe('approved');
+    });
+
+    test('sentinelRegisterEnforcementPoint registers active gateway', async () => {
+      const adapterInfo = {
+        adapter_id: 'sentinel-mcp-gateway',
+        adapter_type: 'mcp',
+        capabilities: ['tools/call', 'fs', 'shell']
+      };
+
+      const reqPromise = VIGIL_NATIVE_BRIDGE.sentinelRegisterEnforcementPoint(adapterInfo);
+      const sentPayload = mockPort.postMessage.mock.calls[0][0];
+
+      expect(sentPayload.method).toBe('vigil.sentinelRegisterEnforcementPoint');
+      expect(sentPayload.params.adapter_id).toBe('sentinel-mcp-gateway');
+
+      const onMessageListener = mockPort.onMessage.addListener.mock.calls[0][0];
+      onMessageListener({
+        jsonrpc: '2.0',
+        id: sentPayload.id,
+        result: {
+          registered: true,
+          adapter_id: 'sentinel-mcp-gateway'
+        }
+      });
+
+      const res = await reqPromise;
+      expect(res.registered).toBe(true);
+      expect(res.adapter_id).toBe('sentinel-mcp-gateway');
+    });
+  });
 });

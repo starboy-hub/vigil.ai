@@ -42,7 +42,7 @@ The primary objectives of the Vigil AI Guardian Incident Response Plan are:
 ```
 
 ### Phase 1: Detection & Triage
-- Vulnerabilities reported via `security@vigil.ai` or PGP-encrypted GitHub Advisory.
+- Vulnerabilities reported privately via [GitHub Security Advisories](https://github.com/starboy-hub/vigil.ai/security/advisories/new).
 - Security team verifies the report, reproduces the defect in an isolated sandbox, and assigns severity rating (P1–P4).
 
 ### Phase 2: Containment
@@ -71,6 +71,7 @@ The primary objectives of the Vigil AI Guardian Incident Response Plan are:
 
 ## 4. Emergency Contacts & Keys
 
-- **Security Team Email**: `security@vigil.ai`
+- **Security Advisory Channel**: `https://github.com/starboy-hub/vigil.ai/security/advisories`
+- **Community Discussions**: `https://github.com/starboy-hub/vigil.ai/discussions`
 - **PGP Fingerprint**: `F5A9 217C 8B43 90E1 4D12  A87B 3E99 0081 CE4D 1092`
 - **Advisory Feed**: `https://github.com/starboy-hub/vigil.ai/security/advisories`
