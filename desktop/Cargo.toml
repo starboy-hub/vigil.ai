@@ -6,6 +6,14 @@ authors = ["Vigil AI Security Team <temur.khalid@gmail.com>"]
 license = "AGPL-3.0-or-later"
 description = "Vigil AI Native Desktop Security Companion: Native Messaging Host, E2E-Encrypted Channel, OS Keychain, Audio Spectral Canary, SIEM Export"
 
+[lib]
+name = "vigil_desktop_companion"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vigil-desktop-companion"
+path = "src/main.rs"
+
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"

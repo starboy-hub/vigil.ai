@@ -4,7 +4,7 @@
   "name": "Vigil AI: Universal AI Privacy Shield",
   "version": "1.0.0",
   "description": "Open-source endpoint DLP & zero-trust sentinel. Intercepts and redacts PII before it reaches AI platforms. 100% local.",
-  "permissions": ["activeTab", "storage", "contextMenus", "offscreen", "sidePanel", "nativeMessaging", "alarms", "idle"],
+  "permissions": ["activeTab", "storage", "contextMenus", "offscreen", "sidePanel", "nativeMessaging", "alarms", "idle", "scripting"],
   "side_panel": {
     "default_path": "popup.html"
   },

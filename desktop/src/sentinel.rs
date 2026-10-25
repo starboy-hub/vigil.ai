@@ -561,7 +561,8 @@ impl SentinelEngine {
         })
     }
 
-    fn percent_decode(s: &str) -> String {
+    #[allow(dead_code)]
+    pub fn percent_decode(s: &str) -> String {
         let mut out = Vec::with_capacity(s.len());
         let bytes = s.as_bytes();
         let mut i = 0;
@@ -580,7 +581,7 @@ impl SentinelEngine {
     }
 
     #[allow(dead_code)]
-    fn lexically_normal_path(p: &Path) -> PathBuf {
+    pub fn lexically_normal_path(p: &Path) -> PathBuf {
         let mut out = PathBuf::new();
         for component in p.components() {
             match component {
@@ -593,6 +594,30 @@ impl SentinelEngine {
         }
         out
     }
+}
+
+/// Lexically normalize a path resolving relative traversal sequences (., ..).
+/// Exported for security policy enforcement and coverage-guided fuzzing harnesses.
+#[allow(dead_code)]
+pub fn lexically_normalize_path(p: &Path) -> PathBuf {
+    SentinelEngine::lexically_normal_path(p)
+}
+
+/// Fully decode and sanitize a URL/resource string.
+/// Exported for fuzz testing against double-encoding and null-byte injection.
+#[allow(dead_code)]
+pub fn sanitize_resource_string(input: &str) -> String {
+    let mut decoded = SentinelEngine::percent_decode(input);
+    let mut iterations = 0;
+    while decoded.contains('%') && iterations < 3 {
+        let next = SentinelEngine::percent_decode(&decoded);
+        if next == decoded {
+            break;
+        }
+        decoded = next;
+        iterations += 1;
+    }
+    decoded.replace('\0', "")
 }
 
 fn chrono_now_iso() -> String {

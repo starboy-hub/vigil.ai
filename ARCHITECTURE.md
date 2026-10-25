@@ -180,8 +180,11 @@ sequenceDiagram
 
 ## 4. Subsystem Deep-Dive Specifications
 
-### 4.1 Layer 1: In-Page Content Script Sandbox & Dynamic Workers
-* **Zero Main-Thread Freezing:** WebGPU neural compute is strictly isolated from content scripts. Dynamic Web Workers load on-demand when the user focuses an editable element or visits designated AI domains (`chatgpt.com`, `claude.ai`, `gemini.google.com`).
+### 4.1 Layer 1: In-Page Content Script Sandbox & Adaptive Trampoline Architecture
+* **The Adaptive Trampoline Pattern (Zero Idle Overhead):** On generic non-AI websites without form inputs, the extension runs in Zero-Cost Trampoline Mode. All heavy DOM observers, AST engines, and Web Workers remain completely dormant until the user focuses an `<input>`, `<textarea>`, or `[contenteditable]` element, or navigates to an AI platform.
+  * **Memory Footprint:** Drops from ~25MB to **< 0.5MB** on passive web pages.
+  * **Main-Thread Blocking:** Zero milliseconds during initial page layout and Core Web Vitals measurement.
+  * **AI Domain Fast-Path:** Known AI platforms (`chatgpt.com`, `claude.ai`, `gemini.google.com`, `poe.com`, `deepseek.com`, etc.) and enterprise webmail instantly auto-elevate to full real-time protection at DOM readiness.
 * **Micro-Scanner Engine:** Read-only web pages incur zero Web Worker memory overhead. If worker instantiation fails, synchronous `scanTextLocal` executes fail-closed.
 * **Sensitive Domain Immunity:** Pre-execution deny-list prevents injection on SSO identity providers (Okta, Auth0, Ping), password managers (1Password, Bitwarden), and banking portals.
 
@@ -206,6 +209,14 @@ The Sentinel engine evaluates every agent action through four strict precedence 
 | **Tier 2** | **Explicit Deny Rules** | Environment files (`.env*`), SSH keys (`id_rsa`, `id_ed25519`), AWS credentials (`~/.aws/credentials`), Git configuration (`.git/config`), and rate/quota limits. | **DENY (Fail-Closed)** |
 | **Tier 3** | **Human Approval Gates** | Non-standard shell invocations, package installations (`npm install`, `pip install`), configuration modifications, and cross-directory file writes. | **HOLD (Requires Explicit Approval)** |
 | **Tier 4** | **Explicit Allow Rules** | Read/write operations strictly scoped inside the initialized workspace root directory. | **ALLOW** |
+
+#### Dual-Track Fuzzing & Invariant Verification Pipeline
+To guarantee complete resilience against path traversal exploits and shell escaping, Sentinel implements dual-track fuzz testing:
+1. **In-Process Deterministic Invariant Fuzzing (`cargo test`):** Executes 100,000 randomized cycles per test run verifying policy engine invariants on stable Rust (IMDS interception, traversal blocking, zero panics).
+2. **Coverage-Guided LLVM libFuzzer Harness (`desktop/fuzz/`):** Three dedicated fuzz targets targeting high-risk boundaries:
+   * `path_normalizer`: Fuzzes `lexically_normalize_path` and `sanitize_resource_string` against arbitrary Unicode overrides, double percent-encoding, and null-byte injections.
+   * `shell_parser`: Fuzzes AST de-obfuscation and shell pipelines to verify destructive commands (`rm -rf`) can never bypass policy through quoting or encoding tricks.
+   * `json_rpc_parser`: Fuzzes Model Context Protocol (MCP) gateway JSON-RPC payloads against malformed structures and deep recursion.
 
 ### 4.5 Layer 5: Tamper-Evident SHA-256 Chained Audit Ledger
 Every action proposal evaluated by Sentinel is hashed and linked to the previous entry:

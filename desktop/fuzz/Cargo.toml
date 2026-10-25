@@ -1,0 +1,31 @@
+[package]
+name = "vigil-desktop-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.9"
+serde_json = "=1.0.151"
+vigil-desktop-companion = { path = ".." }
+
+[[bin]]
+name = "path_normalizer"
+path = "fuzz_targets/path_normalizer.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "shell_parser"
+path = "fuzz_targets/shell_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "json_rpc_parser"
+path = "fuzz_targets/json_rpc_parser.rs"
+test = false
+doc = false

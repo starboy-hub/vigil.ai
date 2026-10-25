@@ -137,6 +137,46 @@ async function getLocalHandshakeToken() {
   }
 }
 
+// Programmatic On-Demand Content Script Injection (Manifest V3 chrome.scripting API)
+const VIGIL_CORE_CONTENT_FILES = [
+  'injection-policy.js',
+  'vigil-shared.js',
+  'adversarial-normalizer.js',
+  'vigil-vault.js',
+  'fake-data.js',
+  'redos-engine.js',
+  'detection-engine.js',
+  'secret-engine.js',
+  'semantic-abstractor.js',
+  'rehydration-engine.js',
+  'k-anonymity-auditor.js',
+  'honeytoken-canary-generator.js',
+  'wasm-simd-fft.js',
+  'vision-canary.js',
+  'vision-firewall.js',
+  'swarm-mesh.js',
+  'sentinel-engine.js',
+  'injection-engine.js',
+  'webmail-profile.js',
+  'semantic-engine.js',
+  'leakage-detector.js',
+  'rag-file-scanner.js',
+  'content.js'
+];
+
+async function injectDynamicShield(tabId) {
+  if (typeof chrome === 'undefined' || !chrome.scripting || !chrome.scripting.executeScript) return false;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      files: VIGIL_CORE_CONTENT_FILES
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function secureOllamaFetch(url, options = {}) {
   try {
     const token = await getLocalHandshakeToken();
@@ -580,6 +620,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ error: 'unauthorized_sender_context', detail: 'Privileged operations prohibited from web content script' });
       return false;
     }
+    if (request.type === 'INJECT_DYNAMIC_SHIELD' || request.type === 'REQUEST_SHIELD_INJECTION') {
+      const targetTabId = (sender && sender.tab && sender.tab.id) || request.tabId;
+      if (targetTabId) {
+        injectDynamicShield(targetTabId).then((success) => {
+          sendResponse({ ok: success, injected: success });
+        });
+        return true;
+      }
+      sendResponse({ ok: false, error: 'no_target_tab' });
+      return false;
+    }
+
     if (request.type === 'GET_SETTINGS') {
       chrome.storage.sync.get(['settings'], (result) => {
         const settings = result.settings ? { ...DEFAULT_SETTINGS, ...result.settings } : DEFAULT_SETTINGS;
