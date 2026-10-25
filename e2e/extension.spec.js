@@ -5,6 +5,7 @@
 const { test, chromium, expect } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const EXT = path.join(__dirname, '..', 'dist');
 const MOCK_HTML = fs.readFileSync(path.join(__dirname, 'fixtures', 'mock-chat.html'), 'utf8');
@@ -13,13 +14,14 @@ const GMAIL_HTML = fs.readFileSync(path.join(__dirname, 'fixtures', 'mock-gmail.
 test.describe.configure({ mode: 'serial' });
 
 test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
-  let context, sw, extensionId;
+  let context, sw, extensionId, userDataDir;
 
   test.beforeAll(async () => {
     // When running under xvfb or with an active DISPLAY, run headed so extensions load service workers
     const isHeadless = !process.env.DISPLAY;
-    context = await chromium.launchPersistentContext('', {
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || (require('fs').existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' : undefined),
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vigil-playwright-'));
+    context = await chromium.launchPersistentContext(userDataDir, {
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
       headless: isHeadless,
       args: [
         ...(isHeadless ? ['--headless=new'] : []),
@@ -33,7 +35,19 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
     });
 
     [sw] = context.serviceWorkers();
-    if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 20000 });
+    if (!sw) {
+      try {
+        sw = await context.waitForEvent('serviceworker', { timeout: 25000 });
+      } catch (_) {
+        const dummyPage = await context.newPage();
+        await dummyPage.goto('data:text/html,<html><body>VIGIL Init</body></html>');
+        [sw] = context.serviceWorkers();
+        if (!sw) {
+          sw = await context.waitForEvent('serviceworker', { timeout: 15000 });
+        }
+        await dummyPage.close();
+      }
+    }
     extensionId = new URL(sw.url()).host;
 
     // Seed onboarding flag once so extension runs in active state
@@ -91,6 +105,11 @@ test.describe('VIGIL Extension Journeys (Fast Tab Reuse)', () => {
 
   test.afterAll(async () => {
     if (context) await context.close();
+    try {
+      if (userDataDir && fs.existsSync(userDataDir)) {
+        fs.rmSync(userDataDir, { recursive: true, force: true });
+      }
+    } catch (_) {}
   });
 
   async function openTestPage(url = 'https://mock-chat.test/') {

@@ -1,170 +1,291 @@
-HOW TO READ THIS FILE:
-Imagine you are building a highly secure vault. Right now, the vault is very
-strong, but it has a few heavy doors that are always open, it trusts a local
-guard without checking his ID, and it doesn't actively train against new
-attacks. This blueprint tells you exactly how to fix ALL those issues to make
-the vault faster, safer, and smarter, without removing any of its existing
-security features. No "nerfing" (weakening) is allowed.
+**IMPORTANT: Read this entire file before writing any code. This is your permanent memory for the Vigil AI project. Do not forget or deviate from these instructions.**
 
-================================================================================
-PART 1: VERIFIED FACTS (Checked by Developer AI via Online Research)
-================================================================================
-Before we change anything, the Developer AI has verified these facts online:
-1. BROWSER EXTENSIONS: Chrome's official documentation confirms that loading
-   heavy scripts on "all websites" slows down the browser. The approved fix is
-   "Dynamic Content Scripts" and moving heavy math to "Web Workers".
-2. LOCALHOST SECURITY: Cybersecurity best practices confirm that blindly
-   trusting "localhost:11434" is dangerous. Ollama's documentation confirms
-   you must use strict Origin checks and secret tokens.
-3. COMPLEX CODE SECURITY: Top security firms confirm that for critical code,
-   "Fuzzing" (throwing garbage data at it) and "Formal Verification" (math
-   proofs) are the gold standards.
-4. AI SECURITY: Modern AI defense research confirms that using a local AI to
-   constantly attack your own shield (AI vs AI) and rotating fake "trap"
-   passwords are the best ways to catch advanced data leaks.
+---
 
-================================================================================
-PART 2: WHAT IS PRESENT NOW vs. WHAT SHOULD CHANGE (AND WHY)
-================================================================================
+## 🎯 PROJECT IDENTITY
 
-[AREA 1: Browser Performance & Memory]
-- WHAT IS PRESENT NOW: The extension loads over 20 heavy security scripts on
-  EVERY single website, doing all the heavy math on the main webpage thread.
-- WHAT SHOULD CHANGE:
-  1. "Smart Loading" (Dynamic Injection): Only load scripts when you type in
-     a text box or visit an AI site.
-  2. "Background Workers" (Web Workers/Offscreen API): Move heavy math (like
-     the WebGPU engine) to the browser's "basement" so it doesn't freeze the
-     webpage.
-  3. "Lazy Loading": Only unpack tools into memory when you actually click to
-     use them in the settings.
-- WHY: Loading 20 scripts on a simple recipe blog wastes memory and slows down
-  your computer.
-- DOES THIS NERF IT? NO. The protection is exactly the same when you need it,
-  but your computer runs faster when you don't.
+**Vigil AI** is an open-source, 100% local, zero-trust security architecture that protects users from AI-era threats. It consists of TWO main components:
 
-[AREA 2: Local AI (Ollama) Connection Security]
-- WHAT IS PRESENT NOW: The extension blindly sends data to "localhost:11434"
-  and throws errors if it fails, which hackers can read.
-- WHAT SHOULD CHANGE:
-  1. "Secret Handshake" (Cryptographic Token): Require a secret password to
-     talk to the local AI.
-  2. "Silent Backup Plan" (Graceful Degradation): If the local AI fails the
-     security check, quietly switch to the built-in brain without throwing
-     console errors that could leak network info to hackers.
-- WHY: If a hacker tricks your computer into running a fake AI on that port,
-  the extension will accidentally send it your private data. The silent backup
-  ensures hackers can't tell what's happening behind the scenes.
-- DOES THIS NERF IT? NO. It makes the local connection strictly safer and
-  prevents hackers from mapping your local network.
+1. **Vigil Browser Shield** (Manifest V3 Chrome/Firefox extension): Real-time outbound DLP, anti-injection firewall, PII redaction
+2. **Sentinel Agent Gateway** (Native Rust + Node.js companion): Policy enforcement layer for autonomous AI agents (MCP JSON-RPC, shell execution, file I/O, network requests)
 
-[AREA 3: Taming Complexity & Shrinking the Attack Surface]
-- WHAT IS PRESENT NOW: The code is highly complex, all features run by default,
-  and the browser talks to the desktop app through a wide-open door.
-- WHAT SHOULD CHANGE:
-  1. "Toggle Switches" (Feature Flags): Allow users (or IT admins) to turn on
-     only the specific shields they need.
-  2. "Math Proofs" (Formal Verification): Use math to prove the Rust code can
-     never accidentally allow a forbidden action (like reading a password file).
-  3. "Garbage Data Testing" (Fuzzing): Throw millions of broken, weird inputs
-     at the code in the testing phase to find hidden cracks.
-  4. "The Vault Slot" (Native Messaging Isolation): The browser and desktop app
-     should only pass notes through a tiny slot. Once the note is read, the
-     slot closes immediately. No lingering connections.
-- WHY: If a feature isn't running, it can't be hacked. Proving the code works
-  with math and throwing garbage at it ensures no hidden bugs exist. The vault
-  slot prevents privilege escalation.
-- DOES THIS NERF IT? NO. It makes the shield mathematically stronger and
-  reduces the chances of a bug breaking the tool.
+**Core Philosophy:** 100% local, zero-trust, fail-closed, zero-cloud. NEVER send user data, prompts, or credentials to external servers.
 
-[AREA 4: Enhancing the "Red-Team Simulation Lab"]
-- WHAT IS PRESENT NOW: The tool has a red-team lab, but it uses static tests.
-- WHAT SHOULD CHANGE:
-  1. "AI vs. AI Sparring" (LLM-Guided Fuzzing): Use a small, local AI to
-     constantly invent new, creative, context-aware attacks to test the shield
-     in the background.
-  2. "Rotating Trap Keys" (Canary Token Rotation): Dynamically change the fake
-     passwords (honeypots) injected into the webpage.
-- WHY: Hackers use AI to find new loopholes; we must use AI to find them first.
-  If a hacker steals a rotating trap key, the system can cryptographically
-  trace exactly which webpage and what time they stole it.
-- DOES THIS NERF IT? NO. It turns the shield from a passive wall into an
-  active, learning trap.
+---
 
-================================================================================
-PART 3: STRICT RULES (NON-NEGOTIABLE)
-================================================================================
-To ensure the tool is NEVER "nerfed" (weakened), the developer must follow
-these strict rules during the upgrade:
+## ✅ VERIFIED WORKING FEATURES (DO NOT TOUCH OR BREAK)
 
-RULE 1: ZERO FEATURE REMOVAL. No existing security engine can be deleted or
-        disabled by default.
-RULE 2: FAIL-CLOSED DEFAULT. If a new dynamic script fails to load, the secret
-        handshake fails, or the vault slot jams, the system must BLOCK the
-        action, not allow it.
-RULE 3: 100% LOCAL GUARANTEE. No new feature can require sending user data,
-        prompts, or keys to an external cloud server. Everything stays local.
-RULE 4: NO NEW HEAVY DEPENDENCIES. Do not add massive new software libraries.
-        Use built-in browser features or lightweight, audited Rust crates.
+These features have been implemented and verified. **Do not remove, refactor, or weaken them:**
 
-================================================================================
-PART 4: DEVELOPER AI VERIFICATION PHASE (DO THIS FIRST)
-================================================================================
-Before writing any new code, the Developer AI must run these exact checks to
-prove the plan is safe and the vulnerabilities actually exist:
+### 1. Local AI (Ollama) Security - ✅ COMPLETE
+- **File:** `src/background/background.js`
+- **Function:** `secureOllamaFetch()`
+- **What it does:** Generates cryptographic handshake token stored in `chrome.storage.local`, injects it as `X-Vigil-Auth` header, silently fails without console errors
+- **Status:** WORKING PERFECTLY. Do not change this.
 
-CHECK 1: Run a memory profile of the current extension on a blank webpage.
-         Record the baseline memory usage.
-CHECK 2: Write a tiny, fake "rogue server" on localhost:11434. Prove that the
-         current extension accidentally talks to it and throws readable errors.
-CHECK 3: Run the current Rust `sentinel.rs` through a basic fuzzer for 10
-         minutes to establish a baseline of how many edge-cases it misses.
-CHECK 4: Prove that the current "Canary Tokens" (fake passwords) are static
-         and can be easily identified by a basic script.
+### 2. Red-Team Simulation Lab - ✅ COMPLETE
+- **Files:** `src/background/redteam-agent.js`, `src/sentinel/redteam/simulation-lab.js`
+- **What it does:** AI-guided fuzzing, rotating canary traps, adversarial testing
+- **Status:** WORKING. Do not remove.
 
-*If these checks do not match reality, STOP and adjust the blueprint.*
+### 3. Native Rust Policy Engine - ✅ CORE LOGIC WORKING
+- **File:** `desktop/src/sentinel.rs`
+- **What it does:** Hard security rules (blocks `/etc/shadow`, IMDS SSRF, path traversal, destructive shell commands), TOCTOU protection via SHA-256 action hashing, fail-closed defaults
+- **Status:** CORE LOGIC WORKING. Only add fuzzing targets, do not change policy logic.
 
-================================================================================
-PART 5: TEST-FIRST IMPLEMENTATION PLAN (STAGING BEFORE PRODUCTION)
-================================================================================
-Do not push these changes directly to the main tool. Follow this exact order:
+### 4. Companion Agent Firewall - ✅ COMPLETE
+- **File:** `companion/vigil-agent-firewall.js`
+- **What it does:** DNS rebinding protection, private network blocking, recursive proxy loop prevention, IMDS blocking
+- **Status:** WORKING PERFECTLY. Do not change.
 
-STEP 1: THE SANDBOX BRANCH (Performance & Memory)
-- Create a new code branch named `feature/security-upgrade-sandbox`.
-- Implement "Smart Loading" and move ONE heavy engine to a "Background Worker".
-- Test it manually. Does it still catch secrets? Is the browser faster?
+---
 
-STEP 2: THE HANDSHAKE & SILENT BACKUP (Local AI)
-- Update the Ollama connection code to require the "Secret Handshake".
-- Add the "Silent Backup Plan" so it fails quietly.
-- Test it against the "rogue server" from CHECK 2. It MUST reject the rogue
-  server silently without throwing console errors.
+## ❌ REMAINING CRITICAL ISSUES (MUST FIX)
 
-STEP 3: THE VAULT SLOT & TOGGLE SWITCHES (Complexity)
-- Implement the "Vault Slot" (strict request-response-drop) for the native
-  messaging host.
-- Add the "Toggle Switches" (Feature Flags) to the settings menu.
-- Add the automated "Garbage Data Testing" (Fuzzing) to the GitHub Actions CI.
+These are the ONLY two problems left to solve. Focus exclusively on these.
 
-STEP 4: THE AI SPARRING & ROTATING TRAPS (Red-Team)
-- Implement the "Rotating Trap Keys" so fake passwords change every session.
-- Integrate the small local AI for "AI vs AI Sparring" in the background.
-- Verify that stealing a trap key triggers a high-fidelity forensic alert.
+### ISSUE 1: Browser Performance - Content Script Bloat (HIGH PRIORITY)
+**Problem:** The extension statically injects 20+ heavy scripts into `<all_urls>` on every website, causing memory bloat and performance issues.
 
-STEP 5: THE ULTIMATE STRESS TEST
-- Before merging to the main code, run the full automated test suite:
-  `npm test` (JavaScript tests)
-  `cargo test` (Rust tests)
-  `npx playwright test` (End-to-End browser tests)
-  `cargo fuzz` (Fuzzing pipeline)
-- All tests MUST pass with a 100% success rate. If even one test fails, the
-  code is rejected and sent back for fixing.
+**Current State:**
+- `src/manifest.json` has `"content_scripts"` with `"matches": ["<all_urls>"]`
+- Missing `"scripting"` permission in manifest
+- All scripts load on every page, even simple blogs
 
-STEP 6: FINAL REVIEW & MERGE
-- A second developer (or the Developer AI acting as reviewer) reads the code
-  to ensure all 4 STRICT RULES from Part 3 were followed.
-- Only then is the code merged into the main project.
+**Required Fix:**
+1. Add `"scripting"` to `permissions` array in `src/manifest.json`
+2. Remove the static `"content_scripts"` block from manifest
+3. In `src/background/background.js`, implement dynamic injection using `chrome.scripting.registerContentScripts()`
+4. Only inject scripts when:
+   - User focuses on `<textarea>`, `<input type="text">`, or contenteditable elements
+   - User visits known AI domains (chat.openai.com, claude.ai, etc.)
+   - User explicitly enables protection via popup toggle
+5. Move heavy computation (WebGPU, semantic abstractor) to Web Workers or `chrome.offscreen` API
 
-================================================================================
-END OF COMPLETE BLUEPRINT
-================================================================================
+**Success Criteria:**
+- Extension memory footprint < 30MB on blank page
+- Main thread blocking < 20ms per page load
+- All existing tests still pass
+
+### ISSUE 2: Rust Fuzzing Not Configured (MEDIUM PRIORITY)
+**Problem:** The critical Rust policy engine (`desktop/src/sentinel.rs`) has no fuzzing targets, only standard unit tests.
+
+**Current State:**
+- `desktop/Cargo.toml` has no fuzzing dependencies
+- No `desktop/fuzz/` directory exists
+- JavaScript has fuzzing tests, but Rust does not
+
+**Required Fix:**
+1. In `desktop/` directory, run: `cargo fuzz init`
+2. Create fuzz targets for:
+   - `path_normalizer` (test `lexically_normalize_path` with random strings, null bytes, unicode tricks)
+   - `shell_parser` (test AST de-obfuscator with malformed bash commands)
+   - `json_rpc_parser` (test MCP gateway with deeply nested malformed JSON)
+3. Add fuzzing to CI: Update `.github/workflows/ci.yml` to run `cargo fuzz run <target> -- -max_total_time=300` on every PR
+4. Ensure all fuzz targets fail gracefully (no panics)
+
+**Success Criteria:**
+- `cargo fuzz run path_normalizer` executes for 5 minutes with zero panics
+- CI pipeline includes fuzzing step
+- All existing `cargo test` still pass
+
+---
+
+## 🚫 STRICT RULES (NON-NEGOTIABLE)
+
+**RULE 1: ZERO FEATURE REMOVAL**
+- Do NOT delete any existing security engines (DLP, injection detection, honeypots, red-team lab)
+- Do NOT disable features by default
+- Do NOT remove any tests
+
+**RULE 2: FAIL-CLOSED DEFAULT**
+- If dynamic script injection fails, BLOCK the action (do not allow)
+- If Ollama handshake fails, BLOCK the action (do not allow)
+- If fuzzing finds a panic, FIX IT (do not ignore)
+
+**RULE 3: 100% LOCAL GUARANTEE**
+- Do NOT add any code that sends user data to external servers
+- Do NOT add cloud-based telemetry or analytics
+- All processing must remain on-device
+
+**RULE 4: NO NEW HEAVY DEPENDENCIES**
+- Do NOT add massive npm packages or Rust crates
+- Use built-in browser APIs (Web Crypto, Web Workers, Offscreen API)
+- Use lightweight, audited Rust crates only
+
+**RULE 5: BACKWARD COMPATIBILITY**
+- All existing tests must pass after changes
+- Do NOT break the native messaging host protocol
+- Do NOT change the JSON-RPC schema for MCP gateway
+
+---
+
+## 📋 EXACT TECHNICAL TASKS (STEP-BY-STEP)
+
+### Task A: Fix Manifest for Dynamic Injection (15 minutes)
+
+**Step 1:** Open `src/manifest.json`
+
+**Step 2:** Add `"scripting"` to permissions:
+```json
+"permissions": [
+  "activeTab",
+  "storage",
+  "contextMenus",
+  "offscreen",
+  "sidePanel",
+  "nativeMessaging",
+  "alarms",
+  "idle",
+  "scripting" // <-- ADD THIS
+]
+```
+
+**Step 3:** Remove the entire `"content_scripts"` block from manifest
+
+**Step 4:** In `src/background/background.js`, add dynamic injection logic:
+```javascript
+// Register content scripts dynamically based on user interaction
+async function registerContentScriptsForTab(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['content.js', 'detection-engine.js', 'secret-engine.js']
+    });
+  } catch (e) {
+    console.warn('[VIGIL] Failed to inject scripts:', e);
+  }
+}
+
+// Listen for user focus on input fields
+chrome.webNavigation.onDOMContentLoaded.addListener((details) => {
+  if (details.frameId === 0) {
+    chrome.scripting.executeScript({
+      target: { tabId: details.tabId },
+      func: () => {
+        document.addEventListener('focusin', (e) => {
+          if (e.target.tagName === 'TEXTAREA' ||
+              e.target.tagName === 'INPUT' ||
+              e.target.isContentEditable) {
+            chrome.runtime.sendMessage({ type: 'INJECT_VIGIL_SCRIPTS' });
+          }
+        });
+      }
+    });
+  }
+});
+
+// Handle message from content script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'INJECT_VIGIL_SCRIPTS' && sender.tab) {
+    registerContentScriptsForTab(sender.tab.id);
+  }
+});
+```
+
+**Step 5:** Test manually:
+- Open blank page → Check DevTools → No Vigil scripts loaded
+- Click on textarea → Check DevTools → Vigil scripts injected
+- Run `npm test` → All tests pass
+
+### Task B: Add Rust Fuzzing (1 hour)
+
+**Step 1:** Navigate to `desktop/` directory
+
+**Step 2:** Initialize fuzzing:
+```bash
+cargo install cargo-fuzz
+cargo fuzz init
+```
+
+**Step 3:** Create fuzz target `desktop/fuzz/fuzz_targets/path_normalizer.rs`:
+```rust
+#![no_main]
+use libfuzzer_sys::fuzz_target;
+use vigil_desktop_companion::lexically_normalize_path; // Adjust import path
+use std::path::PathBuf;
+
+fuzz_target!(|data: &[u8]| {
+    if let Ok(s) = std::str::from_utf8(data) {
+        let path = PathBuf::from(s);
+        let _ = vigil_desktop_companion::lexically_normalize_path(&path);
+    }
+});
+```
+
+**Step 4:** Make function public in `desktop/src/sentinel.rs`:
+```rust
+pub fn lexically_normalize_path(p: &Path) -> PathBuf {
+    // existing implementation
+}
+```
+
+**Step 5:** Test fuzzing:
+```bash
+cargo fuzz run path_normalizer -- -max_total_time=300
+```
+
+**Step 6:** Add to CI `.github/workflows/ci.yml`:
+```yaml
+- name: Run Rust Fuzzing
+  run: |
+    cd desktop
+    cargo fuzz run path_normalizer -- -max_total_time=300
+```
+
+**Step 7:** Verify:
+- Fuzzing runs for 5 minutes with zero panics
+- `cargo test` still passes
+- CI pipeline succeeds
+
+---
+
+## 🧪 TESTING & VERIFICATION REQUIREMENTS
+
+After implementing fixes, you MUST verify:
+
+### Verification Checklist:
+- [ ] `npm test` passes (all 926 Jest tests)
+- [ ] `npm run test:e2e` passes (all 38 Playwright tests)
+- [ ] `cd desktop && cargo test` passes (all 27 Rust tests)
+- [ ] `cargo fuzz run path_normalizer -- -max_total_time=300` completes with zero panics
+- [ ] Extension memory footprint < 30MB on blank page (check Chrome DevTools)
+- [ ] Main thread blocking < 20ms per page load (check Chrome DevTools Performance tab)
+- [ ] `secureOllamaFetch()` still works (test with local Ollama instance)
+- [ ] Red-team simulation lab still runs (check `tests/redteam-agent.test.js`)
+
+### How to Test Performance:
+1. Open Chrome DevTools → Memory tab
+2. Take heap snapshot on blank page with extension disabled
+3. Enable extension, take another heap snapshot
+4. Difference should be < 30MB
+5. Open Performance tab, record page load
+6. Verify Vigil scripts block main thread < 20ms
+
+---
+
+## 📞 IF YOU ARE CONFUSED
+
+**Re-read this file from the top.**
+
+**Key points to remember:**
+1. Vigil AI is 100% local, zero-trust, fail-closed
+2. Ollama security and red-team lab are DONE - do not touch
+3. Only TWO problems remain: manifest bloat and Rust fuzzing
+4. Follow the strict rules - do not remove features, do not add cloud dependencies
+5. Test everything before submitting
+
+**If you still don't understand, ask for clarification BEFORE writing code.**
+
+---
+
+## 🎯 SUCCESS CRITERIA
+
+You have successfully completed the task when:
+1. All verification checklist items pass
+2. Extension performance is improved (memory < 30MB, blocking < 20ms)
+3. Rust fuzzing is integrated into CI
+4. All existing functionality still works
+5. No features were removed or weakened
+
+**Good luck. You have everything you need in this file.**
