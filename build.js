@@ -95,8 +95,8 @@ function writeIntegrityManifest(out) {
 
   function scanDir(dir, base) {
     if (!fs.existsSync(dir)) return;
-    for (const f of fs.readdirSync(dir)) {
-      if (f === 'vigil-integrity.json' || f === '.DS_Store' || f.endsWith('.tmp')) continue;
+    for (const f of fs.readdirSync(dir).sort()) {
+      if (f === 'vigil-integrity.json' || f === 'release-manifest.json' || f === 'audit-dossier.json' || f === 'sbom.json' || f === '.DS_Store' || f.endsWith('.tmp')) continue;
       const full = path.join(dir, f);
       const rel = base ? (base + '/' + f) : f;
       const stat = fs.statSync(full);
@@ -109,17 +109,25 @@ function writeIntegrityManifest(out) {
   }
 
   scanDir(out, '');
-  fs.writeFileSync(path.join(out, 'vigil-integrity.json'), JSON.stringify(manifest, null, 2));
+  const sortedManifest = {};
+  for (const k of Object.keys(manifest).sort()) {
+    sortedManifest[k] = manifest[k];
+  }
+  fs.writeFileSync(path.join(out, 'vigil-integrity.json'), JSON.stringify(sortedManifest, null, 2));
 
   // Maintain vendor/vigil-integrity.json for offscreen.js backward compatibility
   const vendorDir = path.join(out, 'vendor');
   if (fs.existsSync(vendorDir)) {
     const vendorManifest = {};
-    for (const f of fs.readdirSync(vendorDir)) {
+    for (const f of fs.readdirSync(vendorDir).sort()) {
       if (f === 'vigil-integrity.json') continue;
       vendorManifest['vendor/' + f] = crypto.createHash('sha256').update(fs.readFileSync(path.join(vendorDir, f))).digest('hex');
     }
-    fs.writeFileSync(path.join(vendorDir, 'vigil-integrity.json'), JSON.stringify(vendorManifest, null, 1));
+    const sortedVendorManifest = {};
+    for (const k of Object.keys(vendorManifest).sort()) {
+      sortedVendorManifest[k] = vendorManifest[k];
+    }
+    fs.writeFileSync(path.join(vendorDir, 'vigil-integrity.json'), JSON.stringify(sortedVendorManifest, null, 1));
   }
 }
 

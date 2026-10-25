@@ -1,8 +1,8 @@
 {
   "packageName": "vigil-ai",
   "version": "1.0.0",
-  "timestamp": "2026-10-25T14:51:24.832Z",
-  "compositeHash": "8ba79619e9b05a574de6fc946ff2f944b77cc65065332459473137b456d326bc",
+  "timestamp": "2026-10-25T15:07:36.601Z",
+  "compositeHash": "4275c34b03f62a1a505b45894f474107a8f7c3fa157f4c1c58faad6dee5292d2",
   "fileCount": 88,
   "files": {
     "adaptive-router.js": "27e3bcc703e433f1d7d454e471a8d0e22ef4089984c33c9b1e0b9c03819fd4a0",
@@ -84,7 +84,7 @@
     "vendor/ort.webgpu.mjs": "adb238e255f30154c16188fa150438b3bf45b26e72b34a250a467b7ff72b5c26",
     "vendor/transformers.min.js": "1475fd440e9932ab206682ee42cb18f6097403e9ee77ea62084c592d0f83597d",
     "vendor/vigil-integrity.json": "96a9b1c43e6dab84beb6582ed9ea980000e7949eea7bad88c86184e0ddea2c2b",
-    "vigil-integrity.json": "e7225e211982e6a6f3466a7f21642437d7fec83bc9784dc27cc5dee91389efaf",
+    "vigil-integrity.json": "eb532db122299ebde380308bed08ee3486753728340561cf9e6b8b24a0d639cb",
     "vigil-shared.js": "ac1ecd69933459acbaf4021ad7e0e177e1b4415298ec3d9e8f96c0c9f19818a8",
     "vigil-vault.js": "cdf62135f75146258d01e6e96f059b79b4f746458541b047a6d203d3c7a05f5a",
     "vision-canary.js": "ac06832c707a5ad448e4e47dbd44100cc033e6005a1aa5c5a8bb4ba453ea56f3",
