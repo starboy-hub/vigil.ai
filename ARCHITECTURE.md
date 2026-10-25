@@ -239,3 +239,4 @@ Vigil AI guarantees sub-12ms end-to-end evaluation latency across all enforcemen
 | **Zero Outbound Plaintext PHI/PII** | No credit card, SSN, or clinical PHI string leaves the browser DOM without explicit user confirmation or deterministic masking. | Playwright E2E browser test suite (38 specs) |
 | **TOCTOU Action Hash Binding** | User approval is bound to $\text{SHA-256}(\text{Action})$. Modifying parameters after approval invalidates execution. | Sentinel MCP Gateway cryptographic test suite |
 | **Supply Chain Bit-Reproducibility** | Release package composite hash must match committed `.github/build-hash.txt`. Discrepancies halt CI release. | `npm run release:gate` (Gate 3) |
+

@@ -27,7 +27,9 @@
     "eval:semantic": "node evaluation/capture-scores.js && node evaluation/semantic-eval.js",
     "benchmark:adversarial": "node scripts/adversarial-benchmark.js",
     "build:hash": "node scripts/verify-build-reproducibility.js",
-    "release:gate": "node scripts/release-gate.js"
+    "release:gate": "node scripts/release-gate.js",
+    "audit:pipeline": "node scripts/run-unified-audit.js",
+    "audit:quick": "node scripts/run-unified-audit.js --quick"
   },
   "keywords": [
     "chrome-extension",

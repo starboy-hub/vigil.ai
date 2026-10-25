@@ -43,6 +43,7 @@ const SENSITIVE_USER_FILES = [
 const CLOUD_METADATA_HOSTS = [
   '169.254.169.254',
   'metadata.google.internal',
+  '100.100.100.200',
   'instance-data',
   'metadata.internal'
 ];
