@@ -5,6 +5,7 @@ pub mod ide_proxy;
 pub mod installer;
 pub mod ml_offload;
 pub mod phash;
+pub mod sandbox;
 pub mod sentinel;
 pub mod siem_exporter;
 

@@ -157,15 +157,26 @@
       }
 
       // 3. Detect assistant response containers
-      if (role === 'assistant' || role === 'model') isAssistant = true;
-      if (curr.hasAttribute && curr.hasAttribute('data-message-model-slug')) isAssistant = true;
+      if (role === 'assistant' || role === 'model') {
+        isAssistant = true;
+        break;
+      }
+      if (curr.hasAttribute && curr.hasAttribute('data-message-model-slug')) {
+        isAssistant = true;
+        break;
+      }
       if (className.includes('font-claude-message') || className.includes('chat-message-assistant') || className.includes('assistant-container') || className.includes('ai-response') || className.includes('agent-turn')) {
         isAssistant = true;
+        break;
       }
       if ((className.includes('markdown') || className.includes('prose')) && !className.includes('user')) {
         isAssistant = true;
+        break;
       }
-      if (curr.id === 'ai-stream-response') isAssistant = true;
+      if (curr.id === 'ai-stream-response') {
+        isAssistant = true;
+        break;
+      }
 
       curr = curr.parentElement;
     }

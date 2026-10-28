@@ -2,9 +2,10 @@
  * Sentinel Unified Diff & Trojan Source Unicode Analyzer
  * Part of Vigil AI + Sentinel
  *
- * Generates git-compatible unified syntax diffs for human approval flows
- * and inspects incoming code modifications for Trojan Source (CVE-2021-42574)
- * bidirectional overrides and invisible zero-width character obfuscation.
+ * Generates git-compatible unified syntax diffs for human approval flows,
+ * inspects incoming code modifications for Trojan Source (CVE-2021-42574)
+ * bidirectional overrides and invisible zero-width character obfuscation,
+ * and performs pre-write semantic AST & logic-bomb detection.
  */
 'use strict';
 
@@ -33,7 +34,7 @@ class DiffAnalyzer {
   }
 
   /**
-   * Generates a unified diff and checks for Trojan Source attacks.
+   * Generates a unified diff, checks for Trojan Source, and performs semantic code inspection.
    * @param {object} params
    * @param {string} params.filePath
    * @param {string} [params.oldContent]
@@ -50,6 +51,7 @@ class DiffAnalyzer {
     // 1. Detect Trojan Source & Invisible Unicode
     const anomalies = new Set();
     let match;
+    this.trojanRegex.lastIndex = 0;
     while ((match = this.trojanRegex.exec(newContent)) !== null) {
       const code = TROJAN_SOURCE_MAP[match[0]];
       if (code) anomalies.add(code);
@@ -58,13 +60,19 @@ class DiffAnalyzer {
     const detectedUnicodeAnomalies = Array.from(anomalies);
     const hasTrojanSource = detectedUnicodeAnomalies.length > 0;
 
-    // 2. Generate Unified Diff
+    // 2. Semantic Code & Logic-Bomb Inspection
+    const semanticAnomalies = this._inspectSemanticAnomalies(cleanPath, cleanNew, cleanOld);
+    const hasSemanticAnomaly = semanticAnomalies.length > 0;
+
+    // 3. Generate Unified Diff
     const { unifiedDiff, stats } = this._generateDiff(cleanPath, oldLines, newLines);
 
     if (hasTrojanSource) {
       return {
         isSafe: false,
         hasTrojanSource: true,
+        hasSemanticAnomaly: false,
+        semanticAnomalies: [],
         reasonCode: REASON_CODES.DENY_TROJAN_SOURCE_UNICODE,
         explanation: `Trojan Source Unicode injection detected: ${detectedUnicodeAnomalies.join(', ')}`,
         detectedUnicodeAnomalies,
@@ -73,14 +81,91 @@ class DiffAnalyzer {
       };
     }
 
+    if (hasSemanticAnomaly) {
+      const isLogicBomb = semanticAnomalies.some(a => a.type.startsWith('LOGIC_BOMB'));
+      const reasonCode = isLogicBomb
+        ? REASON_CODES.DENY_SEMANTIC_LOGIC_BOMB
+        : REASON_CODES.DENY_CRYPTOGRAPHIC_DEGRADATION;
+
+      return {
+        isSafe: false,
+        hasTrojanSource: false,
+        hasSemanticAnomaly: true,
+        semanticAnomalies,
+        reasonCode,
+        explanation: `Semantic code safety violation: ${semanticAnomalies.map(a => a.description).join('; ')}`,
+        detectedUnicodeAnomalies: [],
+        unifiedDiff,
+        stats
+      };
+    }
+
     return {
       isSafe: true,
       hasTrojanSource: false,
+      hasSemanticAnomaly: false,
+      semanticAnomalies: [],
       reasonCode: REASON_CODES.ALLOW_SAFE_COMMAND,
       detectedUnicodeAnomalies: [],
       unifiedDiff,
       stats
     };
+  }
+
+  /**
+   * Helper: check for logic bombs, cryptographic degradation, and execution sinks
+   * @private
+   */
+  _inspectSemanticAnomalies(filePath, newContent, oldContent) {
+    const anomalies = [];
+    const lowerPath = filePath.toLowerCase();
+    const isSecuritySensitive = /(?:auth|token|secret|key|vault|crypto|cipher|sentinel|security)/.test(lowerPath);
+
+    // 1. Logic-bomb temporal tripwires: Date.now() > timestamp, new Date() > new Date(...)
+    const temporalRegex = /(?:Date\.now\(\)\s*>\s*\d{10,}|new\s+Date\([^)]*\)\s*>\s*new\s+Date\([^)]*\)|\.getTime\(\)\s*>\s*\d{10,})/i;
+    if (temporalRegex.test(newContent) && !temporalRegex.test(oldContent)) {
+      anomalies.push({
+        type: 'LOGIC_BOMB_TEMPORAL',
+        description: 'Hardcoded temporal trigger condition detected (potential time-bomb backdoor)'
+      });
+    }
+
+    // 2. Logic-bomb environment tripwires: process.env.USER === ..., os.hostname() === ...
+    const envTripwire = /(?:process\.env\.(?:USER|USERNAME|HOSTNAME|TARGET|HOST)\s*===\s*['"][^'"]+['"]|os\.hostname\(\)\s*===\s*['"][^'"]+['"])/i;
+    if (envTripwire.test(newContent) && !envTripwire.test(oldContent)) {
+      anomalies.push({
+        type: 'LOGIC_BOMB_ENVIRONMENT',
+        description: 'Targeted environment or host identity trigger condition detected'
+      });
+    }
+
+    // 3. Cryptographic degradation: Math.random() in security sensitive paths
+    if (isSecuritySensitive && /\bMath\.random\(\)/.test(newContent) && !/\bMath\.random\(\)/.test(oldContent)) {
+      anomalies.push({
+        type: 'CRYPTO_DEGRADATION',
+        description: 'Insecure pseudo-random number generator (Math.random) introduced in security-sensitive module'
+      });
+    }
+
+    // 4. Deprecated broken ciphers: des, rc4, md5
+    const brokenCipher = /(?:createCipher(?:iv)?\s*\(\s*['"](?:des|rc4|blowfish)['"]|createHash\s*\(\s*['"]md5['"])/i;
+    if (brokenCipher.test(newContent) && !brokenCipher.test(oldContent)) {
+      anomalies.push({
+        type: 'BROKEN_CIPHER',
+        description: 'Deprecated or insecure cryptographic algorithm (DES/RC4/MD5) introduced'
+      });
+    }
+
+    // 5. Dynamic code execution sinks
+    const dynamicExec = /(?:\bnew\s+Function\s*\(|\bvm\.runInContext\s*\(|\bvm\.runInThisContext\s*\()/;
+    if (dynamicExec.test(newContent) && !dynamicExec.test(oldContent)) {
+      anomalies.push({
+        type: 'DYNAMIC_EXECUTION_SINK',
+        description: 'Unsafe dynamic code execution sink introduced'
+      });
+    }
+
+    return anomalies;
   }
 
   /**
@@ -96,7 +181,6 @@ class DiffAnalyzer {
     let additions = 0;
     let deletions = 0;
 
-    // Quick single-hunk diff calculation
     const hunkBody = [];
 
     let i = 0;

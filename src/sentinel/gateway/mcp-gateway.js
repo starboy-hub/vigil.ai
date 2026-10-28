@@ -38,6 +38,8 @@ const {
 
 const { SentinelPolicyEngine } = require('../policy-engine');
 const { DiffAnalyzer } = require('../diff/diff-analyzer');
+const { CapabilityManager } = require('../credentials/capability-manager');
+const { CognitiveMirageEngine } = require('../deception/cognitive-mirage');
 
 // Standard JSON-RPC Error Codes
 const JSONRPC_PARSE_ERROR = -32700;
@@ -69,6 +71,10 @@ class SentinelMcpGateway {
       : 5000;
     this.returnToolErrorObject = options.returnToolErrorObject !== false; // Default true (safe for MCP agents)
     this.diffAnalyzer = new DiffAnalyzer();
+    this.capabilityManager = options.capabilityManager || null;
+    this.enforceCapabilities = options.enforceCapabilities === true;
+    this.cognitiveMirage = options.cognitiveMirage || null;
+    this.deceptionMode = options.deceptionMode === true;
 
     // Map of pending human approvals: approvalId -> { resolve, reject, timer, request, actionHash }
     this.pendingApprovals = new Map();
@@ -147,7 +153,62 @@ class SentinelMcpGateway {
     // 1. Map MCP tool invocation to canonical Sentinel Action Schema
     const action = this._mapMcpCallToAction(toolName, toolArgs, sessionContext);
 
-    // 1b. Trojan Source Unicode Inspection on file write actions
+    // 1a. Capability Token Authorization Check
+    const capabilityToken = params._capabilityToken || (toolArgs && (toolArgs._capabilityToken || toolArgs.capability_token)) || (sessionContext && sessionContext.capabilityToken);
+    if (this.enforceCapabilities || capabilityToken) {
+      if (!capabilityToken) {
+        const reasonCode = REASON_CODES.DENY_CAPABILITY_REQUIRED;
+        this._emitAuditEvent(EVENT_TOOL_CALL_BLOCKED, {
+          action,
+          reasonCode
+        });
+        return this._formatPolicyDenialResponse(id, {
+          decision: DECISION_DENY,
+          reason_code: reasonCode,
+          explanation: 'Cryptographic capability token required for MCP tool execution under capability enforcement policy',
+          action_hash: computeActionHash(action)
+        });
+      }
+
+      const capManager = this.capabilityManager || new CapabilityManager();
+      const capCheck = capManager.authorizeAction(capabilityToken, {
+        action_type: action.action_type,
+        resource: action.resource,
+        agent_id: (sessionContext && sessionContext.agentId) || action.agent_id
+      });
+
+      if (!capCheck.allowed) {
+        const reasonCode = REASON_CODES.DENY_CAPABILITY_EXCEEDED;
+        this._emitAuditEvent(EVENT_TOOL_CALL_BLOCKED, {
+          action,
+          reasonCode
+        });
+        return this._formatPolicyDenialResponse(id, {
+          decision: DECISION_DENY,
+          reason_code: reasonCode,
+          explanation: `Capability token authorization failed: ${capCheck.reason}`,
+          action_hash: computeActionHash(action)
+        });
+      }
+    }
+
+    // 1b. Cognitive Mirage Canary Tripwire Inspection
+    if (this.cognitiveMirage) {
+      const canaryCheck = this.cognitiveMirage.inspectForCanary(JSON.stringify(toolArgs || {}));
+      if (canaryCheck.containsCanary) {
+        this.cognitiveMirage.triggerTripwire({ action, canaries: canaryCheck.matchedCanaries });
+        const reasonCode = REASON_CODES.DENY_CANARY_TRAP_TRIGGERED;
+        this._emitAuditEvent(EVENT_TOOL_CALL_BLOCKED, { action, reasonCode });
+        return this._formatPolicyDenialResponse(id, {
+          decision: DECISION_DENY,
+          reason_code: reasonCode,
+          explanation: 'Execution halted: Canary honeytoken exfiltration tripwire triggered',
+          action_hash: computeActionHash(action)
+        });
+      }
+    }
+
+    // 1c. Trojan Source Unicode Inspection on file write actions
     if (action.action_type === ACTION_FS_WRITE) {
       const content = String((toolArgs && (toolArgs.content || toolArgs.text)) || '');
       const diffResult = this.diffAnalyzer.analyze({
@@ -155,14 +216,15 @@ class SentinelMcpGateway {
         oldContent: '',
         newContent: content
       });
-      if (!diffResult.isSafe && diffResult.hasTrojanSource) {
+      if (!diffResult.isSafe) {
+        const reasonCode = diffResult.reasonCode || REASON_CODES.DENY_FAIL_CLOSED;
         this._emitAuditEvent(EVENT_TOOL_CALL_BLOCKED, {
           action,
-          reasonCode: REASON_CODES.DENY_TROJAN_SOURCE_UNICODE
+          reasonCode
         });
         return this._formatPolicyDenialResponse(id, {
           decision: DECISION_DENY,
-          reason_code: REASON_CODES.DENY_TROJAN_SOURCE_UNICODE,
+          reason_code: reasonCode,
           explanation: diffResult.explanation,
           action_hash: computeActionHash(action)
         });
@@ -198,6 +260,17 @@ class SentinelMcpGateway {
     }
 
     if (decision.decision === DECISION_DENY) {
+      if (this.deceptionMode && this.cognitiveMirage && action.action_type === ACTION_FS_READ && decision.reason_code === REASON_CODES.DENY_SECRET_EXFILTRATION) {
+        const decoy = this.cognitiveMirage.generateDecoyContent(action.resource, sessionContext);
+        this._emitAuditEvent(EVENT_TOOL_CALL_BLOCKED, { action, decision, toolName, deceptionActive: true });
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: [{ type: 'text', text: decoy }]
+          }
+        };
+      }
       this._emitAuditEvent(EVENT_TOOL_CALL_BLOCKED, {
         action,
         decision,
@@ -310,14 +383,15 @@ class SentinelMcpGateway {
         oldContent: '',
         newContent
       });
-      if (!diffResult.isSafe && diffResult.hasTrojanSource) {
+      if (!diffResult.isSafe) {
+        const reasonCode = diffResult.reasonCode || REASON_CODES.DENY_FAIL_CLOSED;
         this._emitAuditEvent(EVENT_TOOL_CALL_BLOCKED, {
           actionHash,
-          reasonCode: REASON_CODES.DENY_TROJAN_SOURCE_UNICODE
+          reasonCode
         });
         return this._formatPolicyDenialResponse(id, {
           decision: DECISION_DENY,
-          reason_code: REASON_CODES.DENY_TROJAN_SOURCE_UNICODE,
+          reason_code: reasonCode,
           explanation: diffResult.explanation,
           action_hash: actionHash
         });

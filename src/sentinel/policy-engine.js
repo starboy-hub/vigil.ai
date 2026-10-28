@@ -448,7 +448,9 @@ class SentinelPolicyEngine {
         `File deletion requires user confirmation: ${safeAction.resource}`,
         ['rule-level3-deletion-approval'],
         requestId,
-        actionHash
+        actionHash,
+        null,
+        safeAction
       );
     }
 
@@ -464,7 +466,9 @@ class SentinelPolicyEngine {
           `Shell execution requires user approval: "${trimmedCmd}"`,
           ['rule-level3-shell-approval'],
           requestId,
-          actionHash
+          actionHash,
+          null,
+          safeAction
         );
       }
     }
@@ -477,7 +481,9 @@ class SentinelPolicyEngine {
         `Security configuration modification requires user approval: ${safeAction.resource}`,
         ['rule-level3-config-change-approval'],
         requestId,
-        actionHash
+        actionHash,
+        null,
+        safeAction
       );
     }
 
@@ -490,7 +496,9 @@ class SentinelPolicyEngine {
           `Strict profile: Write to "${safeAction.resource}" requires explicit confirmation.`,
           ['rule-level3-strict-write-approval'],
           requestId,
-          actionHash
+          actionHash,
+          null,
+          safeAction
         );
       }
       if (safeAction.action_type === ACTION_NET_REQUEST) {
@@ -500,7 +508,9 @@ class SentinelPolicyEngine {
           `Strict profile: Outbound connection to "${safeAction.resource}" requires confirmation.`,
           ['rule-level3-strict-net-approval'],
           requestId,
-          actionHash
+          actionHash,
+          null,
+          safeAction
         );
       }
     }
@@ -550,18 +560,87 @@ class SentinelPolicyEngine {
       `Action requires confirmation under active ${activeProfile} profile.`,
       ['rule-level4-default-fallback'],
       requestId,
-      actionHash
+      actionHash,
+      null,
+      safeAction
     );
+  }
+
+  /**
+   * Quantifies the blast radius of an action requiring human approval.
+   */
+  computeBlastRadius(action) {
+    if (!action) return null;
+    const type = action.action_type;
+    const resource = action.resource || '';
+    const params = action.parameters || {};
+
+    let severity = 'low';
+    let isDestructive = false;
+    let filesAffected = 1;
+
+    if (type === ACTION_FS_DELETE) {
+      isDestructive = true;
+      severity = resource.includes('*') || !resource.includes('.') ? 'critical' : 'high';
+      filesAffected = resource.includes('*') ? 10 : 1;
+    } else if (type === ACTION_SHELL_EXEC) {
+      const cmd = String(params.command || resource).toLowerCase();
+      if (DESTRUCTIVE_SHELL_PATTERNS.some(p => p.test(cmd)) || cmd.includes('rm ') || cmd.includes('drop ') || cmd.includes('delete ')) {
+        isDestructive = true;
+        severity = 'critical';
+      } else {
+        severity = 'medium';
+      }
+    } else if (type === ACTION_FS_WRITE) {
+      severity = 'medium';
+      if (resource.includes('package.json') || resource.includes('config') || resource.endsWith('.lock')) {
+        severity = 'high';
+      }
+    } else if (type === ACTION_NET_REQUEST) {
+      severity = 'medium';
+    }
+
+    return {
+      action_type: type,
+      resource,
+      severity,
+      is_destructive: isDestructive,
+      files_affected: filesAffected,
+      requires_typed_confirmation: severity === 'critical'
+    };
+  }
+
+  /**
+   * Generates an adversarial refutation brief (Dual-Key AI Quorum) to combat approval fatigue.
+   */
+  generateAdversarialRefutation(action, blastRadius) {
+    if (!action || !blastRadius) return null;
+    const type = action.action_type;
+    const resource = action.resource || '';
+
+    if (blastRadius.is_destructive) {
+      return `Adversarial Refutation: Action involves destructive or irreversible modifications targeting "${resource}". Approving this may cause irrecoverable data loss or system degradation.`;
+    }
+
+    if (type === ACTION_NET_REQUEST) {
+      return `Adversarial Refutation: Outbound connection to "${resource}" introduces credential or context exfiltration risk. Verify that the destination endpoint is strictly required.`;
+    }
+
+    if (type === ACTION_CONFIG_CHANGE) {
+      return `Adversarial Refutation: Altering system configuration ("${resource}") may weaken local policy bounds or disable existing security controls.`;
+    }
+
+    return `Adversarial Refutation: The action "${type}" on "${resource}" modifies local state outside automated policy rules. Exercise caution before confirming.`;
   }
 
   /**
    * Helper: constructs a clean Decision Schema object.
    */
-  _buildDecision(decision, reasonCode, explanation, matchedPolicyIds, requestId, actionHash, constraints = null) {
+  _buildDecision(decision, reasonCode, explanation, matchedPolicyIds, requestId, actionHash, constraints = null, action = null) {
     const auditReference = `audit-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const scrubbedExplanation = scrubSecretsFromExplanation(explanation);
 
-    return {
+    const result = {
       schema_version: CURRENT_SCHEMA_VERSION,
       decision,
       reason_code: reasonCode,
@@ -574,6 +653,14 @@ class SentinelPolicyEngine {
       audit_reference: auditReference,
       action_hash: actionHash || '0'.repeat(64)
     };
+
+    if (decision === DECISION_REQUIRE_APPROVAL && action) {
+      const blastRadius = this.computeBlastRadius(action);
+      result.blast_radius = blastRadius;
+      result.adversarial_refutation = this.generateAdversarialRefutation(action, blastRadius);
+    }
+
+    return result;
   }
 }
 

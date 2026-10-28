@@ -1,0 +1,55 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "godaudits",
+          "version": "2.18.0",
+          "informationUri": "https://github.com/hannsxpeter/godaudits",
+          "rules": [
+            {
+              "id": "A-REPO-1",
+              "name": "A-REPO-1",
+              "shortDescription": {
+                "text": "godaudits check A-REPO-1"
+              },
+              "helpUri": "https://github.com/hannsxpeter/godaudits/search?q=A-REPO-1"
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "vigil-ai/c4585f7"
+      },
+      "properties": {
+        "grade_method": "static-read",
+        "grade_scope": "an arithmetic roll-up of model-assigned pass/fail from a source read, not a test result, scan, or certification",
+        "confidence_basis": "Result confidence is the auditor's own label from a source read, not a measured detection rate."
+      },
+      "results": [
+        {
+          "ruleId": "A-REPO-1",
+          "level": "note",
+          "message": {
+            "text": "F-REPO-1: Repository working directory carries unstaged local modifications. Uncommitted diffs in content.js and release manifest can produce non-reproducible build outputs across developer environments."
+          },
+          "properties": {
+            "finding_id": "F-REPO-1",
+            "severity": "Low",
+            "confidence": "Firm",
+            "effort": "S",
+            "status": "open",
+            "checks": [
+              "A-REPO-1"
+            ],
+            "remediation": [
+              "GA-104"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

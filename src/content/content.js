@@ -3226,8 +3226,20 @@ function executeMaskAndSend(activeEl, pending, showToast = false) {
       if (showToast && redResult.originalText) {
         showUndoToast('Masked & Sent with consistent pseudonyms', redResult.originalText, targetEl);
       }
-      if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION.startStreamingObserver) {
-        VIGIL_REHYDRATION.startStreamingObserver(document.body);
+      if (typeof VIGIL_REHYDRATION !== 'undefined') {
+        if (VIGIL_REHYDRATION.startStreamingObserver) {
+          VIGIL_REHYDRATION.startStreamingObserver(document.body);
+        }
+        setTimeout(() => {
+          if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION.rehydrateSubtree) {
+            VIGIL_REHYDRATION.rehydrateSubtree(document.body);
+          }
+        }, 1500);
+        setTimeout(() => {
+          if (typeof VIGIL_REHYDRATION !== 'undefined' && VIGIL_REHYDRATION.rehydrateSubtree) {
+            VIGIL_REHYDRATION.rehydrateSubtree(document.body);
+          }
+        }, 4000);
       }
     }
     allowCurrentPrompt(targetEl);

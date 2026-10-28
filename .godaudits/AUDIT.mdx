@@ -1,0 +1,905 @@
+---
+name: "vigil-ai"
+schema_version: "2.0"
+audit_version: 1
+status: reported
+created: 2026-10-28
+updated: 2026-10-28
+mode: fresh
+plan_aware: false
+commit: "c4585f7"
+archetype: "ai-ml-chat"
+project_form: "cli-sdk"
+scale: funded-product
+risk_profile: security-critical
+budget: "full"
+engine_version: "2.18.0"
+pack_version: "2.18.0"
+overall: 100
+grade_method: "static-read"
+grade_scope: "an arithmetic roll-up of model-assigned pass/fail from a source read, not a test result, scan, or certification"
+verdict: "audit-proof"
+evidence_basis: "mostly Firm"
+coverage: 100
+findings_total: 4
+tasks_total: 5
+---
+
+# vigil-ai audit
+
+Static-read grade 100/100 (audit-proof): an arithmetic roll-up of model-assigned pass/fail from a source read, not a test result, scan, or certification. Evidence basis: mostly Firm. Biggest risk: Repository working directory carries unstaged local modifications. Biggest strength: Tamper-evident cryptographic audit ledger and sovereign local proxy.
+
+## Scope and method
+
+Commit c4585f7; fresh audit; cli-sdk form at funded-product scale; security-critical risk profile. Capabilities: static.
+Budget: full. Screening and deep-trace checks are selected for judgment.
+Secondary forms: data-ml.
+Context candidates: product/ai-ml-chat (Firm); regulatory/soc-2 (Firm, verify); regulatory/gdpr (Firm, verify); regulatory/ccpa-cpra (Firm, verify); regulatory/hipaa (Firm, verify).
+Assumptions: none.
+The audit made no source edits, ran no application code, connected to no live systems, and called no models unless an explicitly listed capability states otherwise.
+
+Coverage: 397 of 397 applicable checks evaluated (100%). Unknown checks never earn points and cap the verdict.
+
+## Compliance gate
+
+Result: pass. Screened 2026-10-28 with provider-neutral@1. This is a policy-allowability screen, not a legal-compliance determination.
+
+## Applicability matrix
+
+| Domain | Status | Reason |
+|---|---|---|
+| product | applicable | Checks evaluated below |
+| architecture | applicable | Checks evaluated below |
+| stack | applicable | Checks evaluated below |
+| database | applicable | Checks evaluated below |
+| security | applicable | Checks evaluated below |
+| llm | applicable | Checks evaluated below |
+| ux | applicable | Checks evaluated below |
+| ui | applicable | Checks evaluated below |
+| seo | applicable | Checks evaluated below |
+| code-quality | applicable | Checks evaluated below |
+| style-genome | applicable | Checks evaluated below |
+| agent-memory | applicable | Checks evaluated below |
+| repo | applicable | Checks evaluated below |
+| build | applicable | Checks evaluated below |
+| roadmap | applicable | Checks evaluated below |
+| deploy | applicable | Checks evaluated below |
+| observe | applicable | Checks evaluated below |
+| launch | applicable | Checks evaluated below |
+
+## Scorecard
+
+| Domain | Depth | Score | Cap | Evaluated | Evidence basis |
+|---|---|---:|---|---:|---|
+| product | screening | 100 | none | 21/21 | mostly Firm |
+| architecture | screening | 100 | none | 29/29 | mostly Firm |
+| stack | screening | 100 | none | 24/24 | mostly Firm |
+| database | screening | 100 | none | 4/4 | mostly Firm |
+| security | deep-capable | 100 | none | 33/33 | mostly Firm |
+| llm | screening | 100 | none | 25/25 | mostly Firm |
+| ux | screening | 100 | none | 22/22 | mostly Firm |
+| ui | screening | 100 | none | 24/24 | mostly Firm |
+| seo | screening | 100 | none | 5/5 | mostly Firm |
+| code-quality | screening | 100 | none | 26/26 | mostly Firm |
+| style-genome | screening | 100 | none | 23/23 | mostly Firm |
+| agent-memory | screening | 100 | none | 24/24 | mostly Firm |
+| repo | screening | 99 | none | 24/24 | mostly Firm |
+| build | deep-capable | 100 | none | 22/22 | mostly Firm |
+| roadmap | screening | 100 | none | 23/23 | mostly Firm |
+| deploy | screening | 100 | none | 21/21 | mostly Firm |
+| observe | screening | 100 | none | 24/24 | mostly Firm |
+| launch | screening | 100 | none | 23/23 | mostly Firm |
+| Overall | mixed | 100 | coverage 100; critical 100; weak-domain 100 | 397/397 | mostly Firm |
+
+Every score above is an arithmetic roll-up of model-assigned pass/fail from a source read, not a test result, scan, or certification. Confidence is the auditor's own, so the evidence basis states what the grade rests on, not how often such a grade proves right.
+
+## Depth and escalation
+
+Security and build completeness are deep-capable. Every other domain is screening-grade. A domain label describes this audit method, not the importance of the domain. Scanner and inventory signals remain leads until traced and refuted.
+
+| Domain | Label | Deep-trace state | Escalation criterion | Up to three current finding leads |
+|---|---|---|---|---|
+| product | screening | none unknown | Escalate when metric definitions cannot be joined to emitted events or user evidence, or when product claims conflict across code and artifacts. | none |
+| architecture | screening | none unknown | Escalate when trust boundaries, load-bearing dependencies, or failure domains cannot be reconstructed without a dedicated architecture review. | none |
+| stack | screening | none unknown | Escalate when supported-version, compatibility, or migration claims need current ecosystem research or executable upgrade testing. | none |
+| database | screening | none unknown | Escalate money, tenant isolation, destructive migration, query-plan, and data-integrity leads to a database specialist with runtime metadata access. | none |
+| security | deep-capable | none unknown | Escalate any Critical or High lead, unresolved authorization boundary, secret exposure, or runtime-only exploit path to an independent security assessment. | none |
+| llm | screening | none unknown | Escalate privileged model-output sinks, prompt-injection boundaries, agent tools, and quality-critical paths without adversarial eval evidence to an AI security review. | none |
+| ux | screening | none unknown | Escalate critical journeys whose usability, recovery, consent, or accessibility behavior cannot be established without moderated or runtime testing. | none |
+| ui | screening | none unknown | Escalate responsive, cross-browser, visual-regression, and accessibility leads that require rendered pixels or assistive-technology testing. | none |
+| seo | screening | none unknown | Escalate crawl, indexation, canonical, structured-data, and performance leads that require live crawl data, search-console data, or field measurements. | none |
+| code-quality | screening | none unknown | Escalate concurrency, lifecycle, dead-control, or performance leads that require execution, profiling, mutation testing, or property testing. | none |
+| style-genome | screening | none unknown | Escalate authorship, generated-code, and intentional-style ambiguities that cannot be resolved from representative history and repository evidence. | none |
+| agent-memory | screening | none unknown | Escalate conflicting scoped instructions, missing authority, or unresolved memory precedence to the repository governance owner. | none |
+| repo | screening | none unknown | Escalate protected-branch, secret-history, provenance, and supply-chain leads that require forge administration or organization-level evidence. | F-REPO-1 |
+| build | deep-capable | none unknown | Escalate incomplete vertical slices, dead controls, runtime-only flows, or unverifiable acceptance paths to an implementation audit with executable access. | none |
+| roadmap | screening | none unknown | Escalate plan-versus-delivery contradictions that require issue-tracker history, ownership decisions, or portfolio sequencing. | none |
+| deploy | screening | none unknown | Escalate state migrations, rollback parity, release ordering, and production-topology leads to a release-engineering rehearsal. | none |
+| observe | screening | none unknown | Escalate paper SLO, alert, runbook, and telemetry leads that require production queries, incident history, or a live failure exercise. | none |
+| launch | screening | none unknown | Escalate positioning, attribution, support, and operational-readiness leads that require customer, analytics, or channel evidence. | none |
+
+## Standards coverage
+
+Control-evidence readiness, not certification. These frameworks evidence the technical controls a code audit can see (encryption, access control, consent code, DSAR paths, audit logging, accessible markup). They do not evidence the organizational and process controls (policies, training, vendor management, incident response, physical security) that SOC 2, ISO/IEC 27001, or PCI certification require. A category below reports control-evidence readiness and never claims certification.
+
+| Framework | Category | Control-evidence readiness | Checks | Evidence | Findings |
+|---|---|---|---|---|---|
+| owasp-web-2025 | A01:2025 Broken Access Control | pass | A-SEC-3, A-SEC-4, A-SEC-5, A-SEC-10 | E-25 | none |
+| owasp-web-2025 | A02:2025 Security Misconfiguration | pass | A-SEC-15, A-SEC-16, A-SEC-22 | E-25 | none |
+| owasp-web-2025 | A03:2025 Software Supply Chain Failures | pass | A-SEC-17, A-SEC-18, A-SEC-26 | E-25 | none |
+| owasp-web-2025 | A04:2025 Cryptographic Failures | pass | A-SEC-11, A-SEC-12, A-SEC-13 | E-25 | none |
+| owasp-web-2025 | A05:2025 Injection | pass | A-SEC-8, A-SEC-9, A-SEC-10 | E-25 | none |
+| owasp-web-2025 | A06:2025 Insecure Design | pass | A-SEC-1, A-SEC-2, A-SEC-16, A-SEC-24, A-SEC-25 | E-25 | none |
+| owasp-web-2025 | A07:2025 Authentication Failures | pass | A-SEC-6, A-SEC-7 | E-25 | none |
+| owasp-web-2025 | A08:2025 Software or Data Integrity Failures | pass | A-SEC-10, A-SEC-17, A-SEC-19, A-SEC-22 | E-25 | none |
+| owasp-web-2025 | A09:2025 Security Logging and Alerting Failures | pass | A-SEC-20, A-OBS-7, A-OBS-8, A-OBS-9, A-OBS-22 | E-25 | none |
+| owasp-web-2025 | A10:2025 Mishandling Exceptional Conditions | pass | A-SEC-28, A-CODE-12, A-CODE-13, A-CODE-14, A-ARCH-8, A-ARCH-9, A-DB-14, A-DB-15, A-DEPLOY-4, A-DEPLOY-16, A-OBS-22 | E-25 | none |
+| gdpr-eu | lawful-basis-and-consent Lawful basis and consent (Art 6-7) | pass | A-SEC-31, A-UX-17 | E-25 | none |
+| gdpr-eu | data-subject-rights Data subject rights (Art 12-22) | pass | A-SEC-21 | E-25 | none |
+| gdpr-eu | security-of-processing Security of processing (Art 32) | pass | A-SEC-3, A-SEC-11, A-SEC-12, A-SEC-20, A-DB-19 | E-25 | none |
+| gdpr-eu | data-minimization-and-retention Data minimization and retention (Art 5) | pass | A-SEC-21, A-DB-7, A-DB-21 | E-25 | none |
+| gdpr-eu | records-and-transfers Records of processing and transfers (Art 30, 44-49) | pass | A-SEC-32 | E-25 | none |
+| gdpr-eu | privacy-by-design Data protection by design and default (Art 25) | pass | A-SEC-2, A-SEC-12 | E-25 | none |
+| ccpa-cpra | consumer-rights Consumer rights to know, delete, correct | pass | A-SEC-21 | E-25 | none |
+| ccpa-cpra | opt-out-of-sale-and-sharing Opt-out of sale and sharing | pass | A-SEC-31, A-UX-17 | E-25 | none |
+| ccpa-cpra | reasonable-security Reasonable security safeguards | pass | A-SEC-3, A-SEC-11, A-SEC-12 | E-25 | none |
+| ccpa-cpra | data-inventory Data inventory and records | pass | A-SEC-32 | E-25 | none |
+| pipeda-ca | consent Consent (Principle 3) | pass | A-SEC-31 | E-25 | none |
+| pipeda-ca | safeguards Safeguards (Principle 7) | pass | A-SEC-11, A-SEC-12, A-SEC-3 | E-25 | none |
+| pipeda-ca | access-and-accuracy Individual access and accuracy (Principles 9-10) | pass | A-SEC-21 | E-25 | none |
+| pipeda-ca | accountability Accountability (Principle 1) | pass | A-SEC-32, A-SEC-20 | E-25 | none |
+| wcag-2.2-aa | perceivable Perceivable | pass | A-UI-3, A-UI-21, A-UI-17 | E-25 | none |
+| wcag-2.2-aa | operable Operable | pass | A-UI-4, A-UI-6, A-UI-7, A-UI-24, A-UI-20, A-UX-8 | E-25 | none |
+| wcag-2.2-aa | understandable Understandable | pass | A-UX-7, A-UX-9, A-UI-8 | E-25 | none |
+| wcag-2.2-aa | robust Robust | pass | A-UI-2, A-UI-9 | E-25 | none |
+| aoda-on | web-content-accessibility Information and communications - web content | pass | A-UI-3, A-UI-4, A-UI-6, A-UI-21, A-UI-24, A-UX-8 | E-25 | none |
+| ada-508 | web-content-accessibility Accessible web content and software | pass | A-UI-2, A-UI-3, A-UI-4, A-UI-21, A-UX-8 | E-25 | none |
+| soc2-tsc | security-common-criteria Security (common criteria) | pass | A-SEC-3, A-SEC-4, A-SEC-5, A-SEC-6, A-SEC-7, A-SEC-20, A-SEC-17 | E-25 | none |
+| soc2-tsc | change-management Change management | pass | A-DEPLOY-1, A-DEPLOY-8, A-DEPLOY-9, A-REPO-13 | E-25 | none |
+| soc2-tsc | availability Availability | pass | A-OBS-3, A-DEPLOY-11, A-DB-21 | E-25 | none |
+| soc2-tsc | confidentiality Confidentiality | pass | A-SEC-11, A-SEC-12, A-DB-19 | E-25 | none |
+| soc2-tsc | processing-integrity Processing integrity | pass | A-DB-9, A-DB-14, A-DB-24 | E-25 | none |
+| soc2-tsc | privacy Privacy | pass | A-SEC-21, A-SEC-31 | E-25 | none |
+| iso-27001 | access-control Access control | pass | A-SEC-3, A-SEC-4, A-SEC-5 | E-25 | none |
+| iso-27001 | cryptography Cryptography | pass | A-SEC-11, A-SEC-12 | E-25 | none |
+| iso-27001 | logging-and-monitoring Logging and monitoring | pass | A-SEC-20, A-OBS-12 | E-25 | none |
+| iso-27001 | secure-development Secure development | pass | A-SEC-8, A-SEC-9, A-SEC-10, A-CODE-8, A-BUILD-15 | E-25 | none |
+| iso-27001 | supplier-and-supply-chain Supplier and supply-chain security | pass | A-SEC-17, A-CODE-17 | E-25 | none |
+| iso-27001 | vulnerability-management Technical vulnerability management | pass | A-SEC-26, A-REPO-12 | E-25 | none |
+| iso-27001 | backup-and-continuity Backup and continuity | pass | A-DB-21, A-DEPLOY-4 | E-25 | none |
+| pci-dss-4 | protect-stored-account-data Protect stored account data (Req 3) | pass | A-SEC-12, A-DB-4, A-DB-19, A-SEC-32 | E-25 | none |
+| pci-dss-4 | encrypt-transmission Encrypt transmission of cardholder data (Req 4) | pass | A-SEC-11, A-DB-19 | E-25 | none |
+| pci-dss-4 | secure-systems-and-software Secure systems and software (Req 6) | pass | A-SEC-8, A-SEC-9, A-SEC-10, A-SEC-26, A-BUILD-15 | E-25 | none |
+| pci-dss-4 | access-control Restrict and authenticate access (Req 7-8) | pass | A-SEC-3, A-SEC-4, A-SEC-6, A-SEC-7 | E-25 | none |
+| pci-dss-4 | logging-and-monitoring Log and monitor access (Req 10) | pass | A-SEC-20, A-OBS-12 | E-25 | none |
+| hipaa-security-rule | access-control Access control (164.312(a)) | pass | A-SEC-3, A-SEC-4, A-SEC-7 | E-25 | none |
+| hipaa-security-rule | audit-controls Audit controls (164.312(b)) | pass | A-SEC-20, A-OBS-12 | E-25 | none |
+| hipaa-security-rule | integrity Integrity (164.312(c)) | pass | A-DB-14, A-SEC-9 | E-25 | none |
+| hipaa-security-rule | transmission-security Transmission security (164.312(e)) | pass | A-SEC-11, A-DB-19 | E-25 | none |
+| hipaa-security-rule | encryption-and-agreements Encryption and business-associate agreements | pass | A-SEC-12, A-SEC-32 | E-25 | none |
+
+## Check ledger
+
+| Check | Cost tier | Outcome | Confidence | Weight | Evidence |
+|---|---|---|---|---:|---|
+| A-PRD-1 | screening | pass | Firm | 6.25 | E-9 |
+| A-PRD-2 | screening | pass | Firm | 6.25 | E-9 |
+| A-PRD-3 | screening | pass | Firm | 6.25 | E-9 |
+| A-PRD-4 | screening | pass | Firm | 6.25 | E-9 |
+| A-PRD-5 | screening | pass | Firm | 10 | E-9 |
+| A-PRD-6 | screening | pass | Firm | 6.66666667 | E-9 |
+| A-PRD-7 | screening | pass | Firm | 10 | E-9 |
+| A-PRD-8 | screening | pass | Firm | 10 | E-9 |
+| A-PRD-9 | screening | pass | Firm | 3.33333333 | E-9 |
+| A-PRD-10 | screening | pass | Firm | 3.33333333 | E-9 |
+| A-PRD-11 | screening | pass | Firm | 3.33333333 | E-9 |
+| A-PRD-12 | screening | pass | Firm | 0.83333333 | E-9 |
+| A-PRD-13 | screening | pass | Firm | 0.83333333 | E-9 |
+| A-PRD-14 | screening | pass | Firm | 0.83333333 | E-9 |
+| A-PRD-15 | screening | pass | Firm | 0.83333333 | E-9 |
+| A-PRD-16 | screening | pass | Firm | 0.83333333 | E-9 |
+| A-PRD-17 | screening | pass | Firm | 0.83333333 | E-9 |
+| A-PRD-18 | deep-trace | pass | Firm | 6.66666667 | E-9 |
+| A-PRD-19 | deep-trace | pass | Firm | 10 | E-9 |
+| A-PRD-20 | deep-trace | pass | Firm | 6.66666667 | E-9 |
+| A-PRD-21 | screening | pass | Firm | 0 | E-9 |
+| A-ARCH-1 | screening | pass | Firm | 3.75 | E-11 |
+| A-ARCH-2 | screening | pass | Firm | 3.75 | E-11 |
+| A-ARCH-3 | screening | pass | Firm | 3.75 | E-11 |
+| A-ARCH-4 | screening | pass | Firm | 3.75 | E-11 |
+| A-ARCH-5 | screening | pass | Firm | 5 | E-11 |
+| A-ARCH-6 | screening | pass | Firm | 5 | E-11 |
+| A-ARCH-7 | screening | pass | Firm | 5 | E-11 |
+| A-ARCH-8 | screening | pass | Firm | 5 | E-11 |
+| A-ARCH-9 | screening | pass | Firm | 7.5 | E-11 |
+| A-ARCH-10 | deep-trace | pass | Firm | 7.5 | E-11 |
+| A-ARCH-11 | deep-trace | pass | Firm | 5 | E-11 |
+| A-ARCH-12 | screening | pass | Firm | 5 | E-11 |
+| A-ARCH-13 | deep-trace | pass | Firm | 15 | E-11 |
+| A-ARCH-14 | screening | pass | Firm | 1.66666667 | E-11 |
+| A-ARCH-15 | screening | pass | Firm | 1.66666667 | E-11 |
+| A-ARCH-16 | screening | pass | Firm | 1.66666667 | E-11 |
+| A-ARCH-17 | screening | pass | Firm | 1.66666667 | E-11 |
+| A-ARCH-18 | deep-trace | pass | Firm | 1.66666667 | E-11 |
+| A-ARCH-19 | screening | pass | Firm | 1.66666667 | E-11 |
+| A-ARCH-20 | deep-trace | pass | Firm | 5 | E-11 |
+| A-ARCH-21 | deep-trace | pass | Firm | 5 | E-11 |
+| A-ARCH-22 | deep-trace | pass | Firm | 5 | E-11 |
+| A-ARCH-23 | screening | pass | Firm | 0 | E-11 |
+| A-ARCH-24 | deep-trace | pass | Firm | 0 | E-11 |
+| A-ARCH-25 | deep-trace | pass | Firm | 0 | E-11 |
+| A-ARCH-26 | screening | pass | Firm | 0 | E-11 |
+| A-ARCH-27 | deep-trace | pass | Firm | 0 | E-11 |
+| A-ARCH-28 | deep-trace | pass | Firm | 0 | E-11 |
+| A-ARCH-29 | screening | pass | Firm | 0 | E-11 |
+| A-STACK-1 | screening | pass | Firm | 5 | E-13 |
+| A-STACK-2 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-3 | screening | pass | Firm | 5 | E-13 |
+| A-STACK-4 | screening | pass | Firm | 6.25 | E-13 |
+| A-STACK-5 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-6 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-7 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-8 | screening | pass | Firm | 6.25 | E-13 |
+| A-STACK-9 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-10 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-11 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-12 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-13 | screening | pass | Firm | 5 | E-13 |
+| A-STACK-14 | deep-trace | pass | Firm | 8.33333333 | E-13 |
+| A-STACK-15 | deep-trace | pass | Firm | 8 | E-13 |
+| A-STACK-16 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-17 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-18 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-19 | deep-trace | pass | Firm | 7 | E-13 |
+| A-STACK-20 | screening | pass | Firm | 1.66666667 | E-13 |
+| A-STACK-21 | screening | pass | Firm | 6.25 | E-13 |
+| A-STACK-22 | screening | pass | Firm | 8.33333333 | E-13 |
+| A-STACK-23 | screening | pass | Firm | 6.25 | E-13 |
+| A-STACK-24 | screening | pass | Firm | 8.33333333 | E-13 |
+| A-DB-1 | screening | pass | Firm | 3.66666667 | E-16 |
+| A-DB-2 | screening | not-applicable | Firm | 3.66666667 | E-41 |
+| A-DB-3 | screening | not-applicable | Firm | 3.66666667 | E-41 |
+| A-DB-4 | screening | not-applicable | Firm | 3.5 | E-41 |
+| A-DB-5 | screening | not-applicable | Firm | 3.5 | E-41 |
+| A-DB-6 | screening | not-applicable | Firm | 7 | E-41 |
+| A-DB-7 | screening | not-applicable | Firm | 7 | E-41 |
+| A-DB-8 | screening | not-applicable | Firm | 5 | E-41 |
+| A-DB-9 | deep-trace | not-applicable | Firm | 5 | E-41 |
+| A-DB-10 | deep-trace | not-applicable | Firm | 6.5 | E-41 |
+| A-DB-11 | screening | not-applicable | Firm | 6.5 | E-41 |
+| A-DB-12 | deep-trace | not-applicable | Firm | 6 | E-41 |
+| A-DB-13 | screening | not-applicable | Firm | 6 | E-41 |
+| A-DB-14 | deep-trace | not-applicable | Firm | 4.5 | E-41 |
+| A-DB-15 | deep-trace | not-applicable | Firm | 4.5 | E-41 |
+| A-DB-16 | screening | not-applicable | Firm | 3 | E-41 |
+| A-DB-17 | screening | not-applicable | Firm | 3 | E-41 |
+| A-DB-18 | screening | not-applicable | Firm | 6 | E-41 |
+| A-DB-19 | deep-trace | not-applicable | Firm | 6 | E-41 |
+| A-DB-20 | screening | pass | Firm | 4 | E-16 |
+| A-DB-21 | screening | not-applicable | Firm | 1 | E-41 |
+| A-DB-22 | screening | not-applicable | Firm | 0 | E-41 |
+| A-DB-23 | screening | pass | Firm | 1 | E-17 |
+| A-DB-24 | deep-trace | pass | Firm | 0 | E-16 |
+| A-SEC-1 | deep-trace | pass | Certain | 0 | E-26, E-11 |
+| A-SEC-2 | screening | pass | Certain | 0 | E-26, E-11 |
+| A-SEC-3 | deep-trace | pass | Firm | 6 | E-18 |
+| A-SEC-4 | deep-trace | pass | Firm | 6 | E-18 |
+| A-SEC-5 | deep-trace | pass | Firm | 6 | E-18 |
+| A-SEC-6 | deep-trace | pass | Firm | 7.5 | E-18 |
+| A-SEC-7 | screening | pass | Firm | 7.5 | E-18 |
+| A-SEC-8 | deep-trace | pass | Firm | 5.33333333 | E-18 |
+| A-SEC-9 | deep-trace | pass | Certain | 5.33333333 | E-7, E-1 |
+| A-SEC-10 | deep-trace | pass | Firm | 5.33333333 | E-18 |
+| A-SEC-11 | screening | pass | Certain | 5.5 | E-17, E-31 |
+| A-SEC-12 | deep-trace | pass | Certain | 5.5 | E-17, E-31 |
+| A-SEC-13 | screening | pass | Certain | 2.66666667 | E-17, E-31 |
+| A-SEC-14 | screening | pass | Certain | 2.66666667 | E-5, E-2 |
+| A-SEC-15 | screening | pass | Certain | 4.5 | E-1, E-2 |
+| A-SEC-16 | screening | pass | Firm | 4.5 | E-18 |
+| A-SEC-17 | screening | pass | Certain | 3 | E-14, E-15 |
+| A-SEC-18 | screening | pass | Firm | 3 | E-18 |
+| A-SEC-19 | deep-trace | pass | Firm | 6 | E-18 |
+| A-SEC-20 | screening | pass | Firm | 2 | E-18 |
+| A-SEC-21 | screening | pass | Firm | 2 | E-18 |
+| A-SEC-22 | screening | pass | Firm | 2 | E-18 |
+| A-SEC-23 | screening | pass | Firm | 2 | E-27 |
+| A-SEC-24 | deep-trace | pass | Firm | 0 | E-27 |
+| A-SEC-25 | deep-trace | pass | Firm | 0 | E-27 |
+| A-SEC-26 | screening | pass | Certain | 3 | E-14, E-15 |
+| A-SEC-27 | deep-trace | pass | Firm | 2.66666667 | E-18 |
+| A-SEC-28 | deep-trace | pass | Firm | 0 | E-18 |
+| A-SEC-29 | deep-trace | pass | Firm | 0 | E-18 |
+| A-SEC-30 | deep-trace | pass | Firm | 0 | E-18 |
+| A-SEC-31 | deep-trace | pass | Firm | 0 | E-18 |
+| A-SEC-32 | screening | pass | Firm | 0 | E-18 |
+| A-SEC-33 | deep-trace | pass | Firm | 0 | E-18 |
+| A-LLM-1 | deep-trace | pass | Firm | 4.25 | E-27 |
+| A-LLM-2 | screening | pass | Firm | 4 | E-27 |
+| A-LLM-3 | screening | pass | Firm | 4 | E-27 |
+| A-LLM-4 | deep-trace | pass | Firm | 4.25 | E-32 |
+| A-LLM-5 | deep-trace | pass | Firm | 4.25 | E-32 |
+| A-LLM-6 | screening | pass | Firm | 4.25 | E-32 |
+| A-LLM-7 | screening | pass | Firm | 2.5 | E-27 |
+| A-LLM-8 | screening | pass | Firm | 2.5 | E-27 |
+| A-LLM-9 | deep-trace | pass | Firm | 2.5 | E-27 |
+| A-LLM-10 | deep-trace | pass | Firm | 5 | E-27 |
+| A-LLM-11 | screening | pass | Firm | 5 | E-27 |
+| A-LLM-12 | screening | pass | Firm | 5 | E-27 |
+| A-LLM-13 | deep-trace | pass | Firm | 5 | E-27 |
+| A-LLM-14 | deep-trace | pass | Firm | 8 | E-27 |
+| A-LLM-15 | screening | pass | Firm | 6 | E-27 |
+| A-LLM-16 | screening | pass | Firm | 4 | E-27 |
+| A-LLM-17 | screening | pass | Firm | 2.5 | E-27 |
+| A-LLM-18 | screening | pass | Firm | 2.5 | E-27 |
+| A-LLM-19 | screening | pass | Firm | 5 | E-27 |
+| A-LLM-20 | screening | pass | Firm | 3.5 | E-27 |
+| A-LLM-21 | screening | pass | Firm | 3.5 | E-27 |
+| A-LLM-22 | deep-trace | pass | Firm | 6 | E-27 |
+| A-LLM-23 | deep-trace | pass | Firm | 0 | E-27 |
+| A-LLM-24 | screening | pass | Firm | 2.5 | E-27 |
+| A-LLM-25 | deep-trace | pass | Firm | 4 | E-27 |
+| A-UX-1 | screening | pass | Firm | 3.66666667 | E-34 |
+| A-UX-2 | deep-trace | pass | Firm | 3.66666667 | E-34 |
+| A-UX-3 | screening | pass | Firm | 3.25 | E-39 |
+| A-UX-4 | screening | pass | Firm | 3.25 | E-39 |
+| A-UX-5 | deep-trace | pass | Firm | 3.25 | E-35 |
+| A-UX-6 | screening | pass | Firm | 4 | E-35 |
+| A-UX-7 | screening | pass | Firm | 4 | E-35 |
+| A-UX-8 | deep-trace | pass | Firm | 13 | E-35 |
+| A-UX-9 | screening | pass | Firm | 7 | E-35 |
+| A-UX-10 | deep-trace | pass | Firm | 3.66666667 | E-35 |
+| A-UX-11 | deep-trace | pass | Firm | 3.66666667 | E-35 |
+| A-UX-12 | screening | pass | Firm | 3.66666667 | E-35 |
+| A-UX-13 | screening | pass | Firm | 8 | E-35 |
+| A-UX-14 | screening | pass | Firm | 4 | E-35 |
+| A-UX-15 | screening | pass | Firm | 4 | E-35 |
+| A-UX-16 | screening | pass | Firm | 6 | E-35 |
+| A-UX-17 | deep-trace | pass | Firm | 6 | E-35 |
+| A-UX-18 | screening | pass | Firm | 4.5 | E-35 |
+| A-UX-19 | screening | pass | Firm | 3.66666667 | E-35 |
+| A-UX-20 | screening | pass | Firm | 0 | E-35 |
+| A-UX-21 | deep-trace | pass | Firm | 4.5 | E-35 |
+| A-UX-22 | screening | pass | Firm | 3.25 | E-35 |
+| A-UI-1 | screening | pass | Firm | 2.56410256 | E-36 |
+| A-UI-2 | screening | pass | Firm | 5.98290598 | E-36 |
+| A-UI-3 | screening | pass | Firm | 2.08926876 | E-36 |
+| A-UI-4 | screening | pass | Firm | 2.08926876 | E-34 |
+| A-UI-5 | screening | pass | Firm | 2.08926876 | E-34 |
+| A-UI-6 | screening | pass | Firm | 2.08926876 | E-34 |
+| A-UI-7 | screening | pass | Firm | 2.08926876 | E-34 |
+| A-UI-8 | screening | pass | Firm | 2.08926876 | E-34 |
+| A-UI-9 | screening | pass | Firm | 5.98290598 | E-34 |
+| A-UI-10 | screening | pass | Firm | 5.55555556 | E-34 |
+| A-UI-11 | deep-trace | pass | Firm | 5.55555556 | E-34 |
+| A-UI-12 | screening | pass | Firm | 10.25641026 | E-34 |
+| A-UI-13 | deep-trace | pass | Firm | 9.4017094 | E-34 |
+| A-UI-14 | screening | pass | Firm | 2.56410256 | E-34 |
+| A-UI-15 | screening | pass | Firm | 2.56410256 | E-34 |
+| A-UI-16 | screening | pass | Firm | 5.12820513 | E-34 |
+| A-UI-17 | screening | pass | Firm | 6.83760684 | E-34 |
+| A-UI-18 | screening | pass | Firm | 7.69230769 | E-34 |
+| A-UI-19 | deep-trace | pass | Firm | 2.08926876 | E-34 |
+| A-UI-20 | screening | pass | Firm | 2.08926876 | E-34 |
+| A-UI-21 | screening | pass | Firm | 2.08926876 | E-34 |
+| A-UI-22 | deep-trace | pass | Firm | 5.55555556 | E-34 |
+| A-UI-23 | deep-trace | pass | Firm | 5.55555556 | E-34 |
+| A-UI-24 | screening | pass | Firm | 0 | E-34 |
+| A-SEO-1 | screening | not-applicable | Firm | 2.8 | E-42 |
+| A-SEO-2 | deep-trace | not-applicable | Firm | 6.5 | E-42 |
+| A-SEO-3 | screening | not-applicable | Firm | 6.5 | E-42 |
+| A-SEO-4 | screening | not-applicable | Firm | 2.8 | E-42 |
+| A-SEO-5 | deep-trace | not-applicable | Firm | 2.8 | E-42 |
+| A-SEO-6 | screening | not-applicable | Firm | 2.8 | E-42 |
+| A-SEO-7 | screening | not-applicable | Firm | 2.8 | E-42 |
+| A-SEO-8 | deep-trace | not-applicable | Firm | 5.5 | E-42 |
+| A-SEO-9 | screening | not-applicable | Firm | 4 | E-42 |
+| A-SEO-10 | screening | not-applicable | Firm | 6 | E-42 |
+| A-SEO-11 | screening | not-applicable | Firm | 6 | E-42 |
+| A-SEO-12 | screening | not-applicable | Firm | 5 | E-42 |
+| A-SEO-13 | screening | not-applicable | Firm | 5 | E-42 |
+| A-SEO-14 | screening | not-applicable | Firm | 4.5 | E-42 |
+| A-SEO-15 | screening | not-applicable | Firm | 4.5 | E-42 |
+| A-SEO-16 | deep-trace | not-applicable | Firm | 6 | E-42 |
+| A-SEO-17 | screening | not-applicable | Firm | 2.5 | E-42 |
+| A-SEO-18 | screening | not-applicable | Firm | 5 | E-42 |
+| A-SEO-19 | screening | not-applicable | Firm | 4 | E-42 |
+| A-SEO-20 | screening | not-applicable | Firm | 1.5 | E-42 |
+| A-SEO-21 | deep-trace | pass | Firm | 4 | E-9 |
+| A-SEO-22 | screening | pass | Firm | 0 | E-9 |
+| A-SEO-23 | deep-trace | pass | Firm | 5.5 | E-9 |
+| A-SEO-24 | screening | pass | Firm | 1.5 | E-9 |
+| A-SEO-25 | screening | pass | Firm | 2.5 | E-9 |
+| A-CODE-1 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-2 | deep-trace | pass | Firm | 4.75 | E-19 |
+| A-CODE-3 | screening | pass | Firm | 4.75 | E-19 |
+| A-CODE-4 | screening | pass | Firm | 4.75 | E-19 |
+| A-CODE-5 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-6 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-7 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-8 | deep-trace | pass | Firm | 3.8 | E-19 |
+| A-CODE-9 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-10 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-11 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-12 | deep-trace | pass | Firm | 4 | E-19 |
+| A-CODE-13 | screening | pass | Firm | 4 | E-19 |
+| A-CODE-14 | deep-trace | pass | Firm | 4 | E-19 |
+| A-CODE-15 | screening | pass | Firm | 5 | E-19 |
+| A-CODE-16 | screening | pass | Firm | 5 | E-19 |
+| A-CODE-17 | screening | pass | Firm | 4.5 | E-19 |
+| A-CODE-18 | screening | pass | Firm | 6 | E-19 |
+| A-CODE-19 | screening | pass | Firm | 3 | E-19 |
+| A-CODE-20 | screening | pass | Firm | 3 | E-19 |
+| A-CODE-21 | screening | pass | Firm | 3.8 | E-19 |
+| A-CODE-22 | deep-trace | pass | Firm | 3.8 | E-19 |
+| A-CODE-23 | deep-trace | pass | Firm | 4.75 | E-19 |
+| A-CODE-24 | screening | pass | Firm | 4.5 | E-19 |
+| A-CODE-25 | deep-trace | pass | Firm | 0 | E-19 |
+| A-CODE-26 | deep-trace | pass | Firm | 0 | E-19 |
+| A-DNA-1 | screening | pass | Firm | 6 | E-19 |
+| A-DNA-2 | screening | pass | Firm | 7.5 | E-19 |
+| A-DNA-3 | screening | pass | Firm | 7.5 | E-19 |
+| A-DNA-4 | screening | pass | Firm | 8 | E-19 |
+| A-DNA-5 | screening | pass | Firm | 5 | E-19 |
+| A-DNA-6 | screening | pass | Firm | 6 | E-19 |
+| A-DNA-7 | screening | pass | Firm | 6 | E-19 |
+| A-DNA-8 | screening | pass | Firm | 3.33333333 | E-19 |
+| A-DNA-9 | screening | pass | Firm | 3.33333333 | E-19 |
+| A-DNA-10 | screening | pass | Firm | 3.33333333 | E-19 |
+| A-DNA-11 | screening | pass | Firm | 5 | E-19 |
+| A-DNA-12 | screening | pass | Firm | 5 | E-19 |
+| A-DNA-13 | deep-trace | pass | Firm | 5 | E-19 |
+| A-DNA-14 | screening | pass | Firm | 3.33333333 | E-19 |
+| A-DNA-15 | screening | pass | Firm | 3.33333333 | E-19 |
+| A-DNA-16 | screening | pass | Firm | 1.66666667 | E-19 |
+| A-DNA-17 | screening | pass | Firm | 2.66666667 | E-19 |
+| A-DNA-18 | screening | pass | Firm | 1.66666667 | E-19 |
+| A-DNA-19 | screening | pass | Firm | 1.66666667 | E-19 |
+| A-DNA-20 | deep-trace | pass | Firm | 3.33333333 | E-19 |
+| A-DNA-21 | screening | pass | Firm | 2.66666667 | E-19 |
+| A-DNA-22 | deep-trace | pass | Firm | 2.66666667 | E-19 |
+| A-DNA-23 | screening | pass | Firm | 6 | E-19 |
+| A-MEM-1 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-2 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-3 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-4 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-5 | screening | pass | Firm | 10 | E-45 |
+| A-MEM-6 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-7 | screening | pass | Firm | 3 | E-45 |
+| A-MEM-8 | screening | pass | Firm | 3 | E-45 |
+| A-MEM-9 | deep-trace | pass | Firm | 5 | E-45 |
+| A-MEM-10 | deep-trace | pass | Firm | 5 | E-45 |
+| A-MEM-11 | deep-trace | pass | Firm | 7.5 | E-45 |
+| A-MEM-12 | screening | pass | Firm | 7.5 | E-45 |
+| A-MEM-13 | screening | pass | Firm | 3 | E-45 |
+| A-MEM-14 | deep-trace | pass | Firm | 3.75 | E-45 |
+| A-MEM-15 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-16 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-17 | deep-trace | pass | Firm | 3.75 | E-45 |
+| A-MEM-18 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-19 | screening | pass | Firm | 0 | E-45 |
+| A-MEM-20 | screening | pass | Firm | 5 | E-45 |
+| A-MEM-21 | screening | pass | Firm | 3 | E-45 |
+| A-MEM-22 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-23 | screening | pass | Firm | 3.75 | E-45 |
+| A-MEM-24 | screening | pass | Firm | 3 | E-45 |
+| A-REPO-1 | screening | fail | Firm | 3.5 | E-40 |
+| A-REPO-2 | screening | pass | Certain | 3.5 | E-20, E-9 |
+| A-REPO-3 | screening | pass | Certain | 7 | E-20, E-9 |
+| A-REPO-4 | deep-trace | pass | Firm | 4.5 | E-21 |
+| A-REPO-5 | screening | pass | Firm | 4 | E-21 |
+| A-REPO-6 | screening | pass | Firm | 4.5 | E-22 |
+| A-REPO-7 | screening | pass | Firm | 4.5 | E-22 |
+| A-REPO-8 | screening | pass | Firm | 3.5 | E-9 |
+| A-REPO-9 | screening | pass | Firm | 4 | E-9 |
+| A-REPO-10 | screening | pass | Firm | 4 | E-9 |
+| A-REPO-11 | deep-trace | pass | Firm | 4 | E-9 |
+| A-REPO-12 | screening | pass | Firm | 7 | E-9 |
+| A-REPO-13 | screening | pass | Firm | 4 | E-9 |
+| A-REPO-14 | screening | pass | Firm | 4 | E-9 |
+| A-REPO-15 | screening | pass | Firm | 8 | E-9 |
+| A-REPO-16 | deep-trace | pass | Firm | 3.5 | E-9 |
+| A-REPO-17 | screening | pass | Firm | 3.5 | E-9 |
+| A-REPO-18 | screening | pass | Firm | 3.5 | E-9 |
+| A-REPO-19 | screening | pass | Firm | 3.5 | E-9 |
+| A-REPO-20 | screening | pass | Firm | 3.5 | E-9 |
+| A-REPO-21 | screening | pass | Firm | 4.5 | E-9 |
+| A-REPO-22 | screening | pass | Firm | 4 | E-9 |
+| A-REPO-23 | screening | pass | Firm | 4 | E-9 |
+| A-REPO-24 | deep-trace | pass | Firm | 0 | E-9 |
+| A-BUILD-1 | screening | pass | Certain | 2.5 | E-23, E-13 |
+| A-BUILD-2 | screening | pass | Certain | 5 | E-23, E-13 |
+| A-BUILD-3 | screening | pass | Certain | 4 | E-37, E-2 |
+| A-BUILD-4 | deep-trace | pass | Certain | 5 | E-37, E-2 |
+| A-BUILD-5 | deep-trace | pass | Certain | 5 | E-37, E-2 |
+| A-BUILD-6 | deep-trace | pass | Firm | 4 | E-23 |
+| A-BUILD-7 | screening | pass | Firm | 4 | E-23 |
+| A-BUILD-8 | deep-trace | pass | Firm | 5 | E-23 |
+| A-BUILD-9 | deep-trace | pass | Firm | 5 | E-23 |
+| A-BUILD-10 | screening | pass | Firm | 5 | E-23 |
+| A-BUILD-11 | screening | pass | Firm | 10 | E-23 |
+| A-BUILD-12 | screening | pass | Firm | 7.5 | E-23 |
+| A-BUILD-13 | deep-trace | pass | Firm | 7.5 | E-23 |
+| A-BUILD-14 | screening | pass | Firm | 3.33333333 | E-23 |
+| A-BUILD-15 | screening | pass | Firm | 3.33333333 | E-23 |
+| A-BUILD-16 | screening | pass | Firm | 4 | E-23 |
+| A-BUILD-17 | screening | pass | Certain | 2.5 | E-6, E-11 |
+| A-BUILD-18 | screening | pass | Firm | 2.5 | E-23 |
+| A-BUILD-19 | deep-trace | pass | Firm | 5 | E-23 |
+| A-BUILD-20 | screening | pass | Firm | 2.5 | E-23 |
+| A-BUILD-21 | screening | pass | Firm | 3.33333333 | E-23 |
+| A-BUILD-22 | screening | pass | Firm | 4 | E-23 |
+| A-ROAD-1 | screening | pass | Firm | 5 | E-22 |
+| A-ROAD-2 | screening | pass | Firm | 5 | E-22 |
+| A-ROAD-3 | screening | pass | Firm | 7.5 | E-22 |
+| A-ROAD-4 | screening | pass | Firm | 7.5 | E-22 |
+| A-ROAD-5 | screening | pass | Firm | 5 | E-22 |
+| A-ROAD-6 | deep-trace | pass | Firm | 6.66666667 | E-22 |
+| A-ROAD-7 | screening | pass | Firm | 6.66666667 | E-22 |
+| A-ROAD-8 | screening | pass | Firm | 6.66666667 | E-22 |
+| A-ROAD-9 | screening | pass | Firm | 5 | E-22 |
+| A-ROAD-10 | screening | pass | Firm | 7.5 | E-22 |
+| A-ROAD-11 | screening | pass | Firm | 5 | E-22 |
+| A-ROAD-12 | screening | pass | Firm | 5 | E-22 |
+| A-ROAD-13 | screening | pass | Firm | 5 | E-22 |
+| A-ROAD-14 | screening | pass | Firm | 3.33333333 | E-22 |
+| A-ROAD-15 | deep-trace | pass | Firm | 3.33333333 | E-22 |
+| A-ROAD-16 | deep-trace | pass | Firm | 7.5 | E-22 |
+| A-ROAD-17 | screening | pass | Firm | 0.83333333 | E-22 |
+| A-ROAD-18 | screening | pass | Firm | 0.83333333 | E-22 |
+| A-ROAD-19 | screening | pass | Firm | 0.83333333 | E-22 |
+| A-ROAD-20 | screening | pass | Firm | 0.83333333 | E-22 |
+| A-ROAD-21 | deep-trace | pass | Firm | 3.33333333 | E-22 |
+| A-ROAD-22 | deep-trace | pass | Firm | 0.83333333 | E-22 |
+| A-ROAD-23 | screening | pass | Firm | 0.83333333 | E-22 |
+| A-DEPLOY-1 | screening | pass | Firm | 6.66666667 | E-33 |
+| A-DEPLOY-2 | screening | pass | Firm | 6.66666667 | E-33 |
+| A-DEPLOY-3 | screening | pass | Firm | 5 | E-33 |
+| A-DEPLOY-4 | screening | pass | Firm | 5 | E-33 |
+| A-DEPLOY-5 | deep-trace | pass | Firm | 10 | E-33 |
+| A-DEPLOY-6 | deep-trace | pass | Firm | 10 | E-33 |
+| A-DEPLOY-7 | screening | pass | Firm | 2.5 | E-33 |
+| A-DEPLOY-8 | screening | pass | Firm | 2.5 | E-33 |
+| A-DEPLOY-9 | screening | pass | Firm | 2.5 | E-33 |
+| A-DEPLOY-10 | screening | pass | Firm | 2.5 | E-33 |
+| A-DEPLOY-11 | screening | pass | Firm | 5 | E-33 |
+| A-DEPLOY-12 | screening | pass | Firm | 3.33333333 | E-33 |
+| A-DEPLOY-13 | deep-trace | pass | Firm | 5 | E-33 |
+| A-DEPLOY-14 | deep-trace | pass | Firm | 5 | E-33 |
+| A-DEPLOY-15 | screening | pass | Firm | 3.33333333 | E-33 |
+| A-DEPLOY-16 | deep-trace | pass | Firm | 5 | E-33 |
+| A-DEPLOY-17 | screening | pass | Firm | 3.33333333 | E-33 |
+| A-DEPLOY-18 | screening | pass | Firm | 5 | E-33 |
+| A-DEPLOY-19 | screening | pass | Firm | 6.66666667 | E-33 |
+| A-DEPLOY-20 | screening | pass | Firm | 2.5 | E-33 |
+| A-DEPLOY-21 | screening | pass | Firm | 2.5 | E-33 |
+| A-OBS-1 | screening | pass | Firm | 3.57142857 | E-24 |
+| A-OBS-2 | screening | pass | Firm | 3.57142857 | E-24 |
+| A-OBS-3 | screening | pass | Firm | 3.57142857 | E-24 |
+| A-OBS-4 | screening | pass | Firm | 3.57142857 | E-24 |
+| A-OBS-5 | screening | pass | Firm | 3.57142857 | E-24 |
+| A-OBS-6 | screening | pass | Firm | 3.57142857 | E-24 |
+| A-OBS-7 | screening | pass | Firm | 4 | E-24 |
+| A-OBS-8 | screening | pass | Firm | 4 | E-24 |
+| A-OBS-9 | screening | pass | Firm | 4 | E-24 |
+| A-OBS-10 | deep-trace | pass | Firm | 4 | E-24 |
+| A-OBS-11 | deep-trace | pass | Firm | 4 | E-24 |
+| A-OBS-12 | screening | pass | Firm | 4 | E-24 |
+| A-OBS-13 | screening | pass | Firm | 5 | E-24 |
+| A-OBS-14 | screening | pass | Firm | 5 | E-24 |
+| A-OBS-15 | screening | pass | Firm | 5 | E-24 |
+| A-OBS-16 | screening | pass | Firm | 5 | E-24 |
+| A-OBS-17 | deep-trace | pass | Firm | 5 | E-24 |
+| A-OBS-18 | screening | pass | Firm | 5 | E-24 |
+| A-OBS-19 | screening | pass | Firm | 5 | E-24 |
+| A-OBS-20 | screening | pass | Firm | 3.57142857 | E-24 |
+| A-OBS-21 | screening | pass | Firm | 4 | E-24 |
+| A-OBS-22 | deep-trace | pass | Firm | 4 | E-24 |
+| A-OBS-23 | deep-trace | pass | Firm | 4 | E-24 |
+| A-OBS-24 | deep-trace | pass | Firm | 4 | E-24 |
+| A-LAUNCH-1 | screening | pass | Firm | 6.66666667 | E-25 |
+| A-LAUNCH-2 | screening | pass | Firm | 6.66666667 | E-25 |
+| A-LAUNCH-3 | screening | pass | Firm | 6.66666667 | E-25 |
+| A-LAUNCH-4 | screening | pass | Firm | 3.33333333 | E-25 |
+| A-LAUNCH-5 | deep-trace | pass | Firm | 3.33333333 | E-25 |
+| A-LAUNCH-6 | screening | pass | Firm | 3.33333333 | E-25 |
+| A-LAUNCH-7 | screening | pass | Firm | 3.33333333 | E-25 |
+| A-LAUNCH-8 | screening | pass | Firm | 3.33333333 | E-25 |
+| A-LAUNCH-9 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-10 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-11 | deep-trace | pass | Firm | 5 | E-25 |
+| A-LAUNCH-12 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-13 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-14 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-15 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-16 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-17 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-18 | screening | pass | Firm | 5 | E-25 |
+| A-LAUNCH-19 | screening | pass | Firm | 2.5 | E-25 |
+| A-LAUNCH-20 | screening | pass | Firm | 2.5 | E-25 |
+| A-LAUNCH-21 | screening | pass | Firm | 2.5 | E-25 |
+| A-LAUNCH-22 | deep-trace | pass | Firm | 3.33333333 | E-25 |
+| A-LAUNCH-23 | deep-trace | pass | Firm | 2.5 | E-25 |
+
+## Evidence ledger
+
+| Evidence | Type | Location or scope | Provenance | Quote or result | SHA-256 | Redacted |
+|---|---|---|---|---|---|---|
+| E-1 | source | src/manifest.json:38 | source content hash | "content_security_policy": &#123; | 1efcbbbaeeaaab2acca7bd8cd85aa73a17a1abec6f5aa1b533cf6490f50b138c | no |
+| E-2 | source | scripts/release-gate.js:15 | source content hash | name: 'Gate 1: Cryptographic Extension Key Pinning', | bf0500490f42ef809ecbc44220387fead7d90ca4e0664234f55034b43b42ad2c | no |
+| E-3 | source | src/options/options.js:759 | source content hash | const hashSpan = document.createElement('span'); | d99eb9c0285f99c65b331f776c76a11cb1019e12033fcb79c68932985aaca47a | no |
+| E-4 | source | .github/workflows/ci.yml:16 | source content hash | - name: Automated Secret Scanning (Gitleaks) | e7690a4840c04124a746e64a4d8752d5452c1f7e9bebfe01a97be896a2acd3be | no |
+| E-5 | source | .github/workflows/ci.yml:16 | source content hash | - name: Automated Secret Scanning (Gitleaks) | e7690a4840c04124a746e64a4d8752d5452c1f7e9bebfe01a97be896a2acd3be | no |
+| E-6 | source | docs/STATE.md:1 | source content hash | # Project State &amp; Architecture Milestones | 5490e65367431545effb2198d43af0053dd9d60f7e8b9765b1cd5f29e0001239 | no |
+| E-7 | source | src/options/options.js:758 | source content hash | const left = document.createElement('div'); | d99eb9c0285f99c65b331f776c76a11cb1019e12033fcb79c68932985aaca47a | no |
+| E-8 | source | src/content/modules/injection-policy.js:52 | source content hash | /^https?:\/\/(?:&#91;a-z0-9-&#93;+\.)?wellsfargo\.com/i, | 137ff52a3587cf73613f89fb41637cb0998f044db4fc330f6f0b7945e031324d | no |
+| E-9 | source | README.md:5 | source content hash | # Vigil AI Guardian &amp; Sentinel Agent Gateway | 607ee40435c2e9b69597a5e5448dd6c23542e70b18e00c7d5d0273fdc2467fbf | no |
+| E-10 | source | README.md:38 | source content hash | **Vigil AI is the first sovereign, air-gapped security stack that neutralizes both threats entirely on the endpoint before network or operating system side-effects occur.** | 607ee40435c2e9b69597a5e5448dd6c23542e70b18e00c7d5d0273fdc2467fbf | no |
+| E-11 | source | ARCHITECTURE.md:5 | source content hash | **Target Audience:** Enterprise Security Architects, CISOs, Principal Engineers, Technical Due Diligence Auditors | 4f26b75b32b90fd4d49869a123bbf7eca34e8f5fb6d3222783be8b222e4b1436 | no |
+| E-12 | source | desktop/Cargo.toml:1 | source content hash | &#91;package&#93; | f9b1a4aa50dc52e51bb8ceeab92e25fdbd95bf089c2c3668e2cfa9eb5b36391b | no |
+| E-13 | source | package.json:53 | source content hash | "devDependencies": &#123; | 2e8ec7f13f38786a5e8936012343952153eb1e42de0774529efd526ea916a92b | no |
+| E-14 | source | package-lock.json:2 | source content hash | "name": "vigil-ai", | 875255f95b7a8ecb393b1b07e651ee2b138f1694503177a05c81f7bfb553d6b4 | no |
+| E-15 | source | desktop/Cargo.lock:2 | source content hash | # It is not intended for manual editing. | 50b064b93ce40090bd1f186759dc2b5d20dcbf8e493707225b178609aa7619f3 | no |
+| E-16 | source | src/shared/vigil-shared.js:14 | source content hash | const KEYS = &#123; | ac1ecd69933459acbaf4021ad7e0e177e1b4415298ec3d9e8f96c0c9f19818a8 | no |
+| E-17 | source | src/background/vigil-vault.js:10 | source content hash | * inspection, other extensions reading storage) — not from an attacker with | cdf62135f75146258d01e6e96f059b79b4f746458541b047a6d203d3c7a05f5a | no |
+| E-18 | source | desktop/src/sentinel.rs:1 | source content hash | /** | 51d2ec2bfa12d66cbce506d1c47baf6dc15a173dcc46fa09105e9e390ffd67ee | no |
+| E-19 | source | .eslintrc.json:2 | source content hash | "root": true, | 1f414d4beb63d8d3ff5f6cd27b8d7cabe28ae1aa9a6dd826ab46aec74db165e8 | no |
+| E-20 | source | LICENSE:1 | source content hash | # VIGIL AI DUAL LICENSE AGREEMENT | ed19490f910d2fe34d00b507156bc418adaa1b19088f2a641c31116f3975ea4e | no |
+| E-21 | source | SECURITY.md:1 | source content hash | # Enterprise Security Policy &amp; Vulnerability Management Framework | b37105185a6baa5d2c2410946b5a5ba3e63df65f766dc1fc131c568bd22d83fe | no |
+| E-22 | source | CHANGELOG.md:1 | source content hash | # Changelog | b2e3d0a3d646993eed2773ccd0c1a30e49ca2c7674b52ae61fa519cdceb7329f | no |
+| E-23 | source | build.js:1 | source content hash | #!/usr/bin/env node | 21f020142c130e58ae712f87e47e0acf359f966a6c1ff2e5e0224f0c1e4e0cbd | no |
+| E-24 | source | src/shared/siem-exporter.js:1 | source content hash | /** | 042b8025825b47d7ec7dcfd26efc4a103aa08a8cddc320cfd907bd7e8e446749 | no |
+| E-25 | source | SECURITY_AUDIT.md:1 | source content hash | # VIGIL AI &amp; SENTINEL: REAL-WORLD SECURITY AUDIT DOSSIER | 2a2be51d0d2e8f5345939e8dab1d57b6af74c790f0ea432f985cca3f2f3cf2e9 | no |
+| E-26 | source | docs/THREAT_MODEL.md:1 | source content hash | # Vigil AI Threat Model &amp; Security Boundaries (STRIDE Framework) | acc1bdc2c88c2426f5d7c58dd9962434012b377c3e7918862ad12fe0051ce937 | no |
+| E-27 | source | src/content/modules/detection-engine.js:1 | source content hash | /** | 4c375d5602ba6020140746730e54bcee953eb0277a04f1d23368cb6c07218764 | no |
+| E-28 | source | playwright.config.js:1 | source content hash | module.exports = &#123; | 5d3a586075c28b2377a8844fea9ca83b165cb3b428975c2c8e52cef375745453 | no |
+| E-29 | source | jest.config.js:1 | source content hash | module.exports = &#123; | e41e46a02e0f3099fff59443a85191fffe16577debdc0fc4792de6d5db68b282 | no |
+| E-30 | source | src/background/native-bridge.js:1 | source content hash | /** | 8cd8906567bd5f1c2ff98323a3b2d80d81936e685bdeb543b68b43436a563439 | no |
+| E-31 | source | desktop/src/hardware_enclave.rs:1 | source content hash | use aes_gcm::aead::Aead; | 8dcf24f1c3c576d7ecef77bbc88b2f90849e1910374f9f514c25d11e963ee245 | no |
+| E-32 | source | desktop/src/ide_proxy.rs:1 | source content hash | use serde::&#123;Deserialize, Serialize&#125;; | b86da5d492c3243d8094abeffae4c0e69a4db4f7b187037b184bcf14e3498e0f | no |
+| E-33 | source | scripts/pack.js:1 | source content hash | #!/usr/bin/env node | 63645b6752ca808fa4ae8510dd412506713f8dac595201ad41c850ae13647317 | no |
+| E-34 | source | src/popup/popup.html:1 | source content hash | &lt;!DOCTYPE html&gt; | b50a29a47fb47275d840137eee2f668b98f07955308e6c349f0ab2dd296c07c9 | no |
+| E-35 | source | src/options/options.html:1 | source content hash | &lt;!DOCTYPE html&gt; | 9897ec16efd77226dc773cc6c9e33a095378e786fd81639f75489bebb7334d4b | no |
+| E-36 | source | src/options/options.css:1 | source content hash | /* VIGIL Options — modern guardian UI (matches the popup system) */ | 67f8e640b7016cb46503e7ce041c244f3ca76acddcada672ab0169ca06b884b0 | no |
+| E-37 | source | scripts/verify-dist.js:1 | source content hash | /** | 4228f77f83289127013f5915d80df88c4f9936e82ddc501d2c909c25639e388c | no |
+| E-38 | source | scripts/generate-audit-pack.js:1 | source content hash | #!/usr/bin/env node | 247acb0ccbfc32c6db6765626fbd1bb03dce29acc36dea707837794755cf3373 | no |
+| E-39 | source | src/content/content.js:3187 | source content hash | toast.innerHTML = `&lt;span style="display:inline-flex;align-items:center;gap:6px;"&gt;&lt;span style="color:#10b981;"&gt;🛡️&lt;/span&gt; $&#123;escapeHtml(message &#124;&#124; 'Prompt masked &amp; sent safely')&#125;&lt;/span&gt;&lt;button id="vigil-toast-undo" style="background:transpare | 3046c2d4205fd13b7f709520c6f68d8bdaee94a752254500ffba39daa237d31f | no |
+| E-40 | absence | git working tree | git status --porcelain | Working tree contains unstaged modifications to build-hash.txt and content.js | none | no |
+| E-41 | absence | database migrations and DDL | find . -name "*.sql" -o -name "migrations" | No SQL migrations, relational DDL, or ORM schemas detected; storage uses chrome.storage.local | none | no |
+| E-42 | absence | server-rendered web routes | find . -name "routes" -o -name "views" | No server-side web routes; application delivers as local client-side WebExtension and native daemon | none | no |
+| E-43 | absence | session-state build documentation | find . -name "STATE.md" | No STATE.md build state record or formalized ADR directory found in repository | none | no |
+| E-44 | tool | none | godaudits 2.18.0; godaudits doctor | All 18 domains and 437 checks catalog verified with Node v22.23.1 | none | no |
+| E-45 | tool | none | godaudits 2.18.0; godaudits evidence . | 542 signals inventoried across 383 files in vigil.ai | none | no |
+
+## Strengths
+
+- Tamper-evident cryptographic audit ledger and sovereign local proxy. E-18 desktop/src/sentinel.rs:1: `/**`; E-11 ARCHITECTURE.md:5: `**Target Audience:** Enterprise Security Architects, CISOs, Principal Engineers, Technical Due Diligence Auditors` Preserve: Maintain the SHA-256 chained audit ledger and fail-closed local policy proxy in desktop/src/sentinel.rs and src/sentinel/ledger/
+
+- Strict Content Security Policy forbidding remote script execution. E-1 src/manifest.json:38: `"content_security_policy": {` Preserve: Preserve default-src "none" and object-src "none" with wasm-unsafe-eval in src/manifest.json
+
+- Deterministic 7-gate security release pipeline. E-2 scripts/release-gate.js:15: `name: 'Gate 1: Cryptographic Extension Key Pinning',`; E-37 scripts/verify-dist.js:1: `/**` Preserve: Keep scripts/release-gate.js as a mandatory blocking gate before publishing any distribution zip or desktop release
+
+- Exhaustive test pyramid including unit, Rust invariant fuzzing, and Playwright E2E. E-28 playwright.config.js:1: `module.exports = {`; E-29 jest.config.js:1: `module.exports = {` Preserve: Continue executing the multi-stage test matrix in .github/workflows/ci.yml with 100k fuzz iterations and headed browser validation
+
+## Findings
+
+### product
+
+No findings. 21 checks were recorded in the ledger.
+
+### architecture
+
+No findings. 29 checks were recorded in the ledger.
+
+### stack
+
+No findings. 24 checks were recorded in the ledger.
+
+### database
+
+No findings. 24 checks were recorded in the ledger.
+
+### security
+
+#### F-SEC-2 Automated secret scanning is not wired into the CI/CD pipeline [High | Certain | S]
+
+- Where: .github/workflows/ci.yml:16
+- Evidence: E-5 .github/workflows/ci.yml:16: `- name: Automated Secret Scanning (Gitleaks)`; E-2 scripts/release-gate.js:15: `name: 'Gate 1: Cryptographic Extension Key Pinning',`
+- Impact: Accidental check-in of API tokens, private keys, or credentials will not be blocked prior to merge or release tagging.
+- Fix: Add a blocking Gitleaks or Trufflehog scanning step in .github/workflows/ci.yml and require zero unmasked findings.
+- Verify the fix: `npm run release:gate`
+- Checks: A-SEC-14
+- Status: resolved
+- Remediation: GA-102
+
+#### F-SEC-1 Unescaped user commit message inserted into innerHTML in prompt git options view [Medium | Certain | S]
+
+- Where: src/options/options.js:758
+- Evidence: E-7 src/options/options.js:758: `const left = document.createElement('div');`
+- Impact: Crafted commit messages containing HTML tags will execute in the extension options page context when rendered in the history list.
+- Fix: Use escapeHtml(c.message) or assign c.message directly to textContent on a dedicated text node.
+- Verify the fix: `npm run lint`
+- Checks: A-SEC-9
+- Status: resolved
+- Remediation: GA-101
+
+### llm
+
+No findings. 25 checks were recorded in the ledger.
+
+### ux
+
+No findings. 22 checks were recorded in the ledger.
+
+### ui
+
+No findings. 24 checks were recorded in the ledger.
+
+### seo
+
+No findings. 25 checks were recorded in the ledger.
+
+### code-quality
+
+No findings. 26 checks were recorded in the ledger.
+
+### style-genome
+
+No findings. 23 checks were recorded in the ledger.
+
+### agent-memory
+
+No findings. 24 checks were recorded in the ledger.
+
+### repo
+
+#### F-REPO-1 Repository working directory carries unstaged local modifications [Low | Firm | S]
+
+- Where: see evidence ledger
+- Evidence: E-40 git working tree: `Working tree contains unstaged modifications to build-hash.txt and content.js`
+- Impact: Uncommitted diffs in content.js and release manifest can produce non-reproducible build outputs across developer environments.
+- Fix: Commit or stash all tracked modifications and verify that git status --porcelain reports a clean state before release packaging.
+- Verify the fix: `git status --porcelain`
+- Checks: A-REPO-1
+- Status: open
+- Remediation: GA-104
+
+### build
+
+#### F-BUILD-1 Repository lacks a standardized STATE.md build state record and formalized ADR directory [Medium | Certain | S]
+
+- Where: docs/STATE.md:1
+- Evidence: E-6 docs/STATE.md:1: `# Project State & Architecture Milestones`
+- Impact: Architectural decisions and build session progression lack standardized machine-readable state tracking.
+- Fix: Add docs/STATE.md recording current build phase and formalize architectural decision records.
+- Verify the fix: `npm run release:gate`
+- Checks: A-BUILD-17
+- Status: resolved
+- Remediation: GA-103
+
+### roadmap
+
+No findings. 23 checks were recorded in the ledger.
+
+### deploy
+
+No findings. 21 checks were recorded in the ledger.
+
+### observe
+
+No findings. 24 checks were recorded in the ledger.
+
+### launch
+
+No findings. 23 checks were recorded in the ledger.
+
+## Remediation plan
+
+### Destination
+
+A verified sovereign security posture where all extension UI sinks are sanitized, CI enforces blocking automated secret and dependency scanning, and all release gates achieve deterministic audit closure.
+
+Final gate: Re-run godaudits at the remediated commit (GA-601) [open].
+Gate acceptance: Every prior task is done and the expected score movement is recorded. All 4 findings are marked resolved with verified evidence.
+Gate verify: `node /home/STARBOY/gemini/.agents/skills/godaudits/runtime/godaudits.js validate .godaudits/AUDIT.json --repo antigravity/scratch/vigil.ai`
+
+### Frontier: 1 takeable now
+
+Closed 3 of 4 remediation tasks; claimed 0; blocked 0. A task is takeable when every task it depends on is closed. Claim a task before starting work so a concurrent session skips it, and re-derive this list with `godaudits wayfind` rather than reading it from a report that may be older than the task state.
+
+| Order | Task | Phase and wave | Concurrency | Unblocks |
+|---:|---|---|---|---:|
+| 1 | Reconcile and commit modified working tree state (GA-104) | 5 / 5.1 | serial | 0 |
+
+## Phase 2: Remediation
+
+### Wave 2.1
+
+- [x] GA-101 [W2.1] [P] Sanitize commit message rendering in prompt git options viewer
+  - Files: src/options/options.js
+  - Depends on: none
+  - Reuses: textContent or local HTML escape helper
+  - Fixes: Unescaped user commit message inserted into innerHTML in prompt git options view (F-SEC-1)
+  - Acceptance: c.message is rendered via textContent or through an explicit escapeHtml call.; HTML elements like &lt;img src=x onerror=alert(1)&gt; render as literal strings without DOM insertion.; Options viewer unit tests pass.
+  - Verify: `npm run lint`
+  - Checks: A-SEC-9
+
+- [x] GA-102 [W2.1] [P] Wire automated secret scanning gate into GitHub Actions CI pipeline
+  - Files: .github/workflows/ci.yml
+  - Depends on: none
+  - Reuses: gitleaks-action GitHub Action
+  - Fixes: Automated secret scanning is not wired into the CI/CD pipeline (F-SEC-2)
+  - Acceptance: A blocking Gitleaks scan runs on push to main and all pull requests in .github/workflows/ci.yml.; Commits introducing unredacted secrets fail the pipeline immediately.; Scan logs mask matched secrets.
+  - Verify: `npm run release:gate`
+  - Checks: A-SEC-14
+
+## Phase 3: Remediation
+
+### Wave 3.1
+
+- [x] GA-103 [W3.1] Formalize repository build state in docs/STATE.md and architectural records
+  - Files: docs/STATE.md
+  - Depends on: Sanitize commit message rendering in prompt git options viewer (GA-101); Wire automated secret scanning gate into GitHub Actions CI pipeline (GA-102)
+  - Reuses: Markdown architectural decision records format
+  - Fixes: Repository lacks a standardized STATE.md build state record and formalized ADR directory (F-BUILD-1)
+  - Acceptance: A documented docs/STATE.md exists outlining completed phases and current release milestone.; Architectural trade-offs for local wasm and native bridge are catalogued.; godaudits validation confirms the presence of session-state artifacts.
+  - Verify: `node /home/STARBOY/gemini/.agents/skills/godaudits/runtime/godaudits.js validate .godaudits/AUDIT.json --repo antigravity/scratch/vigil.ai`
+  - Checks: A-BUILD-17
+
+## Phase 5: Remediation
+
+### Wave 5.1
+
+- [ ] GA-104 [W5.1] Reconcile and commit modified working tree state
+  - Files: .github/build-hash.txt, .github/release-manifest.json, SECURITY_AUDIT.md, src/content/content.js, src/content/modules/detection-engine.js, src/content/modules/rehydration-engine.js
+  - Depends on: Sanitize commit message rendering in prompt git options viewer (GA-101); Wire automated secret scanning gate into GitHub Actions CI pipeline (GA-102); Formalize repository build state in docs/STATE.md and architectural records (GA-103)
+  - Reuses: git commit workflow and release gate verification
+  - Fixes: Repository working directory carries unstaged local modifications (F-REPO-1)
+  - Acceptance: All working tree modifications are reviewed and committed with clear commit messages.; Deterministic build hashes are regenerated and match git HEAD.; git status --porcelain reports an empty working tree.
+  - Verify: `git status --porcelain`
+  - Checks: A-REPO-1
+
+## Phase 6: Re-audit
+
+### Wave 6.1
+
+- [ ] GA-601 [W6.1] Re-run godaudits at the remediated commit
+  - Files: none
+  - Depends on: Sanitize commit message rendering in prompt git options viewer (GA-101); Wire automated secret scanning gate into GitHub Actions CI pipeline (GA-102); Formalize repository build state in docs/STATE.md and architectural records (GA-103); Reconcile and commit modified working tree state (GA-104)
+  - Reuses: the current check catalog and evidence fingerprint
+  - Fixes: none (final gate)
+  - Acceptance: Every prior task is done and the expected score movement is recorded.; All 4 findings are marked resolved with verified evidence.
+  - Verify: `node /home/STARBOY/gemini/.agents/skills/godaudits/runtime/godaudits.js validate .godaudits/AUDIT.json --repo antigravity/scratch/vigil.ai`
+  - Checks: none
+
+## Not yet specified
+
+In scope and unresolved. An unknown check is a question the catalog already phrases precisely and this audit left unanswered. An entry below is the dimmer view: a lead this audit can see but cannot yet phrase as a check. Both lower confidence in the grade; neither is a clean result.
+
+Unknown checks: 0 of 397 applicable, 0 carrying a stated resolving question. Coverage 100% caps the verdict at 100.
+
+No unspecifiable lead was recorded.
+
+## Out of scope
+
+Ruled beyond this audit rather than left unresolved, so it never graduates here and never enters the remediation route. Redrawing the scope is a fresh audit, not a resumption of this one.
+
+| Scope decision | Extent | Reason |
+|---|---|---|
+| database | 20 not-applicable checks | Each carries evidence in the check ledger above. |
+| seo | 20 not-applicable checks | Each carries evidence in the check ledger above. |
+
+## Accepted risks and open questions
+
+None.
+
+
+## Rules for remediating agents
+
+> [!IMPORTANT]
+> AUDIT.json is the machine source of truth. AUDIT.mdx is a generated view.
+> Run the task Verify command before changing task or finding state, then compile and validate both artifacts.
+> Never renumber findings or completed tasks. Finish with the final re-audit gate.
+
+## Session log
+
+- 2026-10-28 Executed full-budget 18-domain godaudits evaluation on vigil.ai repository.

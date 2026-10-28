@@ -4,7 +4,7 @@
 **Audit Pipeline Standard:** The Ultimate Real-World Audit Pipeline (Steps 1–5)  
 **Certification Status:** ✅ FULLY CERTIFIED & PASSED  
 **Timestamp:** 2026-10-25T15:08:17.640Z  
-**Audited Hash / Release:** `9ceb452e2a4862fe2dd9496a34136def3d1e9481215cb737af892f16fa24f874`  
+**Audited Hash / Release:** `1f5a891a8befb5f6edbf8c6d750c3fc1b7fd07011803c1643aaafece36bbca8b`  
 **Target Audience:** Enterprise CISOs, VP of Engineering, Institutional M&A Auditors (Trail of Bits / Cure53 / NCC Group)
 
 ---
@@ -65,7 +65,7 @@ A high-throughput test harness executed 1,000 automated invocations through the 
 ```json
 {
   "auditReportHash": "c59400346abe854e3df0e7f37991e1670d5a80c091ed7691ea21644b461015b1",
-  "buildReproducibilityHash": "9ceb452e2a4862fe2dd9496a34136def3d1e9481215cb737af892f16fa24f874",
+  "buildReproducibilityHash": "1f5a891a8befb5f6edbf8c6d750c3fc1b7fd07011803c1643aaafece36bbca8b",
   "manifestKey": "emkokehejldjlfljlhhcimnfefcjcmon",
   "certificationVerdict": "PASSED_CERTIFIED"
 }

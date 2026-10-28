@@ -756,7 +756,22 @@ function refreshPromptGitUI() {
         row.style.cssText = 'padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.08);';
 
         const left = document.createElement('div');
-        left.innerHTML = `<span style="font-family:monospace;color:#10b981;font-weight:700;">${c.id.slice(0, 7)}</span> <b>${c.message}</b><br><small style="color:var(--text-3);">${c.metadata.estimatedTokens} tokens · ${new Date(c.timestamp).toLocaleTimeString()}</small>`;
+        const hashSpan = document.createElement('span');
+        hashSpan.style.cssText = 'font-family:monospace;color:#10b981;font-weight:700;';
+        hashSpan.textContent = c.id.slice(0, 7) + ' ';
+
+        const msgB = document.createElement('b');
+        msgB.textContent = c.message || '';
+
+        const br = document.createElement('br');
+        const small = document.createElement('small');
+        small.style.cssText = 'color:var(--text-3);';
+        small.textContent = `${(c.metadata && c.metadata.estimatedTokens) || 0} tokens · ${new Date(c.timestamp).toLocaleTimeString()}`;
+
+        left.appendChild(hashSpan);
+        left.appendChild(msgB);
+        left.appendChild(br);
+        left.appendChild(small);
 
         const right = document.createElement('button');
         right.className = 'save-btn';

@@ -192,6 +192,20 @@ describe('Sentinel Stage 3: Policy Engine Rule Evaluation', () => {
       expect(decision.reason_code).toBe(REASON_CODES.REQUIRE_APPROVAL_CONFIG_CHANGE);
     });
 
+    test('Calculates blast radius and generates adversarial refutation for approval decisions', async () => {
+      const decision = await engine.evaluate({
+        ...baseAction,
+        action_type: ACTION_FS_DELETE,
+        resource: 'build/*'
+      });
+      expect(decision.decision).toBe(DECISION_REQUIRE_APPROVAL);
+      expect(decision.blast_radius).toBeDefined();
+      expect(decision.blast_radius.is_destructive).toBe(true);
+      expect(decision.blast_radius.severity).toBe('critical');
+      expect(decision.blast_radius.requires_typed_confirmation).toBe(true);
+      expect(decision.adversarial_refutation).toContain('Adversarial Refutation:');
+    });
+
     test('Allows action when valid human approval matches exact action hash', async () => {
       const writeAction = {
         ...baseAction,

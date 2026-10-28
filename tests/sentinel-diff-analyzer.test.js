@@ -90,5 +90,62 @@ describe('Sentinel Enhancement: Unified Diff & Trojan Source Analyzer', () => {
       expect(result.detectedUnicodeAnomalies.length).toBe(0);
     });
   });
+
+  describe('4. Semantic Code & Logic-Bomb Verification', () => {
+    test('detects hardcoded temporal logic-bomb triggers', () => {
+      const sleeperCode = 'function verifyLicense() {\n  if (Date.now() > 1799999999999) return true;\n  return check();\n}';
+      const result = analyzer.analyze({
+        filePath: 'src/license.js',
+        oldContent: 'function verifyLicense() {\n  return check();\n}',
+        newContent: sleeperCode
+      });
+
+      expect(result.isSafe).toBe(false);
+      expect(result.hasSemanticAnomaly).toBe(true);
+      expect(result.reasonCode).toBe(REASON_CODES.DENY_SEMANTIC_LOGIC_BOMB);
+      expect(result.semanticAnomalies.some(a => a.type === 'LOGIC_BOMB_TEMPORAL')).toBe(true);
+    });
+
+    test('detects targeted environment/host identity tripwires', () => {
+      const targetedCode = 'if (process.env.USER === "victim-admin") { exfiltrate(); }';
+      const result = analyzer.analyze({
+        filePath: 'src/config.js',
+        oldContent: '',
+        newContent: targetedCode
+      });
+
+      expect(result.isSafe).toBe(false);
+      expect(result.hasSemanticAnomaly).toBe(true);
+      expect(result.reasonCode).toBe(REASON_CODES.DENY_SEMANTIC_LOGIC_BOMB);
+      expect(result.semanticAnomalies.some(a => a.type === 'LOGIC_BOMB_ENVIRONMENT')).toBe(true);
+    });
+
+    test('detects cryptographic degradation (Math.random in auth path)', () => {
+      const weakTokenCode = 'function generateSessionToken() {\n  return "tok_" + Math.random();\n}';
+      const result = analyzer.analyze({
+        filePath: 'src/auth/token-generator.js',
+        oldContent: 'function generateSessionToken() {\n  return crypto.randomUUID();\n}',
+        newContent: weakTokenCode
+      });
+
+      expect(result.isSafe).toBe(false);
+      expect(result.hasSemanticAnomaly).toBe(true);
+      expect(result.reasonCode).toBe(REASON_CODES.DENY_CRYPTOGRAPHIC_DEGRADATION);
+      expect(result.semanticAnomalies.some(a => a.type === 'CRYPTO_DEGRADATION')).toBe(true);
+    });
+
+    test('detects unsafe dynamic code execution sinks', () => {
+      const dynamicExecCode = 'const runner = new Function("arg", payload);';
+      const result = analyzer.analyze({
+        filePath: 'src/utils/runner.js',
+        oldContent: '',
+        newContent: dynamicExecCode
+      });
+
+      expect(result.isSafe).toBe(false);
+      expect(result.hasSemanticAnomaly).toBe(true);
+      expect(result.semanticAnomalies.some(a => a.type === 'DYNAMIC_EXECUTION_SINK')).toBe(true);
+    });
+  });
 });
 
