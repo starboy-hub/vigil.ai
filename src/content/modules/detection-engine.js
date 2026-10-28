@@ -314,16 +314,16 @@
       if (c.split(/[ \t-]+/).length >= 2) names.add(c);
     }
     [
-      /\b(?:I'm|I am)\s+([A-Z][a-z]+(?:[ \t-]+[A-Z][a-z]+)?)\b/g,
-      /\bmy name is\s+([A-Z][a-z]+(?:[ \t-]+[A-Z][a-z]+)?)\b/gi,
-      /\bcall me\s+([A-Z][a-z]+(?:[ \t-]+[A-Z][a-z]+)?)\b/gi,
-      /\bthis is\s+([A-Z][a-z]+(?:[ \t-]+[A-Z][a-z]+)?)\b/g,
-      /\bname:\s*([A-Z][a-z]+(?:[ \t-]+[A-Z][a-z]+)?)\b/gi,
-      /\b(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s+([A-Z][a-z]+(?:[ \t-]+[A-Z][a-z]+)?)\b/g
+      /\b(?:I'm|I am)\s+([A-Z][a-z]+)\b/g,
+      /\bmy name is\s+([A-Z][a-z]+)\b/gi,
+      /\bcall me\s+([A-Z][a-z]+)\b/gi,
+      /\bthis is\s+([A-Z][a-z]+)\b/g,
+      /\bname:\s*([A-Z][a-z]+)\b/gi,
+      /\b(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s+([A-Z][a-z]+)\b/g
     ].forEach(p => {
       let mm; while ((mm = p.exec(text)) !== null) {
         const c = mm[1];
-        if (!c.split(/[ \t-]+/).some(w => skip.has(w)) && c.length >= 2) names.add(c);
+        if (!skip.has(c) && c.length >= 2) names.add(c);
       }
     });
     return Array.from(names);
